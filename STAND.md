@@ -62,6 +62,10 @@ node scripts/check-kontrast.mjs    → 26 Farbpaare · alle über der Schwelle
 Maschinelle Gegenproben P0/P1/P2   → 24 + 26 + 18 = 68 von 68
 ```
 
+**Bei Ihnen, im Codespace, am 09.08.2026:** `npm run verify` lief zum ersten
+Mal vollständig durch — `typecheck` über beide tsconfigs, `check:kontrast`,
+`test:pure`. Damit ist der Baum nicht mehr nur parsebar, sondern typgeprüft.
+
 > **Drei Gegenproben meldeten zuerst Fehler, die keine waren** — sie fanden die
 > gesuchten Zeichenketten in den Kommentaren, die die Behebung beschreiben. Eine
 > vierte meldete „2 Schreibstellen auf `isVerified`", und **das war echt**:
@@ -72,7 +76,8 @@ Maschinelle Gegenproben P0/P1/P2   → 24 + 26 + 18 = 68 von 68
 | | Grund |
 |---|---|
 | `npm install`, Build, Serverstart | Paketregistry gesperrt (HTTP 403) |
-| Firestore- und Storage-Regeln gegen den Emulator | nicht installierbar |
+| **`tests/rules.spec.ts` — 35 Fälle, geschrieben, nie gelaufen** | Emulator hier nicht startbar (kein Java, keine Registry). **Der erste Lauf ist Ihrer.** |
+| Storage-Regeln | keine Tests. `storage.rules` ist weiterhin ungeprüft. |
 | Darstellung, Dunkelmodus, Bildrate | keine laufende App |
 
 **„Behoben" heißt hier: statisch geprüft und maschinell gegengeprüft.** Es heißt
@@ -100,8 +105,13 @@ nicht, dass ich die App laufen gesehen habe.
 
 ```bash
 npm install
-npm run verify      # Typprüfung + Kontraste + Logiktests
+npm run verify      # Typprüfung + Kontraste + Logiktests + Firestore-Regeln
 npm run dev
 ```
 
-Node 20+ ist Pflicht. Der erste Push löst `verify.yml` aus.
+`verify` enthält jetzt `test:rules`. Der Schritt startet den Firestore-Emulator
+(Java 17 — im Devcontainer vorhanden) und führt 35 Fälle gegen
+`firestore.rules` aus. Nur dieser Schritt kann rot werden; die anderen drei
+sind bei Ihnen bereits grün gelaufen.
+
+Node 22.22.2+ ist Pflicht. Der erste Push löst `verify.yml` aus.

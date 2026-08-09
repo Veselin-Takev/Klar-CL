@@ -28,3 +28,7 @@ jobs:
 
       - name: Logiktests (ohne Firebase, ohne Express)
         run: npm run test:pure
+
+      # Der Lauf, auf den dieses Projekt seit dem ersten Pruefbericht wartet.
+      - name: Firestore-Regeln gegen den Emulator
+        run: npm run test:rules
