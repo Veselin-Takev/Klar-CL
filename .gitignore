@@ -5,3 +5,5 @@ dist/
 *.log
 *.zip
 *.swp
+*.swo
+*.swn
