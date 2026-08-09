@@ -1,0 +1,30 @@
+name: verify
+
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22   # Node 16 scheitert an vite@6 und firebase-admin@14
+          cache: npm
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+
+      - name: Abhängigkeiten
+        run: npm install
+
+      - name: Typprüfung
+        run: npm run typecheck
+
+      - name: Kontraste nachrechnen (WCAG 2.1)
+        run: npm run check:kontrast
+
+      - name: Logiktests (ohne Firebase, ohne Express)
+        run: npm run test:pure

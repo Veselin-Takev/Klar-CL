@@ -1,0 +1,41 @@
+name: kennzahlen
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Zählt, was zurückkommen darf und was nicht. BEWUSST NICHT SPERREND:
+# Ein sperrender Lauf über hunderte bestehende Fundstellen wäre nach zwei
+# Tagen abgeschaltet. Er zählt und meldet; die Zahlen sollen sinken.
+#
+# Ausgangswerte: Stand 09.08.2026 nach P0/P1/P2.
+# ═══════════════════════════════════════════════════════════════════════════
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  zaehlen:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Terminologie (Glossar)
+        run: |
+          echo "Begriffe, die eine andere App beschreiben:"
+          for b in swipe liken '\bMatch\b' '\bDeck\b'; do
+            printf '  %-14s %s\n' "$b" "$(grep -rniE "$b" src server.ts --include=*.ts --include=*.tsx | wc -l)"
+          done
+          echo "Richtig: Vorschlag / Kontakt / Nachricht / Verbindung."
+
+      - name: Verstöße gegen die Designrichtlinie §12
+        run: |
+          printf '  bg-gradient          %s  (Ausgangswert 4)\n'  "$(grep -ro 'bg-gradient' src --include=*.tsx | wc -l)"
+          printf '  backdrop-blur        %s  (8)\n'  "$(grep -ro 'backdrop-blur' src --include=*.tsx | wc -l)"
+          printf '  shadow-xl/2xl        %s\n'      "$(grep -roE 'shadow-(xl|2xl)' src --include=*.tsx | wc -l)"
+          printf '  hover:scale          %s\n'      "$(grep -ro 'hover:scale' src --include=*.tsx | wc -l)"
+          printf '  Gamification         %s  (362)\n' "$(grep -roiE 'streak|badge|milestone' src --include=*.tsx | wc -l)"
+
+      - name: Barrierefreiheit und stille Fehler
+        run: |
+          printf '  aria-Attribute       %s  (Ausgangswert 33)\n' "$(grep -ro 'aria-[a-z]*' src --include=*.tsx | wc -l)"
+          printf '  stille console(e)    %s  (0 — bitte so lassen)\n' "$(grep -roE 'console\.(warn|error)\((e|err|error)\)$' src --include=*.tsx --include=*.ts | wc -l)"
+          printf '  @ts-nocheck-Dateien  %s  (8 — jede verdeckt Fehler)\n' "$(grep -rl '@ts-nocheck' src --include=*.tsx --include=*.ts | wc -l)"
+          printf '  Widgets mit erfundenen Daten %s  (7)\n' "$(grep -rl 'P2-BEFUND, NICHT BEHOBEN' src/components --include=*.tsx | wc -l)"

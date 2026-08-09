@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KLAR — Designtokens
+
+   Eine Stelle für Farben, Schriften und Radien.
+
+   Der Dunkelmodus tauscht ausschließlich die Tokenwerte. Markup, das Tokens
+   benutzt, braucht deshalb KEINE dark:-Varianten — genau daraus waren die
+   doppelten Klassen entstanden (`dark:bg-[#1a1c1a] dark:bg-[#1a1c1a]/90`).
+
+   Alle Werte unten sind gerechnet, nicht geschätzt (WCAG 2.1, relative
+   Luminanz). Die Prüfung liegt bei: `npm run check:kontrast`.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Klassenbasierter Dunkelmodus. Ohne diese Zeile wertet Tailwind v4 `dark:`
+   über prefers-color-scheme aus — ein Umschalter in der App bewirkt nichts. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Playfair Display", "Iowan Old Style", Georgia, "Times New Roman", serif;
+
+  /* Semantische Tokens. Erzeugen bg-canvas, text-ink, border-line-ui usw. */
+  --color-canvas: #f9f7f4;
+  --color-surface: #ffffff;
+  --color-ink: #1c1c1c;          /* 15,94 : 1 auf canvas */
+  --color-muted: #6b6560;        /*  5,37 : 1 auf canvas */
+  --color-accent: #3f4a3c;       /*  8,70 : 1 auf canvas · weiß darauf 9,31 : 1 */
+  --color-accent-strong: #333d31;
+  --color-accent-quiet: #eff0ec;
+  --color-line: #e8e4de;         /* nur optische Trennung, kein Bedienelement */
+  --color-line-ui: #918879;      /*  3,50 : 1 auf weiß · 3,27 : 1 auf canvas */
+  --color-photo: #dad5cc;
+
+  /* Bestehende Namen bleiben gültig, damit die 128 vorhandenen Ansichten
+     unverändert weiterlaufen. */
+  --color-brand: #3f4a3c;
+  --color-brand-light: #a9bda5;
+  --color-dark-bg: #161815;
+  --color-light-bg: #f9f7f4;
+
+  --radius-card: 24px;
+  --radius-inner: 16px;
+
+  /* ── Korrektur der Graustufen ──────────────────────────────────────────
+     Die App benutzt Tailwinds stone-Skala. Zwei Werte daraus verfehlen im
+     Hellmodus den Textkontrast nach WCAG 1.4.3 (4,5 : 1):
+
+       stone-400  #a8a29b  →  2,36 : 1 auf der Grundfläche   (408 Fundstellen)
+       stone-500  #78716c  →  4,49 : 1                        (416 Fundstellen)
+
+     Statt an 824 Stellen die Klasse zu tauschen, wird der WERT geändert.
+     Ein Tokensystem ist genau dafür da: eine Stelle statt achthundert.
+     Der Farbton (warmes Grau) bleibt, die Helligkeit sinkt so wenig wie
+     nötig. Geprüft gegen Grundfläche UND Weiß, weil beide vorkommen. */
+  --color-stone-400: #75716c;   /* 4,53 : 1 auf canvas · 4,84 : 1 auf weiß */
+  --color-stone-500: #766f6a;   /* 4,62 : 1 auf canvas · 4,94 : 1 auf weiß */
+}
+
+/* Dunkelmodus: nur die Werte werden getauscht.
+   #3F4A3C auf #161815 wäre 1,92 : 1 und unsichtbar — deshalb ist der Akzent
+   im Dunkeln hell und der Text darauf dunkel. */
+.dark {
+  --color-canvas: #161815;
+  --color-surface: #1f221e;
+  --color-ink: #edeae4;          /* 14,88 : 1 auf canvas */
+  --color-muted: #a8a29b;        /*  7,07 : 1 auf canvas */
+  --color-accent: #a9bda5;       /*  8,94 : 1 auf canvas */
+  --color-accent-strong: #c2d2bf;
+  --color-accent-quiet: #23281f;
+  --color-line: #2f332d;
+
+  /* KORRIGIERT gegenüber der Fassung vom 03.08.: dort stand #4a5147.
+     Das ergibt auf der Fläche #1f221e nur 1,96 : 1 — WCAG 1.4.11 verlangt
+     für Ränder, die ein Bedienelement erst erkennbar machen, 3 : 1.
+     Aufgefallen ist das beim Nachrechnen, nicht beim Ansehen: Im
+     Dunkelmodus wirkt eine zu schwache Linie „dezent" statt falsch. */
+  --color-line-ui: #6c6f69;      /*  3,15 : 1 auf surface · 3,50 : 1 auf canvas */
+  --color-photo: #2a2e28;
+
+  /* Im Dunkeln muss derselbe Text HELLER werden, nicht dunkler.
+     #75716c auf #161815 wäre 3,4 : 1 und damit zu wenig. */
+  --color-stone-400: #a8a29b;   /* 7,07 : 1 auf canvas */
+  --color-stone-500: #b8b2ab;   /* 8,50 : 1 auf canvas */
+}
+
+:root {
+  --color-on-accent: #ffffff;
+  color-scheme: light dark;
+}
+.dark { --color-on-accent: #161815; }
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;        /* Design-Richtlinie §4: Fließtext nie kleiner */
+    line-height: 1.5;       /* WCAG 1.4.12 */
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+  }
+
+  /* Sichtbarer Tastaturfokus (WCAG 2.4.7). Pflicht, keine Geschmacksfrage. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* WCAG 2.3.3. Ohne diesen Block ist jede Animation in der App ein Verstoß
+     — auch die, die man selbst für harmlos hält. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; z-index: 100;
+    background-color: var(--color-surface); color: var(--color-ink);
+    border: 1px solid var(--color-line-ui); border-radius: 999px;
+    padding: 12px 20px;
+  }
+  .skip-link:focus { left: 16px; top: 16px; }
+
+  .hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .hide-scrollbar::-webkit-scrollbar { width: 0; height: 0; }
+
+  /* `env()` liefert auf Geräten ohne Aussparung 0 — nicht den Ersatzwert.
+     Deshalb max() statt env(…, 1rem). */
+  .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+
+  /* Ladezustand: ruhige Platzhalterfläche statt drehender Spinner
+     (Design-Richtlinie §6). */
+  .skeleton {
+    background-color: var(--color-accent-quiet);
+    border-radius: var(--radius-inner);
+    animation: klar-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes klar-pulse {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+/* Countdown-Ring der Rücknahme-Leiste. Als CSS-Animation, damit React
+   während der Geste nichts rechnet. 50.27 ist der Umfang des Kreises mit
+   r = 8 (2πr) — ein anderer Radius verlangt einen anderen Wert. */
+@keyframes klar-countdown {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: 50.27; }
+}

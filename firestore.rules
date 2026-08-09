@@ -1,0 +1,199 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // P0-5: Meldungen entstehen ausschliesslich ueber /api/report
+    // (Admin-SDK). Client-seitig vollstaendig gesperrt — auch lesend, damit
+    // niemand erfaehrt, wer wen gemeldet hat.
+    match /reports/{reportId} {
+      allow read, write: if false;
+    }
+    match /ad_transactions/{txId} {
+      allow read, write: if false; // Server only
+    }
+    match /connections/{connId} {
+      allow read: if signedIn();
+      allow write: if false; // Server only handled via QuotaLedgerService
+    }
+
+    // P0-4: Diese Funktion hiess isVerified(), prueft aber nur, ob jemand
+    // angemeldet ist. Der Name behauptete eine Pruefung, die nicht
+    // stattfand — und weil er ueberall stand, sah jede Regel geprueft aus.
+    // Jetzt heisst sie, was sie tut.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    // Die ECHTE Verifizierung. Nur der Server setzt isVerified (Sichtpruefung
+    // des Verifizierungsfotos); der Client kann das Feld nicht schreiben —
+    // siehe keepsServerFields() unten.
+    function isVerified(uid) {
+      return signedIn() && userDoc(uid).isVerified == true;
+    }
+
+    function blocked(otherUid) {
+      return exists(/databases/$(database)/documents/blocks/$(otherUid + '_' + request.auth.uid))
+          || exists(/databases/$(database)/documents/blocks/$(request.auth.uid + '_' + otherUid));
+    }
+
+    // Felder, die ausschliesslich der Server setzen darf. Ohne diese Liste
+    // vergibt sich jedes Konto Verifizierung, Abo und Rollen selbst.
+    function keepsServerFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['isVerified', 'trustScore', 'plan', 'roles',
+                 'contactDay', 'contactCount', 'quotaLedger',
+                 'verificationStatus', 'verificationGeste']);
+    }
+
+    // Validation for User entity
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'createdAt', 'updatedAt']) 
+             && data.uid is string
+             && data.createdAt is string
+             && data.updatedAt is string
+             && (!('name' in data) || data.name is string)
+             && (!('bio' in data) || data.bio is string)
+             && (!('interests' in data) || data.interests is list)
+             && (!('goal' in data) || data.goal is string)
+             && (!('isAdult' in data) || data.isAdult is bool)
+             && (!('smartMatchAlerts' in data) || data.smartMatchAlerts is bool);
+    }
+    
+    // Validation for User Update
+    function isValidUserUpdate(data, prevData) {
+      return data.diff(prevData).affectedKeys().hasAny(['name', 'bio', 'interests', 'goal', 'isAdult', 'smartMatchAlerts', 'updatedAt'])
+             && (!('name' in data) || data.name is string)
+             && (!('bio' in data) || data.bio is string)
+             && (!('interests' in data) || data.interests is list)
+             && (!('goal' in data) || data.goal is string)
+             && (!('isAdult' in data) || data.isAdult is bool)
+             && (!('smartMatchAlerts' in data) || data.smartMatchAlerts is bool)
+             && data.updatedAt is string
+             && data.uid == prevData.uid
+             && data.createdAt == prevData.createdAt;
+    }
+
+    
+    // Quota ledger for daily contacts
+    match /users/{userId}/quota_ledger/{docId} {
+      // Only the server (Admin SDK) can write to the ledger
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false; 
+    }
+
+    match /users/{userId} {
+      // Lesen: jede angemeldete Person, sofern keine Blockierung vorliegt.
+      // Sonst gaebe es keine Vorschlaege.
+      allow read: if signedIn() && !blocked(userId);
+      allow create: if signedIn() && request.auth.uid == userId
+                    && isValidUser(request.resource.data)
+                    && !request.resource.data.keys().hasAny(['isVerified', 'trustScore', 'plan', 'roles']);
+      // P0-4: keepsServerFields() ist der eigentliche Schutz. Ohne ihn
+      // konnte sich jedes Konto isVerified: true selbst setzen — und damit
+      // jede Regel aushebeln, die auf Verifizierung prueft.
+      allow update: if signedIn() && request.auth.uid == userId
+                    && isValidUserUpdate(request.resource.data, resource.data)
+                    && keepsServerFields();
+      // Loeschung laeuft ueber /api/account/delete (Kaskade, Art. 17 DSGVO).
+      allow delete: if false;
+    }
+
+    // Blockierungen. Gerichteter Eintrag, beidseitige Wirkung ueber blocked().
+    match /blocks/{blockId} {
+      allow get, list: if signedIn() && request.auth.uid == resource.data.blockerUid;
+      allow create: if signedIn()
+                    && request.resource.data.blockerUid == request.auth.uid
+                    && blockId == request.auth.uid + '_' + request.resource.data.blockedUid;
+      allow delete: if signedIn() && request.auth.uid == resource.data.blockerUid;
+      allow update: if false;
+    }
+
+    // Validation for Chat entity
+    function isValidChat(data) {
+      return data.keys().hasAll(['participants', 'createdAt'])
+             && data.participants is list
+             && data.participants.size() == 2
+             && data.createdAt is string
+             && (!('lastMessage' in data) || data.lastMessage is string)
+             && (!('lastMessageAt' in data) || data.lastMessageAt is string);
+    }
+
+    function isValidChatUpdate(data, prevData) {
+      return data.diff(prevData).affectedKeys().hasOnly(['lastMessage', 'lastMessageAt'])
+             && data.lastMessage is string
+             && data.lastMessageAt is string
+             && data.participants == prevData.participants
+             && data.createdAt == prevData.createdAt;
+    }
+
+    match /chats/{chatId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.participants;
+      // Ein Chat entsteht durch den ersten Kontakt — dafuer ist die
+      // Verifizierung Voraussetzung (Konzept: nur verifizierte Menschen
+      // erscheinen und handeln).
+      allow create: if isVerified(request.auth.uid)
+                    && request.auth.uid in request.resource.data.participants
+                    && isValidChat(request.resource.data);
+      allow update: if signedIn() && request.auth.uid in resource.data.participants && isValidChatUpdate(request.resource.data, resource.data);
+      // Ein Chat gehoert beiden. Einseitiges Loeschen wuerde der anderen
+      // Person den Verlauf nehmen — und jede Meldung nach DSA Art. 16
+      // wertlos machen.
+      allow delete: if false;
+
+      // Validation for Message entity
+      function isValidMessage(data, parentData) {
+        return data.keys().hasAll(['chatId', 'senderId', 'text', 'createdAt'])
+               && data.chatId == chatId
+               && data.senderId == request.auth.uid
+               && data.text is string
+               && data.text.size() <= 1000
+               && data.createdAt is string;
+      }
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if signedIn() 
+                      && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants 
+                      && isValidMessage(request.resource.data, get(/databases/$(database)/documents/chats/$(chatId)).data);
+        allow update: if false; // Messages should be immutable
+        allow delete: if false;
+      }
+    }
+    // ── Kontingent: der Zaehler gehoert dem Server ───────────────────────
+    // Ein Kontakt ist die ERSTE Nachricht an einen neuen Menschen. Die
+    // Dokument-ID ist "<von>_<an>" — ein zweiter Kontakt an dieselbe Person
+    // ist damit technisch unmoeglich, ohne dass eine Abfrage noetig waere.
+    match /contacts/{contactId} {
+      allow get, list: if signedIn()
+                       && (request.auth.uid == resource.data.fromUid
+                        || request.auth.uid == resource.data.toUid);
+      // Nur der Server schreibt (Transaktion in /api/contact). Client-seitig
+      // gesperrt: Sonst legt jemand Kontakte an, ohne dass gezaehlt wird.
+      allow write: if false;
+    }
+
+    // ── Verifizierung ────────────────────────────────────────────────────
+    match /verification_requests/{id} { allow read, write: if false; }
+    match /verification_events/{id}   { allow read, write: if false; }
+
+    // ── Abo, Rechtsvorgaenge, Warteschlangen ─────────────────────────────
+    match /subscriptions/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow write: if false;   // nur Server (Kuendigung/Widerruf/Zahlung)
+    }
+    match /subscription_events/{id} { allow read, write: if false; }
+    match /refund_queue/{id}        { allow read, write: if false; }
+    match /mail_queue/{id}          { allow read, write: if false; }
+    match /deletion_log/{id}        { allow read, write: if false; }
+
+    // Kein Sammel-Match. Was hier nicht steht, ist gesperrt.
+  }
+}
+
+// P0-2: In dieser Datei stand vor Zeile 57 ein literales "\n" statt eines
+// Zeilenumbruchs. Die Regeln waren damit nicht parsebar — `firebase deploy`
+// haette sie abgelehnt, und bis dahin galten die zuletzt ausgerollten.
