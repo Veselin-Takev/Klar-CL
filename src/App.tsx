@@ -207,7 +207,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       </main>
       
       {!isChatView && (
-        <nav aria-label="Hauptnavigation" className="border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 pb-safe relative" aria-label="Hauptnavigation">
+        <nav className="border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 pb-safe relative" aria-label="Hauptnavigation">
           {unseenLegalCount > 0 && (
             <button 
               onClick={() => setIsLegalModalOpen(true)}
