@@ -189,7 +189,7 @@ export default function Login() {
 
         <div className="mt-8 flex items-center gap-2 text-stone-500 dark:text-stone-400 text-xs">
           <ShieldCheck size={14} className="text-green-600 dark:text-green-500" />
-          <span>Deine Daten sind End-to-End gesichert.</span>
+          <span>Verschlüsselte Verbindung.</span>
         </div>
       </div>
     </div>
