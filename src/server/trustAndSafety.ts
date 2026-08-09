@@ -157,6 +157,16 @@ export async function handleDeleteAccount(req: Request, res: Response): Promise<
     // 3. Kontingent-Ledger.
     await loescheAbfrage(db.collection('users').doc(meineUid).collection('quota_ledger'));
 
+    // 3a. GEGENPRÜFUNG 09.08.2026: Die mit DSG-02 hinzugekommenen Ablagen
+    //     fehlten in der Kaskade. `doc.delete()` löscht in Firestore KEINE
+    //     Unterkollektionen — `users/{uid}/einwilligungen/*` wäre nach der
+    //     Kontolöschung verwaist liegengeblieben, mit Zeitstempeln und
+    //     Zwecken. `age_attempts` enthält die uid im Klartext.
+    //     Eine neue Sammlung, die nicht in dieser Liste steht, überlebt die
+    //     Löschung — deshalb gehört jede hier eingetragen.
+    await loescheAbfrage(db.collection('users').doc(meineUid).collection('einwilligungen'));
+    await loescheAbfrage(db.collection('age_attempts').where('uid', '==', meineUid));
+
     // 4. Blockierungen in beide Richtungen.
     await loescheAbfrage(db.collection('blocks').where('blockerUid', '==', meineUid));
     await loescheAbfrage(db.collection('blocks').where('blockedUid', '==', meineUid));

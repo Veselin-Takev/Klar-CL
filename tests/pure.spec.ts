@@ -4,6 +4,8 @@ import {
   CHALLENGE_TTL_MS, DAILY_CONTACTS, GATE_FRAGEN, GESTEN, InputError,
   contactDay, entscheideKontakt, gateZustand, optionalString, pruefeChallenge,
   requireString, verifizierungsStatus, waehleGeste, withdrawalPossible,
+  pruefeBildUrl, pruefeGeburtsdatum, alterInJahren, MINDESTALTER,
+  pruefeEinwilligung, einwilligungGueltig, zweckErlaubt, EINWILLIGUNG_VERSION,
 } from '../src/server/pure.ts';
 
 // Prüft die Entscheidungen, bei denen ein Fehler teuer ist.
@@ -144,5 +146,238 @@ describe('Icebreaker-Gate', () => {
   });
   it('einseitig geöffnet gibt es nicht', () => {
     assert.equal(gateZustand({ antwortenA: 99, antwortenB: 0 }, true), 'wartet_auf_andere');
+  });
+});
+
+// ── SEC-03: Welche Bild-URL der Server abrufen darf ────────────────────────
+// Der Befund lautete: `fetch(profileImageUrl)` auf eine vom Client frei
+// gewaehlte Adresse. Diese Faelle sind die Angriffe, die dadurch moeglich
+// waren — jeder einzeln, damit bei Rot erkennbar ist, welcher wieder greift.
+
+describe('Bild-Herkunft (SEC-03)', () => {
+  const ok = (u: string) => pruefeBildUrl(u).erlaubt;
+
+  it('Firebase Storage ist erlaubt', () => {
+    assert.equal(ok('https://firebasestorage.googleapis.com/v0/b/klar/o/a.jpg?alt=media'), true);
+  });
+  it('Google-Profilbild ist erlaubt', () => {
+    assert.equal(ok('https://lh3.googleusercontent.com/a/abc=s96-c'), true);
+  });
+  it('echte Subdomain eines erlaubten Hosts ist erlaubt', () => {
+    assert.equal(ok('https://eu.storage.googleapis.com/klar/a.jpg'), true);
+  });
+
+  // Der Metadaten-Dienst der Cloud liefert Zugangsdaten des Dienstkontos.
+  it('Metadaten-Dienst 169.254.169.254 ist gesperrt', () => {
+    assert.equal(ok('https://169.254.169.254/computeMetadata/v1/'), false);
+  });
+  it('localhost ist gesperrt', () => {
+    assert.equal(ok('https://127.0.0.1:8080/'), false);
+  });
+  it('internes Netz ist gesperrt', () => {
+    assert.equal(ok('https://10.0.0.5/admin'), false);
+  });
+  it('http ist gesperrt — nur https', () => {
+    assert.equal(ok('http://firebasestorage.googleapis.com/a.jpg'), false);
+  });
+  it('file: ist gesperrt', () => {
+    assert.equal(ok('file:///etc/passwd'), false);
+  });
+  it('data: ist gesperrt', () => {
+    assert.equal(ok('data:image/png;base64,AAAA'), false);
+  });
+
+  // Der Fall, den ein blosses endsWith() durchgelassen haette.
+  it('angehaengter Fremd-Host ist gesperrt', () => {
+    assert.equal(ok('https://storage.googleapis.com.angreifer.de/a.jpg'), false);
+  });
+  it('Host als Zugangsdaten getarnt ist gesperrt', () => {
+    assert.equal(ok('https://storage.googleapis.com@angreifer.de/a.jpg'), false);
+  });
+  it('fremder Host ist gesperrt', () => {
+    assert.equal(ok('https://angreifer.de/a.jpg'), false);
+  });
+
+  it('leer und Unsinn werden abgelehnt, nicht geworfen', () => {
+    assert.equal(ok(''), false);
+    assert.equal(pruefeBildUrl(undefined).erlaubt, false);
+    assert.equal(pruefeBildUrl(42 as unknown as string).erlaubt, false);
+    assert.equal(ok('keine-url'), false);
+  });
+
+  it('gibt bei Ablehnung immer einen Grund an', () => {
+    const e = pruefeBildUrl('https://angreifer.de/a.jpg');
+    assert.equal(e.erlaubt, false);
+    if (!e.erlaubt) assert.ok(e.grund.length > 0);
+  });
+});
+
+// ── DSG-02: Alter ──────────────────────────────────────────────────────────
+// Der Befund war `isAdult: true`, fest verdrahtet. Diese Fälle prüfen die
+// Rechnung, die an seine Stelle tritt — vor allem den Tag davor und den
+// Geburtstag selbst, weil dort jede naive Jahresdifferenz falsch liegt.
+
+describe('Altersprüfung (DSG-02)', () => {
+  const stichtag = new Date('2026-08-09T12:00:00Z');
+
+  it('Geburtstag heute: genau 18 ist erlaubt', () => {
+    const e = pruefeGeburtsdatum('2008-08-09', stichtag);
+    assert.equal(e.ok, true);
+    if (e.ok) assert.equal(e.alter, MINDESTALTER);
+  });
+  it('einen Tag vor dem 18. Geburtstag: abgelehnt', () => {
+    const e = pruefeGeburtsdatum('2008-08-10', stichtag);
+    assert.equal(e.ok, false);
+    if (!e.ok) { assert.equal(e.grund, 'zu_jung'); assert.equal(e.alter, 17); }
+  });
+  it('gleiches Kalenderjahr genügt nicht', () => {
+    // Naive Jahresdifferenz ergäbe hier 18. Tatsächlich 17.
+    assert.equal(pruefeGeburtsdatum('2008-12-31', stichtag).ok, false);
+  });
+  it('deutlich volljährig', () => {
+    assert.equal(pruefeGeburtsdatum('1990-01-01', stichtag).ok, true);
+  });
+
+  it('Datum in der Zukunft', () => {
+    const e = pruefeGeburtsdatum('2030-01-01', stichtag);
+    assert.equal(e.ok, false);
+    if (!e.ok) assert.equal(e.grund, 'zukunft');
+  });
+  it('unplausibel altes Datum', () => {
+    const e = pruefeGeburtsdatum('1850-01-01', stichtag);
+    assert.equal(e.ok, false);
+    if (!e.ok) assert.equal(e.grund, 'unplausibel');
+  });
+  it('31. Februar wird nicht stillschweigend verschoben', () => {
+    const e = pruefeGeburtsdatum('1990-02-31', stichtag);
+    assert.equal(e.ok, false);
+    if (!e.ok) assert.equal(e.grund, 'ungueltig');
+  });
+  it('Schaltjahr-Geburtstag am 29.02. ist gültig', () => {
+    assert.equal(pruefeGeburtsdatum('1992-02-29', stichtag).ok, true);
+  });
+  it('falsches Format, leer, fehlend', () => {
+    assert.equal(pruefeGeburtsdatum('09.08.2008', stichtag).ok, false);
+    assert.equal(pruefeGeburtsdatum('', stichtag).ok, false);
+    assert.equal(pruefeGeburtsdatum(undefined, stichtag).ok, false);
+    assert.equal(pruefeGeburtsdatum(20080809 as unknown as string, stichtag).ok, false);
+  });
+  // GEGENPRÜFUNG 09.08.2026 — zwei Fälle, die die erste Fassung falsch
+  // rechnete. Beide gingen zulasten der Person, keiner zulasten des
+  // Jugendschutzes; falsch waren sie trotzdem.
+  it('Geburtstag um 00:30 MESZ zählt — nicht erst ab 02:00', () => {
+    // 00:30 Ortszeit am 09.08. ist in UTC noch der 08.08., 22:30.
+    const e = pruefeGeburtsdatum('2008-08-09', new Date('2026-08-08T22:30:00Z'));
+    assert.equal(e.ok, true);
+  });
+  it('am 29.02. Geborene sind im Nicht-Schaltjahr am 28.02. volljährig (§ 188 Abs. 3 BGB)', () => {
+    assert.equal(pruefeGeburtsdatum('2008-02-29', new Date('2026-02-28T12:00:00Z')).ok, true);
+    assert.equal(pruefeGeburtsdatum('2008-02-29', new Date('2026-02-27T12:00:00Z')).ok, false);
+  });
+  it('im Schaltjahr bleibt der 29.02. der Stichtag', () => {
+    // Über pruefeGeburtsdatum nicht prüfbar: Der 18. Geburtstag einer am
+    // 29.02. geborenen Person fällt NIE auf einen 29.02. — Schaltjahr + 18
+    // ist nie wieder ein Schaltjahr. Deshalb direkt an der Rechnung.
+    const geb = new Date('2008-02-29T00:00:00Z');
+    assert.equal(alterInJahren(geb, new Date('2028-02-28T12:00:00Z')), 19);
+    assert.equal(alterInJahren(geb, new Date('2028-02-29T12:00:00Z')), 20);
+    // Im Nicht-Schaltjahr rückt der Stichtag auf den 28.02. vor.
+    assert.equal(alterInJahren(geb, new Date('2027-02-27T12:00:00Z')), 18);
+    assert.equal(alterInJahren(geb, new Date('2027-02-28T12:00:00Z')), 19);
+  });
+
+  it('alterInJahren rechnet am Tag davor und am Tag selbst richtig', () => {
+    assert.equal(alterInJahren(new Date('2000-03-01T00:00:00Z'), new Date('2018-02-28T00:00:00Z')), 17);
+    assert.equal(alterInJahren(new Date('2000-03-01T00:00:00Z'), new Date('2018-03-01T00:00:00Z')), 18);
+  });
+});
+
+// ── DSG-02: Einwilligung ───────────────────────────────────────────────────
+
+describe('Einwilligung (DSG-02)', () => {
+  it('notwendig ist nicht abwählbar', () => {
+    const e = pruefeEinwilligung({ notwendig: false, ki_auswertung: false, fehlerberichte: false });
+    assert.equal(e.ok, true);
+    if (e.ok) assert.equal(e.zwecke.notwendig, true);
+  });
+  it('fehlende Angabe gilt als Nein, nicht als Ja', () => {
+    const e = pruefeEinwilligung({});
+    assert.equal(e.ok, true);
+    if (e.ok) { assert.equal(e.zwecke.ki_auswertung, false); assert.equal(e.zwecke.fehlerberichte, false); }
+  });
+  it('nur ja oder nein, kein "1"', () => {
+    assert.equal(pruefeEinwilligung({ ki_auswertung: 'ja' }).ok, false);
+    assert.equal(pruefeEinwilligung(null).ok, false);
+  });
+
+  const gueltig = { version: EINWILLIGUNG_VERSION, erteiltAm: '2026-08-09', zwecke: { ki_auswertung: true } };
+
+  it('gültige Einwilligung erlaubt den zugestimmten Zweck', () => {
+    assert.equal(zweckErlaubt(gueltig, 'ki_auswertung'), true);
+  });
+  it('nicht zugestimmter Zweck bleibt gesperrt', () => {
+    assert.equal(zweckErlaubt(gueltig, 'fehlerberichte'), false);
+  });
+  it('Widerruf wirkt sofort', () => {
+    assert.equal(zweckErlaubt({ ...gueltig, widerrufenAm: '2026-08-10' }, 'ki_auswertung'), false);
+  });
+  it('alte Fassung gilt für den neuen Text nicht', () => {
+    assert.equal(einwilligungGueltig({ ...gueltig, version: EINWILLIGUNG_VERSION - 1 }), false);
+    assert.equal(zweckErlaubt({ ...gueltig, version: EINWILLIGUNG_VERSION - 1 }, 'ki_auswertung'), false);
+  });
+  it('ohne Einwilligung ist nichts Freiwilliges erlaubt — Notwendiges schon', () => {
+    assert.equal(zweckErlaubt(null, 'ki_auswertung'), false);
+    assert.equal(zweckErlaubt(null, 'notwendig'), true);
+  });
+
+  // GEGENPRÜFUNG: Der Teilwiderruf setzte widerrufenAm auf null zurück —
+  // ein Vollwiderruf liess sich damit aufheben. Der Fall wird hier
+  // festgehalten, damit er nicht zurückkehrt.
+  it('ein Vollwiderruf bleibt gültig, auch wenn danach ein Zweck einzeln widerrufen wird', () => {
+    const nachVollwiderruf = {
+      version: EINWILLIGUNG_VERSION, erteiltAm: '2026-08-09',
+      zwecke: { notwendig: true }, widerrufenAm: '2026-08-10',
+    };
+    assert.equal(einwilligungGueltig(nachVollwiderruf), false);
+    assert.equal(zweckErlaubt(nachVollwiderruf, 'ki_auswertung'), false);
+  });
+});
+
+// ── DAT-05: Belohnung aus Werbung ──────────────────────────────────────────
+// Der Befund war: Der AdMob-Endpunkt schrieb `extraContacts`, gelesen hat
+// das Feld niemand. „Mit Zeit zahlen" war eine Anzeige ohne Wirkung.
+
+describe('Zusatzkontakte aus Werbung (DAT-05)', () => {
+  const heute = '2026-08-09';
+
+  it('drei Belohnungen erhöhen die Grenze von 8 auf 11', () => {
+    const e = entscheideKontakt(
+      { tag: heute, verbraucht: 8, plan: 'frei', extraContacts: 3, extraTag: heute }, heute);
+    assert.deepEqual(e, { erlaubt: true, neuVerbraucht: 9, uebrig: 2 });
+  });
+
+  it('nach der elften ist trotzdem Schluss', () => {
+    const e = entscheideKontakt(
+      { tag: heute, verbraucht: 11, plan: 'frei', extraContacts: 3, extraTag: heute }, heute);
+    assert.deepEqual(e, { erlaubt: false, grund: 'limit', uebrig: 0 });
+  });
+
+  // Ohne diese Regel sammelt sich ein Vorrat an, der das Tageslimit
+  // dauerhaft aushebelt — und das Limit ist das Produkt.
+  it('die Belohnung von gestern gilt heute nicht mehr', () => {
+    const e = entscheideKontakt(
+      { tag: heute, verbraucht: 8, plan: 'frei', extraContacts: 3, extraTag: '2026-08-08' }, heute);
+    assert.equal(e.erlaubt, false);
+  });
+
+  it('ohne Belohnung bleibt es bei acht', () => {
+    const e = entscheideKontakt({ tag: heute, verbraucht: 8, plan: 'frei' }, heute);
+    assert.equal(e.erlaubt, false);
+  });
+
+  it('eine negative Belohnung kann das Limit nicht senken', () => {
+    const e = entscheideKontakt(
+      { tag: heute, verbraucht: 7, plan: 'frei', extraContacts: -99, extraTag: heute }, heute);
+    assert.equal(e.erlaubt, true);
   });
 });

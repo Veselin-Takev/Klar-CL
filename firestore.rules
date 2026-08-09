@@ -11,8 +11,28 @@ service cloud.firestore {
     match /ad_transactions/{txId} {
       allow read, write: if false; // Server only
     }
+    // ── DAT-03 ───────────────────────────────────────────────────────────
+    // BEFUND: `allow read: if signedIn()`. Damit war der gesamte
+    // Sozialgraph fuer jedes angemeldete Konto lesbar — „wer hat wen
+    // kontaktiert", ueber alle Nutzer hinweg. Das ist die Grundlage fuer
+    // Stalking und fuer das Outing von Beziehungen, die niemanden etwas
+    // angehen. Eine Dating-App darf das nicht preisgeben.
+    //
+    // Die Feldnamen sind im Bestand uneinheitlich (fromUid/toUid,
+    // senderId/receiverId, userId/otherUserId — siehe die Kaskade in
+    // trustAndSafety.ts). `data.get(feld, '')` liest ein fehlendes Feld
+    // als leeren Text, statt die Regel mit einem Fehler abzubrechen;
+    // ein direkter Zugriff auf ein nicht vorhandenes Feld wuerde die
+    // ganze Bedingung scheitern lassen.
     match /connections/{connId} {
-      allow read: if signedIn();
+      allow read: if signedIn() && (
+           request.auth.uid == resource.data.get('fromUid', '')
+        || request.auth.uid == resource.data.get('toUid', '')
+        || request.auth.uid == resource.data.get('senderId', '')
+        || request.auth.uid == resource.data.get('receiverId', '')
+        || request.auth.uid == resource.data.get('userId', '')
+        || request.auth.uid == resource.data.get('otherUserId', '')
+      );
       allow write: if false; // Server only handled via QuotaLedgerService
     }
 
@@ -46,7 +66,13 @@ service cloud.firestore {
       return !request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(['isVerified', 'trustScore', 'plan', 'roles',
                  'contactDay', 'contactCount', 'quotaLedger',
-                 'verificationStatus', 'verificationGeste']);
+                 'verificationStatus', 'verificationGeste',
+                 // DSG-02: Alter und Einwilligung gehoeren dem Server.
+                 // Vorher stand `isAdult: true` fest verdrahtet im Client —
+                 // die App behauptete die Volljaehrigkeit ueber sich selbst.
+                 // Waere das Feld hier nicht gesperrt, koennte der Client es
+                 // weiterhin selbst setzen und die Pruefung waere Zierde.
+                 'isAdult', 'geburtsdatum', 'alterGeprueftAm', 'einwilligung']);
     }
 
     // Validation for User entity
@@ -65,7 +91,27 @@ service cloud.firestore {
     
     // Validation for User Update
     function isValidUserUpdate(data, prevData) {
-      return data.diff(prevData).affectedKeys().hasAny(['name', 'bio', 'interests', 'goal', 'isAdult', 'smartMatchAlerts', 'updatedAt'])
+      // ── DAT-07 ─────────────────────────────────────────────────────────
+      // BEFUND: Hier stand `hasAny(...)`. Das bedeutet „mindestens EINES
+      // dieser Felder aendert sich" — und laesst damit jedes andere Feld
+      // mitlaufen, solange nur eines aus der Liste dabei ist. Gemeint war
+      // das Gegenteil.
+      //
+      // Zweite Haelfte desselben Befunds: `theme` und `moodHistory` standen
+      // in KEINER Liste. `ThemeProvider.tsx:77` und `MoodDiaryWidget.tsx:73`
+      // schreiben genau diese Felder — beide Schreibvorgaenge wurden von den
+      // Regeln abgelehnt. Im Entwicklungsbetrieb faellt das nicht auf, weil
+      // `updateProfileData` den Fehler nur in die Konsole schreibt und die
+      // Oberflaeche trotzdem den neuen Wert zeigt.
+      //
+      // `hasOnly` sagt, was gemeint war: NUR diese Felder. Damit ist
+      // keepsServerFields() unten streng genommen doppelt — die Liste bleibt
+      // trotzdem stehen. Zwei unabhaengige Sperren fuer `isVerified` sind
+      // die richtige Menge, nachdem eine davon schon einmal versagt hat.
+      return data.diff(prevData).affectedKeys()
+               .hasOnly(['name', 'bio', 'interests', 'goal', 'smartMatchAlerts',
+                         'updatedAt', 'theme', 'moodHistory', 'userSettings',
+                         'photoUrl', 'location', 'age'])
              && (!('name' in data) || data.name is string)
              && (!('bio' in data) || data.bio is string)
              && (!('interests' in data) || data.interests is list)
@@ -85,13 +131,33 @@ service cloud.firestore {
       allow write: if false; 
     }
 
+    // ── DAT-02 ───────────────────────────────────────────────────────────
+    // BEFUND (Final Audit 08.08.2026): `allow read: if signedIn()` auf dem
+    // GANZEN Profildokument. Jedes angemeldete Konto konnte jedes andere
+    // Profil vollstaendig lesen — einschliesslich `moodHistory`, also
+    // Stimmungsaufzeichnungen. Das sind Daten ueber die psychische
+    // Gesundheit und damit besondere Kategorien nach Art. 9 DSGVO. Dazu
+    // `plan`, `trustScore`, `geburtsdatum`, `einwilligung`. Ueber
+    // UID-Enumeration war der gesamte Bestand abgreifbar.
+    //
+    // NACHGESEHEN, BEVOR ICH ES GEAENDERT HABE: Kein einziger Lesezugriff
+    // im Client betrifft ein FREMDES Profil. Jede Fundstelle von
+    // `doc(db,'users',…)` benutzt die eigene uid. Die Vorschlaege im
+    // Dashboard kommen aus `src/data.ts` — vier erfundene Profile (FUN-01).
+    // Der bisherige Kommentar hier („sonst gaebe es keine Vorschlaege")
+    // beschrieb also eine Notwendigkeit, die es nicht gab. Meine eigene
+    // Regelprobe hat diese Annahme uebernommen und festgeschrieben.
+    //
+    // Das Profil ist damit ab jetzt eine private Ablage. Oeffentlich
+    // sichtbare Felder gehoeren in `public_profiles` (unten) — eine
+    // Trennung, die es geben muss, BEVOR K-2 echte Vorschlaege baut.
     match /users/{userId} {
-      // Lesen: jede angemeldete Person, sofern keine Blockierung vorliegt.
-      // Sonst gaebe es keine Vorschlaege.
-      allow read: if signedIn() && !blocked(userId);
+      allow read: if signedIn() && request.auth.uid == userId;
       allow create: if signedIn() && request.auth.uid == userId
                     && isValidUser(request.resource.data)
-                    && !request.resource.data.keys().hasAny(['isVerified', 'trustScore', 'plan', 'roles']);
+                    && !request.resource.data.keys().hasAny(['isVerified', 'trustScore', 'plan', 'roles',
+                                                             'isAdult', 'geburtsdatum', 'alterGeprueftAm',
+                                                             'einwilligung']);
       // P0-4: keepsServerFields() ist der eigentliche Schutz. Ohne ihn
       // konnte sich jedes Konto isVerified: true selbst setzen — und damit
       // jede Regel aushebeln, die auf Verifizierung prueft.
@@ -100,6 +166,25 @@ service cloud.firestore {
                     && keepsServerFields();
       // Loeschung laeuft ueber /api/account/delete (Kaskade, Art. 17 DSGVO).
       allow delete: if false;
+    }
+
+    // ── Oeffentliches Profil ─────────────────────────────────────────────
+    // Die Gegenstelle zu DAT-02: Was andere sehen duerfen, steht hier —
+    // und NUR das. Name, Alter, Ort, Bio, Interessen, Foto,
+    // Verifizierungszeichen. Keine Stimmungen, kein Plan, kein
+    // Geburtsdatum, keine Einwilligung.
+    //
+    // HEUTE SCHREIBT NIEMAND HIERHER. Die Sammlung ist leer, und das ist
+    // kein Versehen: Die Vorschlaege sind noch erfunden (FUN-01), es gibt
+    // also nichts zu spiegeln. Die Regel steht trotzdem schon da, damit
+    // K-2 nicht wieder `users` oeffnet, wenn echte Vorschlaege kommen —
+    // der bequeme Weg soll dann der richtige sein.
+    //
+    // Geschrieben werden darf nur vom Server (Admin-SDK), damit der
+    // Spiegel nicht vom Client gefaelscht werden kann.
+    match /public_profiles/{userId} {
+      allow read: if signedIn() && !blocked(userId);
+      allow write: if false;
     }
 
     // Blockierungen. Gerichteter Eintrag, beidseitige Wirkung ueber blocked().
@@ -176,6 +261,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── DSG-02: Einwilligung und Alter ───────────────────────────────────
+    // Der Nachweis nach Art. 7 Abs. 1 DSGVO muss unveraenderlich sein. Waere
+    // er clientseitig schreibbar, koennte er nachtraeglich passend gemacht
+    // werden — und damit waere er kein Nachweis. Gelesen wird ueber
+    // GET /api/einwilligung, geschrieben nur vom Server.
+    match /users/{userId}/einwilligungen/{id} {
+      allow read, write: if false;
+    }
+    // Fehlversuche bei der Altersangabe. Fuer die Moderation, nicht fuer
+    // die betroffene Person sichtbar — sonst waere ablesbar, welche Eingabe
+    // durchgeht.
+    match /age_attempts/{id} { allow read, write: if false; }
+
     // ── Verifizierung ────────────────────────────────────────────────────
     match /verification_requests/{id} { allow read, write: if false; }
     match /verification_events/{id}   { allow read, write: if false; }
@@ -194,6 +292,7 @@ service cloud.firestore {
   }
 }
 
-// P0-2: In dieser Datei stand vor Zeile 57 ein literales "\n" statt eines
+// P0-2: In dieser Datei stand vor Zeile 57 die Zeichenfolge Backslash-n
+// (als Text, nicht als Umbruch) statt eines echten
 // Zeilenumbruchs. Die Regeln waren damit nicht parsebar — `firebase deploy`
 // haette sie abgelehnt, und bis dahin galten die zuletzt ausgerollten.

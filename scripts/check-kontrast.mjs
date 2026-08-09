@@ -51,6 +51,8 @@ const PAARE = [
   ['stone-400', 'surface', 4.5],
   ['stone-500', 'canvas', 4.5],
   ['stone-500', 'surface', 4.5],
+  ['warn', 'canvas', 4.5],
+  ['warn', 'surface', 4.5],
   ['line-ui', 'surface', 3.0],
   ['line-ui', 'canvas', 3.0],
 ];

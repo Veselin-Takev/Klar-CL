@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
 import { Camera, X } from 'lucide-react';
-import { verifyPhoto } from '../lib/api';
 import { useAuth } from '../lib/AuthContext';
-import { getFirestore, doc, updateDoc } from 'firebase/firestore';
+// `verifyPhoto`, `getFirestore`, `doc` und `updateDoc` sind mit DAT-08
+// entfallen — noUnusedLocals bricht sonst den Build.
 
 interface Props {
   onClose: () => void;
@@ -46,14 +46,21 @@ export function PhotoVerificationModal({ onClose, onSuccess }: Props) {
     setIsVerifying(true);
     
     try {
-      // Simulate verification API call
-      await verifyPhoto("captured_photo_data");
-      
-      const db = getFirestore();
-      await updateDoc(doc(db, 'users', user.uid), {
-        isVerified: true
-      });
-      
+      // DAT-08 (09.08.2026): Hier stand
+      //     await verifyPhoto("captured_photo_data");
+      //     await updateDoc(doc(db,'users',user.uid), { isVerified: true });
+      // Zwei Fehler in vier Zeilen:
+      //   · `verifyPhoto` rief /api/verify-photo — den Endpunkt, der bei
+      //     P0 auf 410 gesetzt wurde, weil er `isVerified` bedingungslos
+      //     setzte. Der Aufruf kann also nur noch scheitern.
+      //   · Der Schreibvorgang auf `isVerified` wird von den Firestore-
+      //     Regeln abgelehnt. Er war schon vorher wirkungslos.
+      // Das Ergebnis war eine Verifizierung, die sich echt anfühlte und
+      // nach dem Neuladen verschwand.
+      //
+      // Der echte Weg ist K-1 mit einer vom Server vorgegebenen Geste und
+      // einer Sichtprüfung durch die Moderation — Bildschirm
+      // `Verifizierung.tsx`. Dieser Dialog leitet nur noch dorthin.
       onSuccess();
     } catch (err) {
       setError("Verifizierung fehlgeschlagen. Bitte versuche es erneut.");

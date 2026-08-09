@@ -1,7 +1,14 @@
 // @ts-nocheck
-import { Languages, Globe, useState, useEffect } from "react";
+// FE-02 (Final Audit 08.08.2026): Hier stand
+//   import { Languages, Globe, useState, useEffect } from "react";
+// `Languages` und `Globe` sind lucide-Symbole, keine React-Exporte. Beide
+// waren damit `undefined`; das erste <Languages /> in Zeile 683 haette
+// „Element type is invalid" geworfen — jedes Mal, wenn jemand ein Gespraech
+// oeffnet. Verdeckt durch `@ts-nocheck` in Zeile 1.
+// `Globe` wurde nirgends verwendet und ist deshalb entfallen.
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Eye, EyeOff, Mic, MessageSquare, Phone, Video, Settings, Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile, HelpCircle, FileText, Info, MicOff } from "lucide-react";
+import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Eye, EyeOff, Mic, MessageSquare, Phone, Video, Settings, Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile, HelpCircle, FileText, Info, MicOff } from "lucide-react";
 
 import { allProfiles } from "../data";
 
@@ -138,7 +145,6 @@ export default function ChatView() {
   const [intensity, setIntensity] = useState(50);
   const [targetLanguage, setTargetLanguage] = useState<string | undefined>(undefined);
       
-  if (!profile) return <div>Verbindung nicht gefunden</div>;
 
   const [isGeneratingSmartIntro, setIsGeneratingSmartIntro] = useState(false);
 
@@ -574,6 +580,23 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
       setIsLoadingAI(false);
     }
   };
+
+  // ── FE-07 (Final Audit 08.08.2026) ──────────────────────────────────
+  // Diese Rückgabe stand in Zeile 148 — vor 14 weiteren Hooks. Sobald
+  // `profile` einmal fehlt (unbekannte id in der Adresse, gelöschtes
+  // Gespräch), ruft React in derselben Komponente weniger Hooks auf als
+  // im Durchlauf davor: „Rendered fewer hooks than expected", der ganze
+  // Bildschirm stürzt ab statt die Meldung zu zeigen.
+  //
+  // Bisher hat das niemand gesehen, weil `profile` aus vier fest
+  // eingebauten Datensätzen kommt und immer gefunden wurde. Mit echten
+  // Profilen wäre es sofort aufgetreten.
+  //
+  // GEPRÜFT VOR DEM VERSCHIEBEN: Kein useEffect- oder useMemo-Rumpf fasst
+  // `profile` an (maschinell über den Syntaxbaum geprüft, 0 Treffer). Die
+  // 19 Verwendungen darunter stehen in Klick-Handlern, die vor dieser
+  // Rückgabe nie laufen. Das Verschieben ist deshalb gefahrlos.
+  if (!profile) return <div>Verbindung nicht gefunden</div>;
 
   return (
     <div className="flex flex-col h-full bg-light-bg dark:bg-dark-bg relative">

@@ -76,8 +76,19 @@ const anonym = () => env.unauthenticatedContext().firestore();
 // ── Profile ────────────────────────────────────────────────────────────────
 
 describe('Profile', () => {
-  it('angemeldet: fremdes Profil lesbar — sonst gäbe es keine Vorschläge', async () => {
-    await assertSucceeds(getDoc(doc(als(ANNA), 'users/bea')));
+  // DAT-02 — DIESER TEST STAND HIER GENAU ANDERSHERUM.
+  // Er lautete „fremdes Profil lesbar — sonst gäbe es keine Vorschläge" und
+  // hielt damit die Annahme fest, die der Prüfbericht als Befund benannte.
+  // Nachgesehen: Kein Lesezugriff im Client betrifft ein fremdes Profil, die
+  // Vorschläge kommen aus vier erfundenen Datensätzen in src/data.ts. Die
+  // Begründung im Testnamen war falsch — und ein Test, der eine falsche
+  // Annahme festschreibt, verteidigt sie.
+  it('fremdes Vollprofil ist NICHT lesbar (Stimmungen, Plan, Geburtsdatum)', async () => {
+    await assertFails(getDoc(doc(als(ANNA), 'users/bea')));
+  });
+
+  it('eigenes Profil bleibt lesbar', async () => {
+    await assertSucceeds(getDoc(doc(als(ANNA), 'users/anna')));
   });
 
   it('nicht angemeldet: nichts lesbar', async () => {
@@ -116,8 +127,122 @@ describe('Profile', () => {
     }));
   });
 
+  // DSG-02: Alter und Einwilligung sind Serverfelder. Vorher stand
+  // `isAdult: true` fest verdrahtet im Client.
+  it('sich selbst volljährig setzen ist gesperrt', async () => {
+    await assertFails(updateDoc(doc(als(CARL), 'users/carl'), { isAdult: true, updatedAt: '2026-08-09' }));
+  });
+
+  it('Geburtsdatum selbst setzen ist gesperrt', async () => {
+    await assertFails(updateDoc(doc(als(CARL), 'users/carl'), { geburtsdatum: '1990-01-01', updatedAt: '2026-08-09' }));
+  });
+
+  it('sich selbst eine Einwilligung eintragen ist gesperrt', async () => {
+    await assertFails(updateDoc(doc(als(ANNA), 'users/anna'),
+      { einwilligung: { version: 1, zwecke: { ki_auswertung: true } }, updatedAt: '2026-08-09' }));
+  });
+
+  it('Profil anlegen mit isAdult im Dokument ist gesperrt', async () => {
+    await assertFails(setDoc(doc(als('neu2'), 'users/neu2'), {
+      uid: 'neu2', createdAt: 'x', updatedAt: 'x', isAdult: true,
+    }));
+  });
+
+  it('Einwilligungsnachweis ist für Clients unsichtbar und unschreibbar', async () => {
+    await assertFails(getDoc(doc(als(ANNA), 'users/anna/einwilligungen/e1')));
+    await assertFails(setDoc(doc(als(ANNA), 'users/anna/einwilligungen/e1'), { version: 1 }));
+  });
+
+  it('Fehlversuche bei der Altersangabe sind gesperrt', async () => {
+    await assertFails(addDoc(collection(als(ANNA), 'age_attempts'), { uid: ANNA }));
+    await assertFails(getDoc(doc(als(ANNA), 'age_attempts/x')));
+  });
+
+  // DAT-07: `theme` und `moodHistory` standen in keiner Feldliste. Beide
+  // Widgets schrieben sie trotzdem — und wurden abgelehnt, ohne dass es
+  // jemandem auffiel.
+  it('Theme speichern geht', async () => {
+    await assertSucceeds(updateDoc(doc(als(ANNA), 'users/anna'), { theme: 'dark', updatedAt: '2026-08-09' }));
+  });
+
+  it('Stimmungseintrag speichern geht', async () => {
+    await assertSucceeds(updateDoc(doc(als(ANNA), 'users/anna'), {
+      moodHistory: [{ mood: 'gut', timestamp: 1 }], updatedAt: '2026-08-09',
+    }));
+  });
+
+  // Die Kehrseite von hasOnly: ein Feld, das in keiner Liste steht, wird
+  // abgelehnt — auch wenn ein erlaubtes danebensteht. Vorher liess `hasAny`
+  // genau das durch.
+  it('ein nicht vorgesehenes Feld wird abgelehnt, auch neben einem erlaubten', async () => {
+    await assertFails(updateDoc(doc(als(ANNA), 'users/anna'), {
+      name: 'Anna', irgendwas: 'x', updatedAt: '2026-08-09',
+    }));
+  });
+
   it('Profil löschen geht nur über den Server', async () => {
     await assertFails(deleteDoc(doc(als(ANNA), 'users/anna')));
+  });
+});
+
+// ── Öffentliches Profil (DAT-02) ───────────────────────────────────────────
+
+describe('Öffentliches Profil', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'public_profiles/bea'), {
+        uid: BEA, name: 'Bea', age: 31, ort: 'Leipzig', bio: 'kurz', isVerified: true,
+      });
+    });
+  });
+
+  it('angemeldet lesbar — hier stehen die Vorschläge, wenn K-2 gebaut ist', async () => {
+    await assertSucceeds(getDoc(doc(als(ANNA), 'public_profiles/bea')));
+  });
+
+  it('nicht angemeldet: nichts', async () => {
+    await assertFails(getDoc(doc(anonym(), 'public_profiles/bea')));
+  });
+
+  it('blockiert: auch das öffentliche Profil verschwindet', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'blocks/bea_anna'), { blockerUid: BEA, blockedUid: ANNA });
+    });
+    await assertFails(getDoc(doc(als(ANNA), 'public_profiles/bea')));
+  });
+
+  it('der Client kann den Spiegel nicht schreiben', async () => {
+    await assertFails(setDoc(doc(als(ANNA), 'public_profiles/anna'), { uid: ANNA, name: 'Anna' }));
+  });
+});
+
+// ── Sozialgraph (DAT-03) ───────────────────────────────────────────────────
+
+describe('Verbindungen', () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'connections/x1'), { fromUid: ANNA, toUid: BEA });
+      await setDoc(doc(ctx.firestore(), 'connections/x2'), { senderId: BEA, receiverId: CARL });
+    });
+  });
+
+  it('Beteiligte dürfen lesen', async () => {
+    await assertSucceeds(getDoc(doc(als(ANNA), 'connections/x1')));
+    await assertSucceeds(getDoc(doc(als(BEA), 'connections/x1')));
+  });
+
+  // DER BEFUND: vorher las jedes angemeldete Konto den gesamten Sozialgraphen.
+  it('Unbeteiligte dürfen NICHT lesen', async () => {
+    await assertFails(getDoc(doc(als(CARL), 'connections/x1')));
+  });
+
+  it('auch bei der zweiten Feldbenennung greift die Regel', async () => {
+    await assertSucceeds(getDoc(doc(als(CARL), 'connections/x2')));
+    await assertFails(getDoc(doc(als(ANNA), 'connections/x2')));
+  });
+
+  it('schreiben darf nur der Server', async () => {
+    await assertFails(setDoc(doc(als(ANNA), 'connections/neu'), { fromUid: ANNA, toUid: BEA }));
   });
 });
 
@@ -148,12 +273,19 @@ describe('Blockierungen', () => {
 
   // Der Eintrag ist gerichtet, die WIRKUNG beidseitig: blocked() prüft
   // beide Richtungen. Carl blockiert Anna — Anna sieht Carl nicht mehr.
+  //
+  // Geprüft wird das jetzt an `public_profiles`, nicht mehr an `users`:
+  // Seit DAT-02 ist ein fremdes Profil ohnehin nicht lesbar, ein Test
+  // dagegen wäre also auch bei kaputtem blocked() grün. Ein Test, der aus
+  // dem falschen Grund besteht, ist schlimmer als keiner.
   it('Blockierte verschwinden beidseitig aus den Vorschlägen', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'public_profiles/anna'), { uid: ANNA, name: 'Anna' });
+      await setDoc(doc(ctx.firestore(), 'public_profiles/carl'), { uid: CARL, name: 'Carl' });
       await setDoc(doc(ctx.firestore(), 'blocks/carl_anna'), { blockerUid: CARL, blockedUid: ANNA });
     });
-    await assertFails(getDoc(doc(als(ANNA), 'users/carl')));
-    await assertFails(getDoc(doc(als(CARL), 'users/anna')));
+    await assertFails(getDoc(doc(als(ANNA), 'public_profiles/carl')));
+    await assertFails(getDoc(doc(als(CARL), 'public_profiles/anna')));
   });
 });
 

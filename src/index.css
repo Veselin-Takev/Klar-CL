@@ -33,6 +33,12 @@
   --color-line-ui: #918879;      /*  3,50 : 1 auf weiß · 3,27 : 1 auf canvas */
   --color-photo: #dad5cc;
 
+  /* DSG-02: Fehlermeldungen im Einwilligungs- und Altersdialog brauchen
+     eine eigene Farbe. Rot aus der stone-Palette gibt es nicht, und ein
+     frei gewaehlter Rotton verfehlt den Textkontrast schnell — deshalb
+     nachgerechnet und in check-kontrast.mjs aufgenommen. */
+  --color-warn: #a02b1e;         /*  6,87 : 1 auf canvas · 7,35 : 1 auf surface */
+
   /* Bestehende Namen bleiben gültig, damit die 128 vorhandenen Ansichten
      unverändert weiterlaufen. */
   --color-brand: #3f4a3c;
@@ -78,6 +84,10 @@
      Dunkelmodus wirkt eine zu schwache Linie „dezent" statt falsch. */
   --color-line-ui: #6c6f69;      /*  3,15 : 1 auf surface · 3,50 : 1 auf canvas */
   --color-photo: #2a2e28;
+
+  /* Im Dunkeln muss die Warnfarbe heller werden, nicht dunkler.
+     #a02b1e auf #161815 waere 3,1 : 1 und damit unter der Schwelle. */
+  --color-warn: #f0928a;         /*  7,81 : 1 auf canvas · 7,03 : 1 auf surface */
 
   /* Im Dunkeln muss derselbe Text HELLER werden, nicht dunkler.
      #75716c auf #161815 wäre 3,4 : 1 und damit zu wenig. */

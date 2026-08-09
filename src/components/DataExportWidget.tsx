@@ -22,6 +22,50 @@ interface DateReflection {
 
 export function DataExportWidget() {
   const [isExporting, setIsExporting] = useState(false);
+  const [auskunftLaeuft, setAuskunftLaeuft] = useState(false);
+  const [auskunftFehler, setAuskunftFehler] = useState<string | null>(null);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // DSG-04 (Final Audit 08.08.2026) — Auskunft nach Art. 15 / Art. 20
+  //
+  // BEFUND: Dieses Widget las zwei localStorage-Schlüssel und nannte das
+  // Ergebnis „Daten Export". Enthalten waren Date-Historie und Journal —
+  // nicht enthalten: Profil, Nachrichten, Verbindungen, Kontingent,
+  // Einwilligungen, also praktisch alles, was tatsächlich gespeichert ist.
+  // Eine Antwort auf ein Auskunftsersuchen wäre materiell unvollständig
+  // gewesen.
+  //
+  // Die beiden vorhandenen Ausgaben bleiben — sie sind eine nützliche
+  // Funktion, nur eben keine Auskunft. Der Text unten sagt das jetzt.
+  // Daneben steht der echte Vollexport vom Server.
+  // ═══════════════════════════════════════════════════════════════════════
+  const auskunftLaden = async () => {
+    setAuskunftFehler(null);
+    setAuskunftLaeuft(true);
+    try {
+      const res = await fetch("/api/account/export");
+      if (!res.ok) throw new Error(String(res.status));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `klar-auskunft-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // GEGENPRÜFUNG: revokeObjectURL stand direkt hinter click(). Manche
+      // Browser brechen den Download dadurch ab. Erst freigeben, wenn er
+      // angelaufen ist.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      // Kein stiller Ausfall: Wer eine Auskunft anfordert, muss erfahren,
+      // dass sie nicht zustande kam — sonst hält er sie für erledigt.
+      console.error("Auskunft fehlgeschlagen", e);
+      setAuskunftFehler("Die Auskunft konnte nicht erstellt werden. Bitte erneut versuchen.");
+    } finally {
+      setAuskunftLaeuft(false);
+    }
+  };
 
   const getHistory = (): DateHistoryEntry[] => {
     const saved = localStorage.getItem("klar_date_history");
@@ -217,8 +261,28 @@ export function DataExportWidget() {
         </button>
         
         <p className="text-[10px] text-center text-stone-400 mt-2">
-          Dein Export enthält sowohl deine Date-Historie als auch deine Journal-Einträge.
+          PDF und CSV enthalten deine Date-Historie und deine Journal-Einträge —
+          nicht dein Profil, deine Nachrichten oder deine Verbindungen.
         </p>
+
+        <div className="mt-4 pt-4 border-t border-stone-200 dark:border-stone-800">
+          <button
+            onClick={auskunftLaden}
+            disabled={auskunftLaeuft}
+            className="w-full flex items-center justify-center gap-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 py-3 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            <DownloadCloud size={18} />
+            {auskunftLaeuft ? "Wird zusammengestellt…" : "Vollständige Auskunft (JSON)"}
+          </button>
+          {auskunftFehler && (
+            <p role="alert" className="text-xs text-center mt-2 text-warn">{auskunftFehler}</p>
+          )}
+          <p className="text-[10px] text-center text-stone-400 mt-2">
+            Alles, was zu deinem Konto gespeichert ist: Profil, eigene Nachrichten,
+            Verbindungen, Kontingent, Einwilligungen. Art. 15 und Art. 20 DSGVO.
+            Nachrichten anderer Personen sind nicht enthalten — das sind deren Daten.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router";
-import { MessageCircle, User, Compass, Sparkles, BookOpen, Bell, X, Scale, ShieldCheck, Flower2 } from "lucide-react";
+// ShieldCheck entfaellt mit CookieConsent — noUnusedLocals bricht sonst den Build.
+import { MessageCircle, User, Compass, Sparkles, BookOpen, Bell, X, Scale, Flower2 } from "lucide-react";
 import Dashboard from "./screens/Dashboard";
 import Chats from "./screens/Chats";
 import ChatView from "./screens/ChatView";
@@ -10,6 +11,12 @@ import SafetyCenter from "./screens/SafetyCenter";
 import AICoach from "./screens/AICoach";
 import Tips from "./screens/Tips";
 import Onboarding from "./screens/Onboarding";
+// DSG-02: Altersangabe, Einwilligung, erreichbare Rechtstexte.
+import Rechtstexte from "./screens/Rechtstexte";
+import { EinwilligungUndAlter } from "./components/EinwilligungUndAlter";
+// Die geltende Fassung der Rechtstexte. Aus pure.ts, damit Client und Server
+// dieselbe Zahl benutzen — zwei Konstanten wären zwei Wahrheiten.
+import { EINWILLIGUNG_VERSION } from "./server/pure";
 import AdminDashboard from "./screens/AdminDashboard";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GlobalApiOverlay } from "./components/GlobalApiOverlay";
@@ -23,57 +30,16 @@ import { KontingentAnzeige } from "./components/KontingentAnzeige";
 import Verifizierung from "./screens/Verifizierung";
 import { useOnline } from "./lib/useOnline";
 
-function CookieConsent() {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    const consent = localStorage.getItem("klar_cookie_consent");
-    if (!consent) {
-      setShow(true);
-    }
-  }, []);
-
-  if (!show) return null;
-
-  return (
-    <div className="fixed bottom-0 left-0 right-0 p-4 z-[60] animate-in slide-in-from-bottom-10 fade-in duration-500">
-      <div className="max-w-md mx-auto bg-stone-900 text-stone-100 p-4 rounded-2xl shadow-md border border-stone-700">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="bg-stone-800 p-2 rounded-full shrink-0">
-            <ShieldCheck size={20} className="text-brand-light" />
-          </div>
-          <div>
-            <h3 className="font-medium text-sm mb-1">Wir respektieren deine Privatsphäre</h3>
-            <p className="text-xs text-stone-400">
-              Klar nutzt wesentliche Cookies für die Sicherheit und Funktionalität (z.B. Logins). 
-              Optional nutzen wir anonymisierte Daten, um unseren Matching-Algorithmus zu verbessern.
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => {
-              localStorage.setItem("klar_cookie_consent", "essential");
-              setShow(false);
-            }}
-            className="flex-1 py-2 text-xs font-medium text-stone-300 bg-stone-800 hover:bg-stone-700 rounded-lg transition-colors"
-          >
-            Nur Notwendige
-          </button>
-          <button 
-            onClick={() => {
-              localStorage.setItem("klar_cookie_consent", "all");
-              setShow(false);
-            }}
-            className="flex-1 py-2 text-xs font-medium text-black bg-brand-light hover:opacity-90 rounded-lg transition-colors"
-          >
-            Alle Akzeptieren
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// GEGENPRÜFUNG 09.08.2026: Hier stand die Komponente `CookieConsent`.
+// Sie war ein zweiter Einwilligungsdialog neben dem neuen aus DSG-02 —
+// mit hervorgehobenem „Alle Akzeptieren" (bg-brand-light) und blassem
+// „Nur Notwendige" (bg-stone-800). Genau das Muster, das der EuGH in
+// Planet49 beanstandet hat und das der neue Dialog ausdrücklich vermeidet.
+//
+// Ihr Ergebnis landete in `klar_cookie_consent` und wurde NIRGENDS
+// ausgewertet — ausser um das Banner wieder auszublenden. Zwei
+// widersprüchliche Abfragen, von denen keine eine Wirkung hat, sind
+// schlechter als eine, die wirkt. Entfernt statt repariert.
 
 function Layout({ children }: { children: React.ReactNode }) {
 
@@ -288,6 +254,10 @@ function AnimatedRoutes() {
         {/* P1: Ohne Verifizierung lehnen die Firestore-Regeln jeden Kontakt ab. */}
         <Route path="/verifizierung" element={<PageWrapper><Verifizierung /></PageWrapper>} />
         <Route path="/admin" element={<PageWrapper><AdminDashboard /></PageWrapper>} />
+        {/* DSG-02: Vorher waren Datenschutzerklaerung und AGB aus der App
+            nicht erreichbar — Schaltflaechen ohne onClick, Text ohne Verweis.
+            Art. 13 DSGVO verlangt die Information bei der Erhebung. */}
+        <Route path="/rechtstexte/:art" element={<PageWrapper><Rechtstexte /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );
@@ -309,7 +279,7 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => {
 
 function AppContent() {
 
-  const { user, loading, profileData, updateProfileData } = useAuth();
+  const { user, loading, profileData, updateProfileData, refreshProfile } = useAuth();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
@@ -324,17 +294,6 @@ function AppContent() {
     };
   }, []);
 
-  if (isOffline) {
-    return (
-      <div className="h-[100dvh] flex items-center justify-center bg-stone-50 text-stone-900 p-6 text-center">
-        <div>
-          <h2 className="text-xl font-bold mb-2">Keine Internetverbindung</h2>
-          <p className="text-stone-600 mb-4">Bitte überprüfe deine Verbindung und versuche es erneut.</p>
-          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-stone-900 text-white rounded-full font-medium">Neu laden</button>
-        </div>
-      </div>
-    );
-  }
 
 
   useEffect(() => {
@@ -467,6 +426,24 @@ function AppContent() {
     }
   }, [user, profileData]);
 
+  // FE-01 (Final Audit 08.08.2026): Dieser Block stand vor drei weiteren
+  // useEffect-Aufrufen. Beim Wechsel auf offline rief React in derselben
+  // Komponente weniger Hooks auf als im Durchlauf davor — „Rendered fewer
+  // hooks than expected", die App stuerzte ab. Statt der Offline-Ansicht
+  // sah man den Fehlerbildschirm. Jetzt steht die Rueckgabe hinter allen
+  // Hooks; die Reihenfolge ist damit in jedem Durchlauf dieselbe.
+  if (isOffline) {
+    return (
+      <div className="h-[100dvh] flex items-center justify-center bg-stone-50 text-stone-900 p-6 text-center">
+        <div>
+          <h2 className="text-xl font-bold mb-2">Keine Internetverbindung</h2>
+          <p className="text-stone-600 mb-4">Bitte überprüfe deine Verbindung und versuche es erneut.</p>
+          <button onClick={() => window.location.reload()} className="px-6 py-2 bg-stone-900 text-white rounded-full font-medium">Neu laden</button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading || hasCompletedOnboarding === null) return (
     <div className="h-[100dvh] flex items-center justify-center bg-light-bg dark:bg-dark-bg">
        <div className="w-6 h-6 rounded-full bg-stone-200 dark:bg-stone-700 animate-pulse"></div>
@@ -476,6 +453,47 @@ function AppContent() {
   if (!user) {
     return <Login />;
   }
+
+  // ── DSG-02 ──────────────────────────────────────────────────────────────
+  // Vor allem anderen: Ist das Alter geprüft und liegt eine Entscheidung zur
+  // Einwilligung vor? `isAdult` wird ausschließlich vom Server gesetzt; ein
+  // Profil ohne das Feld bedeutet „unbekannt", nicht „ja".
+  //
+  // FOLGE, DIE ICH BENENNE: Auch bestehende Konten laufen hier hinein, weil
+  // bei ihnen nie ein Alter erhoben wurde. Das ist gewollt — die Alternative
+  // wäre, die alte Behauptung `isAdult: true` weitergelten zu lassen.
+  //
+  // `profileData === null` heißt: Profil nicht ladbar (offline). Dann wird
+  // nicht gesperrt, sonst wäre die App bei jedem Netzaussetzer unbenutzbar.
+  //
+  // GEGENPRÜFUNG 09.08.2026 — zwei Fehler in der ersten Fassung dieses Gates:
+  //
+  //   1. Es stand VOR dem <BrowserRouter>. EinwilligungUndAlter benutzt
+  //      <Link> auf die Rechtstexte; react-router wirft dort
+  //      „useHref() may be used only in the context of a <Router>".
+  //      Der Dialog wäre bei jedem neuen Konto abgestürzt — und weil das
+  //      Alter da schon gespeichert war, wäre die Person nach dem Neuladen
+  //      OHNE Einwilligung in der App gelandet.
+  //      Jetzt steht das Gate innerhalb des Routers, mit eigenen Routen,
+  //      damit die Rechtstexte auch aus dem Dialog erreichbar sind.
+  //
+  //   2. Es prüfte nur `isAdult`, obwohl der Kommentar behauptete, auch die
+  //      Einwilligung sei erfasst. Wer den Dialog nach Schritt 1 schloss,
+  //      kam an der Einwilligung vorbei. Jetzt wird beides geprüft.
+  //
+  //   3. `profileData === null` galt als „offline, nicht sperren". Das trifft
+  //      aber JEDEN Ladefehler — mit blockierter Firestore-Anfrage liess sich
+  //      das Gate umgehen. Deshalb wird jetzt der Grund unterschieden, und
+  //      die eigentliche Durchsetzung liegt ohnehin auf dem Server
+  //      (nurVolljaehrig in server.ts): Ohne Altersprüfung antwortet die API
+  //      mit 403, egal was der Browser rendert.
+  //   4. Die Fassung wurde nicht geprüft. `EINWILLIGUNG_VERSION` zu erhöhen
+  //      hätte für niemanden etwas geändert — der Sinn der Versionierung
+  //      ist aber genau, bei neuem Text erneut zu fragen (Art. 7 Abs. 1).
+  const brauchtGate =
+    !!profileData
+    && (profileData.isAdult !== true
+        || profileData.einwilligung?.version !== EINWILLIGUNG_VERSION);
 
   if (!hasCompletedOnboarding) {
     return <Onboarding onComplete={() => {
@@ -497,15 +515,36 @@ function AppContent() {
 
   return (
     <ErrorBoundary>
-      <CookieConsent />
+      {/* GEGENPRÜFUNG: <CookieConsent /> stand hier. Es war ein zweiter
+          Einwilligungsdialog mit hervorgehobenem „Alle Akzeptieren" und
+          blassem „Nur Notwendige" — genau das Muster, das der neue Dialog
+          als unzulässig beschreibt (EuGH, Planet49). Sein Ergebnis
+          (`klar_cookie_consent`) wurde nirgends ausgewertet ausser zum
+          Ausblenden des Banners. Zwei widersprüchliche Abfragen, von denen
+          keine wirkt, sind schlechter als eine, die wirkt. Entfernt. */}
       <SyncBanner />
       <SUSFeedbackModal />
       <BrowserRouter>
+        {brauchtGate ? (
+          <Routes>
+            {/* Aus dem Dialog erreichbar — sonst wäre die Einwilligung
+                nicht informiert im Sinne des Art. 13 DSGVO. */}
+            <Route path="/rechtstexte/:art" element={<Rechtstexte />} />
+            <Route
+              path="*"
+              element={<EinwilligungUndAlter
+                onFertig={() => { void refreshProfile?.(); }}
+                alterBereitsGeprueft={profileData?.isAdult === true}
+              />}
+            />
+          </Routes>
+        ) : (
         <Layout>
           
           <AnimatedRoutes />
 
         </Layout>
+        )}
       </BrowserRouter>
       {import.meta.env.DEV && (
         <button 

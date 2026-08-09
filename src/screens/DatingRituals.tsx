@@ -117,7 +117,11 @@ export const DatingRituals: React.FC = () => {
     setTimeLeft(4);
     
     // Parse duration string (e.g. "3 Min.")
-    const minMatch = durationStr.match(/(\\d+)/);
+    // FUN-05 (Final Audit 08.08.2026): Hier stand /(\\d+)/ — im Quelltext
+    // zwei Zeichen, Backslash und d. Der Ausdruck suchte damit nach einem
+    // echten Backslash gefolgt von Ziffern und traf nie. „3 Min." wurde nie
+    // erkannt, jede Uebung lief auf den Ersatzwert von 180 Sekunden.
+    const minMatch = durationStr.match(/(\d+)/);
     const durationSec = minMatch ? parseInt(minMatch[1] || "0") * 60 : 180;
     
     setSessionTimeLeft(durationSec);

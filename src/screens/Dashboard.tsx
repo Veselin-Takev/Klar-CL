@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { useUsageAnalytics } from "../lib/useUsageAnalytics";
+// FE-05: haengt Widgets erst ein, wenn sie in Sichtnaehe kommen.
+import { BeiSicht } from "../components/BeiSicht";
 import { useState, useEffect, useMemo } from "react";
 import { allProfiles } from "../data";
 import type { Profile } from "../data";
@@ -191,18 +193,6 @@ export default function Dashboard() {
     }
   }, [isSmartLockEnabled]);
 
-  if (isLocked) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center bg-stone-900 text-white p-6 relative z-50">
-        <Lock size={48} className="text-brand mb-4 opacity-80" />
-        <h2 className="text-xl font-bold mb-2">Smart-Lock Aktiv</h2>
-        <p className="text-stone-400 text-center text-sm mb-8">Deine Privatsphäre ist geschützt. Bitte entsperren (PIN / FaceID).</p>
-        <button onClick={() => setIsLocked(false)} className="px-8 py-3 bg-brand text-white rounded-full font-medium shadow-lg">
-          Entsperren (Demo)
-        </button>
-      </div>
-    );
-  }
 
   const [isFetchingReview, setIsFetchingReview] = useState(false);
   const [newDeepMatchAlert, setNewDeepMatchAlert] = useState(false);
@@ -866,6 +856,25 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
   const verbindungenInterests = availableProfiles.flatMap(p => p.interests);
   const uniqueVerbindungenInterests = Array.from(new Set(verbindungenInterests)).slice(0, 10);
   
+  // ── FE-07 (Final Audit 08.08.2026) ──────────────────────────────────
+  // Diese Rückgabe stand in Zeile 194 — vor 50 weiteren Hooks. Beim
+  // Einschalten des Smart-Locks rief React in derselben Komponente 50
+  // Hooks weniger auf: „Rendered fewer hooks than expected". Statt der
+  // Sperre erschien der Fehlerbildschirm — die Privatsphäre-Funktion
+  // hätte also genau dann versagt, wenn man sie braucht.
+  if (isLocked) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-stone-900 text-white p-6 relative z-50">
+        <Lock size={48} className="text-brand mb-4 opacity-80" />
+        <h2 className="text-xl font-bold mb-2">Smart-Lock Aktiv</h2>
+        <p className="text-stone-400 text-center text-sm mb-8">Deine Privatsphäre ist geschützt. Bitte entsperren (PIN / FaceID).</p>
+        <button onClick={() => setIsLocked(false)} className="px-8 py-3 bg-brand text-white rounded-full font-medium shadow-lg">
+          Entsperren (Demo)
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={`h-full flex flex-col p-4 relative transition-colors duration-1000 ${getBackgroundMilestoneClass()}`}>
       <AppTour />
@@ -1555,15 +1564,15 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           setGeneratedIcebreaker(null);
         }}
       />
-      <TodayFeelingTrackerWidget />
-      <MiniDiaryWidget />
-      <DatingWheelWidget />
-      <SuccessSummaryWidget />
-      <WheelStatsWidget />
-      <DatingDuelWidget />
+      <BeiSicht><TodayFeelingTrackerWidget /></BeiSicht>
+      <BeiSicht><MiniDiaryWidget /></BeiSicht>
+      <BeiSicht><DatingWheelWidget /></BeiSicht>
+      <BeiSicht><SuccessSummaryWidget /></BeiSicht>
+      <BeiSicht><WheelStatsWidget /></BeiSicht>
+      <BeiSicht><DatingDuelWidget /></BeiSicht>
       <DatingMilestones />
-      <DailyMoodWidget />
-      <RecentIntrosWidget />
+      <BeiSicht><DailyMoodWidget /></BeiSicht>
+      <BeiSicht><RecentIntrosWidget /></BeiSicht>
 
 
       <AnimatePresence>
@@ -1896,17 +1905,17 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
       <QuickThemeToggle />
       <div className={`flex-1 overflow-y-auto hide-scrollbar pb-24 ${activeTab === 'inspiration' ? 'block' : 'hidden'}`}>
         <div className="flex flex-col gap-4">
-          <SmartVorschlaegeWidget />
-          <WeeklyMoodSummaryWidget />
-          <SafeDatePlannerWidget />
-          <NextDateCountdownWidget />
-          <PreDateChecklistWidget />
-          <ReflectionLogWidget />
+          <BeiSicht><SmartVorschlaegeWidget /></BeiSicht>
+          <BeiSicht><WeeklyMoodSummaryWidget /></BeiSicht>
+          <BeiSicht><SafeDatePlannerWidget /></BeiSicht>
+          <BeiSicht><NextDateCountdownWidget /></BeiSicht>
+          <BeiSicht><PreDateChecklistWidget /></BeiSicht>
+          <BeiSicht><ReflectionLogWidget /></BeiSicht>
           <KlarCompassWidget userInterests={userInterests} />
-          <WeeklyVibesWidget />
-          <EmailSummaryWidget />
+          <BeiSicht><WeeklyVibesWidget /></BeiSicht>
+          <BeiSicht><EmailSummaryWidget /></BeiSicht>
           <DatingJournalWidget userInterests={userInterests} />
-          <QualityConversationsChartWidget />
+          <BeiSicht><QualityConversationsChartWidget /></BeiSicht>
           <DailyIcebreakerWidget userInterests={userInterests} verbindungenInterests={uniqueVerbindungenInterests} />
           <SmartDatePlannerWidget location={filterLocation} />
           <DateInspirationTab userInterests={userInterests} userCoords={userCoords} />

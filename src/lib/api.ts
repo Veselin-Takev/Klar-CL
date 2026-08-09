@@ -9,25 +9,82 @@ export async function getAuthToken(): Promise<string | null> {
 
 const CACHE_EXPIRY_MS = 15 * 60 * 1000; // 15 mins
 
+/** Zwei verschiedene Hashverfahren plus Laenge — siehe FE-08 unten. */
+function hashPaar(text: string): string {
+  let a = 5381, b = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    a = ((a << 5) + a + c) | 0;          // djb2
+    b = (c + (b << 6) + (b << 16) - b) | 0;  // sdbm
+  }
+  return `${(a >>> 0).toString(36)}-${(b >>> 0).toString(36)}-${text.length}`;
+}
+
+/** FE-08, zweite Haelfte: Der Cache wuchs unbegrenzt. Ist das Kontingent
+ *  des Browsers voll, wirft `setItem` — und zwar ueberall in der App, nicht
+ *  nur hier. Deshalb wird beim Schreiben aufgeraeumt. */
+function cacheAufraeumen(): void {
+  try {
+    const eintraege: { k: string; t: number }[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith("klar_api_cache_")) continue;
+      try {
+        const { timestamp } = JSON.parse(localStorage.getItem(k) || "{}");
+        eintraege.push({ k, t: Number(timestamp) || 0 });
+      } catch { localStorage.removeItem(k); }
+    }
+    // Abgelaufenes zuerst, danach die aeltesten, bis hoechstens 50 bleiben.
+    const jetzt = Date.now();
+    eintraege
+      .filter((e) => jetzt - e.t > CACHE_EXPIRY_MS)
+      .forEach((e) => localStorage.removeItem(e.k));
+    const frisch = eintraege.filter((e) => jetzt - e.t <= CACHE_EXPIRY_MS).sort((x, y) => x.t - y.t);
+    while (frisch.length > 50) {
+      const aeltester = frisch.shift();
+      if (aeltester) localStorage.removeItem(aeltester.k);
+    }
+  } catch { /* Aufraeumen darf nie der Grund fuer einen Fehler sein */ }
+}
+
 export async function fetchWithCache(resource: RequestInfo, options: RequestInit & { timeout?: number } = {}) {
   // Only cache POST requests that have a body
   if (options.method === 'POST' && options.body && typeof options.body === 'string') {
     const bodyStr = options.body;
     // Don't cache chats or journals directly
     if (!resource.toString().includes('/api/chat') && !resource.toString().includes('/api/dating-journal')) {
-      const cacheKey = `klar_api_cache_${resource}_${Math.abs(bodyStr.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0))}`;
+      // ── FE-08 (Final Audit 08.08.2026) ────────────────────────────────
+      // BEFUND: Der Schluessel war ein 32-Bit-Hash ueber den Rumpf. Bei
+      // zwei verschiedenen Anfragen mit gleichem Hash bekommt die zweite
+      // die Antwort der ersten — in dieser App also die KI-Auswertung
+      // einer FREMDEN Bio oder eines fremden Journals. Selten, aber die
+      // Folge waere eine Datenpanne, kein Anzeigefehler.
+      //
+      // Jetzt zwei unabhaengige Hashes plus die Laenge. Eine Kollision
+      // muesste in beiden Verfahren UND in der Laenge zusammenfallen.
+      // Sauberer waere SHA-256 ueber crypto.subtle — das ist asynchron und
+      // haette diese Funktion umgebaut; der Aufwand steht hier nicht dafuer.
+      const cacheKey = `klar_api_cache_${resource}_${hashPaar(bodyStr)}`;
       
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         try {
           const { timestamp, data } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_EXPIRY_MS) {
-            console.log("Serving from cache:", resource);
-            // Return a mock response object
-            return {
-              ok: true,
-              json: async () => data
-            } as Response;
+            // FUN-02 (Final Audit 08.08.2026): Hier stand ein nachgebautes
+            // Antwortobjekt mit nur `ok` und `json`. Die Aufrufer benutzen
+            // aber auch `.text()` — beim ersten Aufruf ging es (echte
+            // Response), beim zweiten warf es
+            //   „response.text is not a function".
+            // Ein Fehler, der erst nach 15 Minuten Cache-Laufzeit auftritt
+            // und deshalb beim Ausprobieren nie erscheint.
+            //
+            // Jetzt eine echte Response: `.json()`, `.text()`, `.ok`,
+            // `.status`, `.clone()` und alles Weitere kommen vom Browser.
+            return new Response(JSON.stringify(data), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            });
           }
         } catch(e) {}
       }
@@ -36,10 +93,13 @@ export async function fetchWithCache(resource: RequestInfo, options: RequestInit
       if (response.ok) {
         const cloned = response.clone();
         cloned.json().then(data => {
-          localStorage.setItem(cacheKey, JSON.stringify({
-            timestamp: Date.now(),
-            data
-          }));
+          cacheAufraeumen();
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ timestamp: Date.now(), data }));
+          } catch {
+            // Kontingent voll trotz Aufraeumen: lieber ohne Cache
+            // weiterarbeiten als die Anfrage scheitern lassen.
+          }
         }).catch(() => {});
       }
       return response;

@@ -579,8 +579,17 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
         <PhotoVerificationModal
           onClose={() => setShowPhotoVerification(false)}
           onSuccess={() => {
+            // DAT-08 (gefunden beim Umbau von DAT-02, 09.08.2026):
+            // Hier stand `updateProfileData({ isVerified: true })`. Der
+            // Client kann `isVerified` nach den Firestore-Regeln nicht
+            // schreiben — der Vorgang wurde also immer abgelehnt. Weil
+            // `updateProfileData` den Fehler nur in die Konsole schrieb und
+            // den lokalen Zustand trotzdem setzte, zeigte die Oberfläche
+            // danach „Verifiziert". Bis zum nächsten Neuladen.
+            //
+            // Verifiziert wird ausschliesslich über K-1:
+            // /api/verification/challenge → /submit → Sichtprüfung → /decide.
             setShowPhotoVerification(false);
-            updateProfileData({ isVerified: true });
           }}
         />
       )}
@@ -1672,14 +1681,20 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
           <div className="mt-8 pt-6 border-t border-stone-200 dark:border-stone-700">
             <h4 className="text-xs font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider mb-4">Rechtliches & Sicherheit</h4>
             
-            <button className="w-full flex items-center justify-between p-3 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-xl transition-colors mb-2">
+            {/* GEGENPRÜFUNG 09.08.2026: Diese beiden Schaltflächen hatten
+                kein `onClick` — genau der Befund DSG-02 („Datenschutz-
+                erklärung/AGB unerreichbar"). Der Commit davor legte die
+                Seiten an, verlinkte sie aber nur aus dem Einwilligungs-
+                dialog. Aus der laufenden App gab es weiterhin keinen Weg
+                dorthin. Jetzt echte Verweise. */}
+            <a href="/rechtstexte/datenschutz" className="w-full flex items-center justify-between p-3 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-xl transition-colors mb-2">
               <span className="text-sm text-stone-700 dark:text-stone-300">Datenschutzerklärung</span>
               <ChevronRight size={18} className="text-stone-400" />
-            </button>
-            <button className="w-full flex items-center justify-between p-3 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-xl transition-colors mb-2">
+            </a>
+            <a href="/rechtstexte/agb" className="w-full flex items-center justify-between p-3 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-xl transition-colors mb-2">
               <span className="text-sm text-stone-700 dark:text-stone-300">Nutzungsbedingungen</span>
               <ChevronRight size={18} className="text-stone-400" />
-            </button>
+            </a>
             
             <div className="flex items-center justify-between p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl mb-2">
               <span className="text-sm text-stone-700 dark:text-stone-300">App-Version</span>

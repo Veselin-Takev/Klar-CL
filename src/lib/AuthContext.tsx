@@ -81,9 +81,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           updatedAt: new Date().toISOString()
         };
         await updateDoc(docRef, updatePayload);
+        // DAT-07/DAT-08: Der lokale Zustand wird erst NACH dem erfolgreichen
+        // Schreibvorgang gesetzt. Vorher stand er davor bzw. wurde auch im
+        // Fehlerfall gesetzt, und der Fehler ging in ein `console.warn`.
+        // Folge: Jeder von den Firestore-Regeln abgelehnte Schreibvorgang
+        // sah in der Oberflaeche wie ein Erfolg aus — bis zum Neuladen.
+        // Genau so blieben `theme`, `moodHistory` und die vorgetaeuschte
+        // Verifizierung monatelang unbemerkt.
         setProfileData((prev: any) => prev ? { ...prev, ...updatePayload } : null);
       } catch (error) {
-        console.warn("Failed to update user profile", error);
+        console.error("Profil konnte nicht gespeichert werden", error);
+        throw error;   // die aufrufende Ansicht muss es erfahren
       }
     }
   };
@@ -142,7 +150,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               bio: localBio,
               interests: localInterests,
               goal: localGoal,
-              isAdult: true,
+              // DSG-02 (Final Audit 08.08.2026): Hier stand `isAdult: true`.
+              // Nichts wurde geprüft — die App behauptete die Volljährigkeit
+              // über sich selbst, und niemand hätte es je bemerkt. In einer
+              // Dating-App ist das der Befund mit den größten Folgen.
+              //
+              // Das Feld wird jetzt ausschließlich vom Server gesetzt
+              // (POST /api/account/alter) und ist in firestore.rules für den
+              // Client gesperrt. Ein Profil ohne `isAdult` ist der richtige
+              // Ausgangszustand: unbekannt, nicht „ja".
               smartMatchAlerts: true
             };
             await setDoc(docRef, newUser);
@@ -209,12 +225,76 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // FE-03 / FE-04 (Final Audit 08.08.2026) — Abmelden räumt auf
+  //
+  // BEFUND: `logOut` rief `signOut(auth)` und sonst nichts. Im localStorage
+  // blieben `klar_journal_entries`, `klar_mood_history`, `klar_user_bio`,
+  // `klar_chat_draft_*` und Weiteres liegen — im Klartext. Auf einem
+  // geteilten Gerät sah die nächste angemeldete Person die Journaleinträge,
+  // Stimmungen und Entwürfe der vorherigen.
+  //
+  // WAS DAS NICHT LÖST: Solange jemand angemeldet ist, liegen diese Daten
+  // weiterhin unverschlüsselt im Browser. Jede Erweiterung mit Lesezugriff
+  // kommt daran. FE-04 ist damit eingegrenzt, nicht erledigt — die Lösung
+  // wäre, intime Freitexte gar nicht clientseitig zu halten.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  // GEGENPRÜFUNG 09.08.2026: Die erste Fassung räumte nach den Präfixen
+  // `klar_`, `user` und `theme` — und der Kommentar darüber behauptete
+  // „Alles, was zu dieser App gehört". Nachgezählt: 13 Schlüssel blieben
+  // liegen, darunter `mustHaveInterests`, `noGoStrictness`,
+  // `datePreferences`, `profile_icebreakers` und `hasCompletedOnboarding`.
+  // Auf dem geteilten Gerät — dem Fall, den der Kommentar selbst beschreibt —
+  // hätte die nächste Person die Vorlieben und KI-Icebreaker der vorigen
+  // gesehen und wäre am Onboarding vorbeigelaufen.
+  //
+  // Die Präfixliste war der Fehler: Sie erfasst nur, woran jemand beim
+  // Schreiben gedacht hat. Diese Herkunft gehört der App allein, also wird
+  // alles geräumt. Ein Schlüssel, der überleben soll, muss ausdrücklich in
+  // BEHALTEN stehen — und dann fällt beim Lesen auf, warum.
+  const BEHALTEN: string[] = [
+    // Die Entscheidung zu Fehlerberichten wird von Sentry beim Seitenstart
+    // gelesen, lange vor jeder Anmeldung. Sie ist keine Nutzerdatum, sondern
+    // eine Verarbeitungssperre — sie zu löschen hiesse, im Zweifel wieder
+    // zu senden. Der Standard ohne diesen Schlüssel ist „nein".
+    'klar_einw_fehlerberichte',
+  ];
+
+  const raeumeLokaleDaten = () => {
+    try {
+      const bewahrt = new Map<string, string>();
+      for (const k of BEHALTEN) {
+        const v = localStorage.getItem(k);
+        if (v !== null) bewahrt.set(k, v);
+      }
+      localStorage.clear();
+      bewahrt.forEach((v, k) => localStorage.setItem(k, v));
+      sessionStorage.clear();
+
+      // Die Warteschlange für Offline-Aktionen liegt in IndexedDB und
+      // enthält die Nutzlasten der noch nicht gesendeten Aufrufe.
+      if (typeof indexedDB !== 'undefined') {
+        indexedDB.deleteDatabase('klar-offline-db');
+      }
+    } catch (e) {
+      // Privater Modus oder volles Kontingent. Die Abmeldung darf daran
+      // nicht scheitern — sonst bliebe die Person angemeldet UND die Daten
+      // lägen weiterhin da.
+      console.error("Aufräumen beim Abmelden fehlgeschlagen", e);
+    }
+  };
+
   const logOut = async () => {
     try {
       await signOut(auth);
       cachedAccessToken = null;
     } catch (error) {
       console.error("Error signing out", error);
+    } finally {
+      // Auch wenn signOut fehlschlägt: Die lokalen Daten sind dann erst
+      // recht das Problem.
+      raeumeLokaleDaten();
     }
   };
 

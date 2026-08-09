@@ -101,7 +101,14 @@ export async function handleContact(req: Request, res: Response): Promise<void> 
       if (k.exists) return { ok: false as const, grund: 'bereits_kontaktiert' as const };
 
       const e = entscheideKontakt(
-        { tag: d.contactDay ?? '', verbraucht: d.contactCount ?? 0, plan: d.plan === 'plus' ? 'plus' : 'frei' },
+        {
+          tag: d.contactDay ?? '',
+          verbraucht: d.contactCount ?? 0,
+          plan: d.plan === 'plus' ? 'plus' : 'frei',
+          // DAT-05: Belohnungen aus Werbung wirken jetzt tatsaechlich.
+          extraContacts: d.extraContacts ?? 0,
+          extraTag: d.extraTag ?? '',
+        },
         heute,
       );
       if (!e.erlaubt) return { ok: false as const, grund: 'limit' as const };
