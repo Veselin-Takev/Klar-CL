@@ -7,3 +7,6 @@ dist/
 *.swp
 *.swo
 *.swn
+
+# Schuetzt auch .env.local.sicherung und jede andere Variante.
+.env*
