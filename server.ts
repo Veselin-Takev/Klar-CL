@@ -2172,22 +2172,29 @@ Nachricht: "${text}"`;
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+  // BEFUND 10.08.2026 -- 23 tote Endpunkte
+  // Hier stand die Vite-/Auslieferungs-Middleware. Express arbeitet die
+  // Middleware der Reihe nach ab, und vite.middlewares mit appType "spa"
+  // beantwortet ALLES, was bis dahin nicht getroffen wurde. Die 23
+  // API-Routen, die danach registriert sind, waren damit nicht erreichbar --
+  // im Entwicklungsbetrieb antwortete jede mit 404.
+  //
+  // Aufgefallen an /api/conversation-dynamics beim Oeffnen eines Gespraechs.
+  // Betroffen waren aber auch /api/date-planner, /api/city-insider,
+  // /api/weekly-review, /api/smart-audit, /api/verify-photo und
+  // /api/admob-ssv -- letzterer ist der signierte Rueckruf von Google fuer
+  // Werbebelohnungen.
+  //
+  // In der Produktion war der Schaden anders, aber nicht kleiner: Dort
+  // faengt app.get('*') alle GET-Anfragen ab, POST lief durch. Die
+  // Endpunkte verhielten sich also in Entwicklung und Produktion
+  // unterschiedlich -- die unangenehmste Sorte Fehler.
+  //
+  // Die Auslieferung steht jetzt am Ende, direkt vor app.listen. Das ist die
+  // einzige Reihenfolge, bei der neue Routen nicht stillschweigend
+  // wirkungslos bleiben.
 
-  
+
   app.post("/api/date-summary", async (req, res) => {
     try {
       const { reflection } = req.body;
@@ -2975,6 +2982,24 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     });
   });
 
+
+  // Auslieferung der Oberflaeche -- MUSS ganz unten stehen.
+  // Alles hier drunter faengt jede noch nicht beantwortete Anfrage ab. Eine
+  // API-Route unterhalb dieser Stelle waere nicht erreichbar; genau das war
+  // am 10.08.2026 bei 23 Endpunkten der Fall.
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

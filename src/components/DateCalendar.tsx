@@ -121,11 +121,17 @@ export function DateCalendar() {
                   </p>
                 </div>
                 
-                <button 
-                  onClick={() => handleDelete(d.id)}
-                  className="p-2 text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition-colors"
-                >
-                  
+                {/* BEFUND 10.08.2026, zwei Fehler an einer Stelle:
+                    1. Der Teilen-Knopf stand INNERHALB des Loeschen-Knopfes.
+                       HTML verbietet das; der Browser meldete "<button> cannot
+                       be a descendant of <button>". Folge im Betrieb: Ein Tipp
+                       auf "Teilen" loeste beide Handler aus -- der Termin wurde
+                       geteilt UND geloescht.
+                    2. Zwischen den Knoepfen stand ein woertliches \n im JSX.
+                       JSX gibt das als Text aus; im Screenshot vom 10.08. steht
+                       genau dieses "\n" neben dem Kalendersymbol.
+                    Jetzt zwei gleichrangige Knoepfe nebeneinander. */}
+                <div className="flex items-center gap-1">
                   <button 
                     onClick={() => {
                       const text = `Date mit ${d.matchName} am ${dateStr} um ${timeStr} Uhr. Ort: ${d.idea}`;
@@ -143,8 +149,15 @@ export function DateCalendar() {
                   >
                     <CalendarIcon size={18} />
                   </button>
-\n                  <Trash2 size={18} />
-                </button>
+
+                  <button
+                    onClick={() => handleDelete(d.id)}
+                    className="p-2 text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition-colors"
+                    title="Termin loeschen"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
             );
           })}

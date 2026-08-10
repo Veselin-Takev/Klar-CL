@@ -5,6 +5,12 @@ import { motion, AnimatePresence } from "motion/react";
 import { Heart, Settings, Download, Edit, BellRing,  Moon, Sun, Monitor, LogOut, ShieldCheck, FileText, Trash2, Sparkles, Zap, Share2, Wand2, RefreshCw, ArrowRight, History, EyeOff, Eye, MessageCircle, Check, X, Smartphone, ChevronRight } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { askAICoach, parseProfileImport, optimizeProfileApi } from "../lib/api";
+// BEFUND 10.08.2026: downloadRadarImage war am Knopf "Als Bild exportieren"
+// angebunden, aber nirgends definiert -- Absturz beim Rendern des Profils.
+// Der Behaelter traegt bereits id="werte-radar-container"; die Funktion war
+// also vorgesehen und nur nie geschrieben. toPng ist dieselbe Bibliothek,
+// die WeeklyConsistencyTracker.tsx schon benutzt.
+import { toPng } from 'html-to-image';
 
 const VALUE_EXPLANATIONS: Record<string, string> = {
   'Abenteuer': 'Zeigt an, wie spontan und offen für neue, ungeplante Erlebnisse du bist.',
@@ -145,6 +151,33 @@ export default function Profile() {
   // (fehlender Einstieg in die Verifizierung), keine Frage der Deklaration
   // -- ich baue keinen Knopf, den die Spezifikation hier nicht vorsieht.
   const [showPhotoVerification, setShowPhotoVerification] = useState(false);
+
+  /** Werte-Radar als PNG sichern. Rein im Browser -- das Bild verlaesst das
+   *  Geraet nicht und wird nirgends hochgeladen. */
+  const downloadRadarImage = async () => {
+    const behaelter = document.getElementById('werte-radar-container');
+    if (!behaelter) {
+      console.warn('Werte-Radar nicht gefunden -- nichts zu exportieren.');
+      return;
+    }
+    try {
+      const datenUrl = await toPng(behaelter, {
+        // Ohne Hintergrund waere das PNG durchsichtig und im Dunkelmodus
+        // unlesbar. cacheBust verhindert veraltete Schriftschnitte.
+        backgroundColor: document.documentElement.classList.contains('dark')
+          ? '#1c1917'
+          : '#ffffff',
+        cacheBust: true,
+        pixelRatio: 2,
+      });
+      const a = document.createElement('a');
+      a.href = datenUrl;
+      a.download = 'klar-werte-radar.png';
+      a.click();
+    } catch (e) {
+      console.error('Export des Werte-Radars fehlgeschlagen:', e);
+    }
+  };
   // radarAnimated wird nur geschrieben, nie gelesen. Deklaration ohne
   // Lesenamen haelt das Verhalten unveraendert und stoppt den Absturz.
   const [, setRadarAnimated] = useState(false);

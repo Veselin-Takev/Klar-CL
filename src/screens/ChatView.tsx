@@ -13,6 +13,13 @@ import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, C
 import { allProfiles } from "../data";
 
 import { askAICoach } from "../lib/api";
+// BEFUND 10.08.2026: translateMessage wurde in Zeile 281 und 359 aufgerufen,
+// aber nie importiert. Der ReferenceError fiel nicht auf, weil beide Aufrufe
+// in einem try/catch stehen -- die Uebersetzung schlug also seit jeher still
+// fehl, und die Oberflaeche zeigte nur "Uebersetzung nicht verfuegbar".
+// Genau die Fehlerklasse, die heute die teuerste war: kein Absturz, nur eine
+// Zusage ohne Wirkung.
+import { translateMessage } from "../services/translationService";
 import { NotificationService } from "../services/notificationService";
 
 import { RelationshipProgressWidget } from "../components/RelationshipProgressWidget";
@@ -59,6 +66,63 @@ export default function ChatView() {
   const [reportReason, setReportReason] = useState("");
 
   const [input, setInput] = useState(() => localStorage.getItem(`klar_chat_draft_${id}`) || "");
+
+  // BEFUND 10.08.2026: Der Mikrofon-Knopf benutzte toggleRecording und
+  // isRecording. Beide gab es in dieser Datei nicht. Weil ein JSX-Attributwert
+  // beim RENDERN ausgewertet wird und nicht erst beim Antippen, brach jedes
+  // Oeffnen eines Gespraechs mit "ReferenceError: toggleRecording is not
+  // defined" ab. Verdeckt durch @ts-nocheck in Zeile 1.
+  //
+  // Die Umsetzung folgt ReflectionLogWidget.tsx, wo dieselbe Spracheingabe
+  // seit jeher funktioniert -- statt einer zweiten, abweichenden Variante.
+  //
+  // GRENZE, AUSDRUECKLICH: SpeechRecognition gibt es nicht in jedem Browser
+  // (Firefox kennt es nicht). Fehlt es, bleibt der Knopf ohne Wirkung statt
+  // abzustuerzen. Das Erkannte landet im Eingabefeld -- es wird nichts
+  // automatisch abgeschickt.
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceRecognition, setVoiceRecognition] = useState<any>(null);
+
+  useEffect(() => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'de-DE';
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setIsRecording(false);
+      setInput((vorher: string) => (vorher ? vorher + ' ' : '') + transcript);
+    };
+    recognition.onerror = (event: any) => {
+      console.warn('Spracherkennung fehlgeschlagen:', event.error);
+      setIsRecording(false);
+    };
+    recognition.onend = () => setIsRecording(false);
+
+    setVoiceRecognition(recognition);
+    return () => {
+      try { recognition.stop(); } catch { /* schon beendet */ }
+    };
+  }, []);
+
+  const toggleRecording = () => {
+    if (!voiceRecognition) {
+      console.warn('Dieser Browser kennt keine Spracherkennung.');
+      return;
+    }
+    if (isRecording) {
+      voiceRecognition.stop();
+      setIsRecording(false);
+    } else {
+      voiceRecognition.start();
+      setIsRecording(true);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem(`klar_chat_draft_${id}`, input);
@@ -118,9 +182,24 @@ export default function ChatView() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chatHistory: messages })
-      }).then(res => res.json()).then(data => {
-        if (data && data.dynamic) setChatDynamic(data);
-      }).catch(console.error);
+      })
+        // BEFUND 10.08.2026: Hier stand .then(res => res.json()) ohne
+        // Pruefung des Status. Weil der Endpunkt hinter der Vite-Middleware
+        // lag und mit einem leeren 404 antwortete, warf res.json()
+        // "Unexpected end of JSON input" -- eine Meldung, die auf einen
+        // Datenfehler zeigt, obwohl es ein Routenfehler war. Die Ursache lag
+        // zwei Bildschirmseiten daneben.
+        .then(async (res) => {
+          if (!res.ok) {
+            console.warn(`/api/conversation-dynamics antwortete ${res.status}`);
+            return null;
+          }
+          return res.json().catch(() => null);
+        })
+        .then(data => {
+          if (data && data.dynamic) setChatDynamic(data);
+        })
+        .catch(console.error);
     }
   }, [messages.length]);
 
@@ -1129,7 +1208,13 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
       )}
 
       {/* Input area */}
-      <div className="p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800">
+      {/* BEFUND 10.08.2026: relative fehlte hier. Der Schnellantworten-Auszug
+          ist absolute bottom-full left-0 right-0 und suchte sich deshalb
+          einen Vorfahren weiter oben -- er erschien mitten im
+          Gespraechsverlauf und legte sich ueber "Du hast eine Verbindung mit
+          ...". Mit relative an der Eingabeleiste sitzt er dort, wo er
+          hingehoert: unmittelbar darueber. */}
+      <div className="relative p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800">
         <div className="flex items-center gap-2">
           {messages.length > 0 && (
             <button
@@ -1168,16 +1253,17 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
         
 
         
-          <div className="relative">
-            <QuickRepliesDrawer 
-              isOpen={showQuickReplies} 
-              onClose={() => setShowQuickReplies(false)} 
-              onSelectReply={(r) => {
-                setInput(r);
-                setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
-              }} 
-            />
-          </div>
+          {/* Der fruehere Wrapper <div className="relative"> war null Pixel
+              breit und hoch. left-0 right-0 des Auszugs bezog sich damit auf
+              nichts. Der Auszug haengt jetzt an der Eingabeleiste. */}
+          <QuickRepliesDrawer
+            isOpen={showQuickReplies}
+            onClose={() => setShowQuickReplies(false)}
+            onSelectReply={(r) => {
+              setInput(r);
+              setTimeout(() => document.getElementById('chat-input')?.focus(), 50);
+            }}
+          />
           <button 
             onClick={() => setShowQuickReplies(!showQuickReplies)}
             className="p-3 bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-300 rounded-full transition-colors shrink-0"
@@ -1319,17 +1405,39 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
               </div>
 
               <div className="space-y-2 mb-6">
-                {["Unangemessenes Verhalten", "Fakeprofil / Spam", "Belästigung", "Sonstiges"].map(reason => (
-                  <label key={reason} className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 dark:border-stone-700 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">
-                    <input 
-                      type="radio" 
-                      name="reportReason" 
-                      value={reason}
-                      checked={reportReason === reason}
+                {/* BEFUND 10.08.2026: Hier standen nur die deutschen
+                    Beschriftungen, und genau die wurden als grund an den
+                    Server geschickt. Der prueft gegen die Schluessel in
+                    trustAndSafety.ts und lehnte deshalb JEDE Meldung mit
+                    "Unbekannter Meldegrund." und 400 ab. Die Meldefunktion
+                    war damit vollstaendig wirkungslos -- DSA Art. 16, und
+                    derselbe Befund wie P0-5, nur an anderer Stelle.
+
+                    ZWEITER BEFUND, schwerer: minderjaehrig nimmt der Server
+                    entgegen, die Oberflaeche bot ihn nicht an. In einer
+                    Dating-App ist das der Meldegrund, der am wenigsten
+                    fehlen darf. Er steht jetzt an erster Stelle.
+
+                    Schluessel und Beschriftung sind ab jetzt getrennt. Eine
+                    Umformulierung im Text kann die Meldung nicht mehr
+                    unbrauchbar machen. */}
+                {[
+                  { schluessel: 'minderjaehrig', text: 'Die Person ist minderjährig' },
+                  { schluessel: 'belaestigung', text: 'Belästigung' },
+                  { schluessel: 'unangemessenes_verhalten', text: 'Unangemessenes Verhalten' },
+                  { schluessel: 'fakeprofil_spam', text: 'Fakeprofil / Spam' },
+                  { schluessel: 'sonstiges', text: 'Sonstiges' },
+                ].map(({ schluessel, text }) => (
+                  <label key={schluessel} className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 dark:border-stone-700 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors">
+                    <input
+                      type="radio"
+                      name="reportReason"
+                      value={schluessel}
+                      checked={reportReason === schluessel}
                       onChange={(e) => setReportReason(e.target.value)}
                       className="text-brand dark:text-brand-light focus:ring-brand dark:focus:ring-brand-light"
                     />
-                    <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{reason}</span>
+                    <span className="text-sm font-medium text-stone-700 dark:text-stone-300">{text}</span>
                   </label>
                 ))}
               </div>

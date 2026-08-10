@@ -3,6 +3,7 @@ import { Moon, Save, Loader2, Info } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { melde } from "../lib/fehler";
+import { useAuth } from "../lib/AuthContext";
 
 export const SmartPausePlanner: React.FC = () => {
   // 7 days (0 = Monday, 6 = Sunday), 24 hours
@@ -14,24 +15,42 @@ export const SmartPausePlanner: React.FC = () => {
   const [error, setError] = useState('');
 
   const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  const userId = "demo-user-id"; // In a real app this comes from auth context
+  // BEFUND 10.08.2026: Hier stand const userId = "demo-user-id" mit dem
+  // Kommentar "In a real app this comes from auth context". Gelesen und
+  // geschrieben wurde nach userSettings/demo-user-id -- eine Sammlung, fuer
+  // die es in firestore.rules KEINE Regel gibt. Bei Deny-by-default heisst
+  // das: immer abgelehnt, fuer jedes Konto.
+  //
+  // Der Pausenplaner hat also nie funktioniert, und niemand haette es
+  // gemerkt: Der Ladefehler landete nur in der Konsole, die Oberflaeche
+  // zeigte danach den leeren Standardplan, als waere nichts gewesen.
+  //
+  // Richtiger Ort laut Datenmodell ist das Feld userSettings im eigenen
+  // Nutzerdokument -- isValidUserUpdate in firestore.rules fuehrt es
+  // ausdruecklich in der erlaubten Liste.
+  const { user } = useAuth();
+  const userId = user?.uid ?? null;
 
   useEffect(() => {
     const loadSchedule = async () => {
+      if (!userId) { setIsLoaded(true); return; }
       try {
-        const docRef = doc(db, 'userSettings', userId);
+        const docRef = doc(db, 'users', userId);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().smartPauseSchedule) {
-          setSchedule(docSnap.data().smartPauseSchedule);
-        }
+        const gespeichert = docSnap.data()?.userSettings?.smartPauseSchedule;
+        if (Array.isArray(gespeichert)) setSchedule(gespeichert);
       } catch (e) {
-        console.error("Failed to load schedule", e);
+        // Sichtbar machen statt verschlucken: Bisher stand hier nur ein
+        // console.error, und die Oberflaeche zeigte danach den leeren
+        // Standardplan -- nicht zu unterscheiden von "noch nichts gespeichert".
+        melde("SmartPausePlanner/laden", e);
+        setError('Zeitplan konnte nicht geladen werden.');
       } finally {
         setIsLoaded(true);
       }
     };
     loadSchedule();
-  }, []);
+  }, [userId]);
 
   const toggleHour = (dayIdx: number, hourIdx: number) => {
     const newSchedule = [...schedule];
@@ -41,11 +60,24 @@ export const SmartPausePlanner: React.FC = () => {
   };
 
   const saveSchedule = async () => {
+    if (!userId) { setError('Nicht angemeldet.'); return; }
     setIsSaving(true);
     setError('');
     try {
-      const docRef = doc(db, 'userSettings', userId);
-      await setDoc(docRef, { smartPauseSchedule: schedule }, { merge: true });
+      const docRef = doc(db, 'users', userId);
+      // Bestehende Einstellungen mitnehmen: setDoc mit merge ersetzt ein
+      // verschachteltes Objekt vollstaendig, andere Eintraege unter
+      // userSettings gingen sonst verloren.
+      const vorhanden = (await getDoc(docRef)).data()?.userSettings ?? {};
+      await setDoc(
+        docRef,
+        {
+          userSettings: { ...vorhanden, smartPauseSchedule: schedule },
+          // isValidUserUpdate erlaubt genau diese beiden Felder zusammen.
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
     } catch (e) {
       melde("SmartPausePlanner", e);
       setError('Fehler beim Speichern');
