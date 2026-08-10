@@ -156,6 +156,11 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export default function Dashboard() {
   const { trackEvent } = useUsageAnalytics();
   const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // BEFUND 10.08.2026: showFilterSheet wurde in Zeile 973 gelesen und in
+  // 958/984 gesetzt, aber nirgends deklariert. ReferenceError beim ersten
+  // Rendern -- der weisse Bildschirm nach dem Onboarding. Dritter Fall
+  // derselben Sorte an einem Tag; @ts-nocheck verdeckt alle drei.
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {

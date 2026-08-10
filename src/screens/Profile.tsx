@@ -134,6 +134,20 @@ const CustomRadarTooltip = ({ active, payload }: any) => {
 export default function Profile() {
   const { logOut, updateProfileData } = useAuth();
   const [activeRadarValue, setActiveRadarValue] = useState<string | null>(null);
+  // BEFUND 10.08.2026, gefunden beim Suchen nach der Ursache von
+  // showFilterSheet: Beide Zustaende fehlten hier ganz.
+  //
+  // showPhotoVerification wird in Zeile 578 gelesen -- ohne Deklaration
+  // stuerzt das Profil beim Rendern ab, genau wie das Dashboard.
+  //
+  // OFFEN, NICHT HIER BEHOBEN: Nichts setzt showPhotoVerification je auf
+  // true. Das Modal ist damit nicht erreichbar. Das ist ein eigener Befund
+  // (fehlender Einstieg in die Verifizierung), keine Frage der Deklaration
+  // -- ich baue keinen Knopf, den die Spezifikation hier nicht vorsieht.
+  const [showPhotoVerification, setShowPhotoVerification] = useState(false);
+  // radarAnimated wird nur geschrieben, nie gelesen. Deklaration ohne
+  // Lesenamen haelt das Verhalten unveraendert und stoppt den Absturz.
+  const [, setRadarAnimated] = useState(false);
   const [userInterests, setUserInterests] = useState<string[]>([]);
   const [userBio, setUserBio] = useState<string>("Kaffeeliebhaber, verbringe meine Wochenenden gerne auf dem Fahrrad. Suche jemanden für tiefgründige Gespräche und spontane Ausflüge.");
   const [icebreakers, setIcebreakers] = useState<string[]>([]);

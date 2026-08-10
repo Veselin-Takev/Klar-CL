@@ -59,6 +59,19 @@ export function ChatDatePlanner({ userInterests, matchInterests, matchName, chat
   
 
   
+  // BEFUND 10.08.2026: Diese drei Deklarationen fehlten -- der Block leerer
+  // Zeilen darueber ist die Stelle, an der sie einmal standen. runDateCheck
+  // stuerzte deshalb beim Antippen ab (ReferenceError), nicht schon beim
+  // Rendern; darum war der Fehler bisher nicht aufgefallen.
+  //
+  // OFFEN, NICHT HIER BEHOBEN: Keiner der drei Werte wird irgendwo gelesen.
+  // Die beabsichtigte Anzeige ("pruefe...", Ergebnis des Date-Checks) fehlt
+  // vollstaendig. Deklaration ohne Lesenamen haelt das Verhalten exakt so,
+  // wie es heute ist, statt eine Oberflaeche zu erfinden.
+  const [, setIsCheckingDate] = useState(false);
+  const [, setCheckingIdeaIndex] = useState<number | null>(null);
+  const [, setDateCheck] = useState<any>(null);
+
   const runDateCheck = async (ideaIndex: number, dateIdea: string) => {
     setIsCheckingDate(true);
     setCheckingIdeaIndex(ideaIndex);
