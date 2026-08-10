@@ -22,7 +22,9 @@ const app = initializeApp(config);
 const imCodespace =
   typeof window !== 'undefined' && /\.app\.github\.dev$/.test(window.location.hostname);
 
-const emulatorHost = (port) =>
+/** Adresse eines Emulators. Der Typ muss stehen -- unter noImplicitAny
+ *  ist ein Parameter ohne Typ ein Fehler, kein Hinweis. */
+const emulatorHost = (port: number): string =>
   imCodespace ? window.location.hostname.replace(/-\d+\./, `-${port}.`) : '127.0.0.1';
 
 export const auth = getAuth(app);
@@ -34,7 +36,11 @@ export const auth = getAuth(app);
 // experimentalForceLongPolling: Die Portweiterleitung vertraegt sich schlecht
 // mit dem Streaming-Verfahren. Langsamer, aber es kommt an.
 export const db = !emulator
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  ? // as any: TypeScript leitet den Typ aus firebase-applet-config.json ab
+    // und kennt firestoreDatabaseId dort nicht. Das Feld ist optional --
+    // fehlt es, benutzt Firestore die Standarddatenbank. Ohne die
+    // Umtypung bricht npm run typecheck mit TS2339.
+    getFirestore(app, (firebaseConfig as any).firestoreDatabaseId)
   : imCodespace
     ? initializeFirestore(app, {
         host: emulatorHost(8080),
