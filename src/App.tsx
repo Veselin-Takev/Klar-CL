@@ -490,10 +490,27 @@ function AppContent() {
   //   4. Die Fassung wurde nicht geprüft. `EINWILLIGUNG_VERSION` zu erhöhen
   //      hätte für niemanden etwas geändert — der Sinn der Versionierung
   //      ist aber genau, bei neuem Text erneut zu fragen (Art. 7 Abs. 1).
+  // BEFUND 10.08.2026 -- KORREKTUR MEINER EIGENEN ENTSCHEIDUNG
+  // Hier stand !!profileData && (...), begruendet mit: "profileData === null
+  // heisst: Profil nicht ladbar (offline). Dann wird nicht gesperrt, sonst
+  // waere die App bei jedem Netzaussetzer unbenutzbar."
+  //
+  // Die Praemisse war falsch. null heisst nicht nur "nicht ladbar", es
+  // heisst auch "wird gerade geladen" -- und in genau diesem Fenster fiel
+  // das Gate weg, das Dashboard hing sich ein und feuerte 22 Anfragen ab,
+  // die der Server samt und sonders mit 403 alter_fehlt beantwortete. Die
+  // eigentliche Ursache ist in AuthContext behoben (setLoading(true));
+  // diese Zeile ist die zweite, unabhaengige Sperre.
+  //
+  // Echtes Offline faengt der isOffline-Zweig weiter oben ab. Bleibt das
+  // Profil danach null, ist der Ladebildschirm oder das Gate die richtige
+  // Antwort -- nicht ein Dashboard, in dem jede einzelne Anfrage scheitert.
+  // Wer im Gate das Alter angibt, laesst den Server das Profil per
+  // set({merge:true}) anlegen; der Weg heraus ist also vorhanden.
   const brauchtGate =
-    !!profileData
-    && (profileData.isAdult !== true
-        || profileData.einwilligung?.version !== EINWILLIGUNG_VERSION);
+    !profileData
+    || profileData.isAdult !== true
+    || profileData.einwilligung?.version !== EINWILLIGUNG_VERSION;
 
   if (!hasCompletedOnboarding) {
     return <Onboarding onComplete={() => {

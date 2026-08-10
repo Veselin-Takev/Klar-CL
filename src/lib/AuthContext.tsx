@@ -115,6 +115,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
+        // BEFUND 10.08.2026, im HAR auf die Millisekunde belegt:
+        // Hier fehlte setLoading(true). setUser wirkt sofort, das Profil
+        // wird aber asynchron geholt. Dazwischen lag ein Fenster von rund
+        // 450 ms, in dem user gesetzt, loading bereits false (aus dem
+        // abgemeldeten Zustand) und profileData noch null war.
+        //
+        // In App.tsx schaltete profileData === null das Alters- und
+        // Einwilligungs-Gate AB. Das Dashboard hing sich in diesem Fenster
+        // ein und feuerte 22 Anfragen ab -- alle beantwortet mit
+        // 403 alter_fehlt, weil der Server richtig prueft. Das Gate
+        // erschien danach nie.
+        //
+        //   09:55:17.793  accounts:signUp
+        //   09:55:18.248  22 Dashboard-Anfragen, alle 403
+        //
+        // setLoading(true) haelt die App auf dem Ladebildschirm, bis das
+        // Profil da ist. Damit gibt es keinen Zustand mehr, in dem
+        // gerendert wird, ohne dass der Profilstand bekannt ist.
+        setLoading(true);
         try {
           const docRef = doc(db, 'users', currentUser.uid);
           const docSnap = await getDoc(docRef);
