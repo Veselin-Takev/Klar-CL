@@ -1,32 +1,11 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Lokaler Entwicklungsmodus (09.08.2026)
-//
-// WOZU: Die App ist bis heute nie mit Datenbank gelaufen. Der Server ruft
-// `initializeApp()` ohne Zugangsdaten; im Codespace gibt es keine
-// Application Default Credentials, also scheitert jeder Firestore-Zugriff.
-// Seit der Altersprüfung (DSG-02) ist das sperrend: Ohne Schreibzugriff kann
-// `isAdult` nicht gesetzt werden, das Gate öffnet nie, und kein einziger
-// KI-Endpunkt ist erreichbar.
-//
-// Mit `npm run dev:lokal` laufen Auth und Firestore als Emulator. Kein
-// Konto, keine Kosten, keine echten Daten — und der ganze Weg von der
-// Anmeldung über die Altersangabe bis zum KI-Coach ist begehbar.
-//
-// WARUM `demo-klar` STATT DER ECHTEN PROJEKT-ID: Bei einer ID mit dem
-// Präfix `demo-` verlangt die Firebase-CLI keine Anmeldung und kann
-// garantiert nie mit der echten Datenbank sprechen. Dieselbe ID benutzen
-// die Regeltests — ein Versehen, das Testdaten in die Produktion schreibt,
-// ist damit ausgeschlossen.
-//
-// Der Schalter ist `VITE_EMULATOR`, gesetzt vom Skript `dev:lokal`.
-// Ohne ihn verhält sich diese Datei wie vorher.
-// ═══════════════════════════════════════════════════════════════════════════
-
+// Lokaler Entwicklungsmodus. Schalter ist VITE_EMULATOR, gesetzt von dev:lokal.
+// Projekt-ID demo-klar: verlangt keine Anmeldung und kann nie mit der echten
+// Datenbank sprechen. Dieselbe ID benutzen die Regeltests.
 const emulator = import.meta.env.VITE_EMULATOR === 'true';
 
 const config = emulator
@@ -35,23 +14,51 @@ const config = emulator
 
 const app = initializeApp(config);
 
-// Im Emulatorbetrieb die Standarddatenbank — eine benannte Datenbank gibt es
-// dort nicht.
-export const db = emulator
-  ? getFirestore(app)
-  : getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+// BEFUND 10.08.2026, im Browser bestaetigt: Hier stand fest verdrahtet
+// 127.0.0.1. Im Browser-Codespace laeuft die Seite auf dem Rechner der
+// bedienenden Person, die Emulatoren im Container. 127.0.0.1 zeigt dort auf
+// die eigene Maschine, wo nichts laeuft -- ERR_CONNECTION_REFUSED.
+// Aus ...-3000.app.github.dev wird ...-9099.app.github.dev, HTTPS auf 443.
+const imCodespace =
+  typeof window !== 'undefined' && /\.app\.github\.dev$/.test(window.location.hostname);
+
+const emulatorHost = (port) =>
+  imCodespace ? window.location.hostname.replace(/-\d+\./, `-${port}.`) : '127.0.0.1';
 
 export const auth = getAuth(app);
 
+// WARUM NICHT connectFirestoreEmulator IM CODESPACE: Die Funktion setzt ssl
+// auf das Ergebnis von isCloudWorkstation(host) -- fuer .app.github.dev also
+// false. Sie spraeche unverschluesselt gegen eine HTTPS-Adresse. Nachgesehen
+// im Quelltext des firebase-js-sdk, nicht vermutet.
+// experimentalForceLongPolling: Die Portweiterleitung vertraegt sich schlecht
+// mit dem Streaming-Verfahren. Langsamer, aber es kommt an.
+export const db = !emulator
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : imCodespace
+    ? initializeFirestore(app, {
+        host: emulatorHost(8080),
+        ssl: true,
+        experimentalForceLongPolling: true,
+      })
+    : getFirestore(app);
+
 if (emulator) {
-  // In Codespaces liegen die Emulatoren hinter der Portweiterleitung, sind
-  // aus dem Browser aber unter localhost erreichbar, weil VS Code den Port
-  // durchreicht.
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-  connectFirestoreEmulator(db, '127.0.0.1', 8080);
-  // Deutlich sichtbar in der Konsole: Es ist nicht die echte Datenbank.
+  connectAuthEmulator(
+    auth,
+    imCodespace ? `https://${emulatorHost(9099)}` : 'http://127.0.0.1:9099',
+    { disableWarnings: true },
+  );
+  if (!imCodespace) {
+    connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  }
   console.info(
-    '%cKlar läuft gegen die lokalen Emulatoren (Projekt demo-klar). Keine echten Daten.',
+    '%cKlar laeuft gegen die lokalen Emulatoren (Projekt demo-klar). Keine echten Daten.',
     'background:#3f4a3c;color:#fff;padding:2px 6px;border-radius:4px',
+  );
+  console.info(
+    imCodespace
+      ? `Emulatoren ueber die Codespaces-Weiterleitung: Auth ${emulatorHost(9099)}, Firestore ${emulatorHost(8080)}. Beide Ports muessen auf Public stehen.`
+      : 'Emulatoren ueber 127.0.0.1 -- Ports 9099 und 8080.',
   );
 }

@@ -2,7 +2,9 @@
 import { useUsageAnalytics } from "../lib/useUsageAnalytics";
 // FE-05: haengt Widgets erst ein, wenn sie in Sichtnaehe kommen.
 import { BeiSicht } from "../components/BeiSicht";
-import { useState, useEffect, useMemo } from "react";
+// useRef fehlte hier und wird in Zeile 156 benutzt (undoTimerRef).
+// Ergebnis: ReferenceError, weisser Bildschirm. Unsichtbar wegen @ts-nocheck.
+import { useState, useEffect, useMemo, useRef } from "react";
 import { allProfiles } from "../data";
 import type { Profile } from "../data";
 import { Info, X, Heart, BatteryFull, BatteryMedium, BatteryLow, Sparkles, Filter, ShieldCheck, MapPin, ChevronDown, Star, Sun, Moon } from "lucide-react";

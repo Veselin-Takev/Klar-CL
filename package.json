@@ -14,8 +14,10 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:pure": "tsx --test tests/pure.spec.ts",
-    "verify": "npm run typecheck && npm run check:kontrast && npm run test:pure && npm run test:rules",
+    "verify": "npm run typecheck && npm run check:hooks && npm run check:kontrast && npm run test:pure && npm run test:rules",
     "check:kontrast": "node scripts/check-kontrast.mjs",
+    "check:hooks": "node scripts/check-hooks.mjs",
+    "check:hooks": "node scripts/check-hooks.mjs",
     "test:rules": "firebase emulators:exec --project demo-klar --only firestore \"tsx --test tests/rules.spec.ts\"",
     "dev:lokal": "firebase emulators:exec --project demo-klar --only auth,firestore \"VITE_EMULATOR=true tsx server.ts\"",
     "dev:moderator": "node scripts/dev-moderator.mjs"
