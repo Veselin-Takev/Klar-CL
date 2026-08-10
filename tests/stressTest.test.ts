@@ -6,7 +6,7 @@ const mockUpdateDoc = vi.fn();
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(),
-  doc: vi.fn((db, collection, id) => ({ id, collection })),
+  doc: vi.fn((_db, collection, id) => ({ id, collection })),
   updateDoc: (...args: any[]) => mockUpdateDoc(...args),
   runTransaction: (...args: any[]) => mockRunTransaction(...args),
 }));
@@ -20,7 +20,7 @@ describe('Stress Testing Module - Concurrency & Race Conditions', () => {
     let globalProfileState = { age: 30, name: 'Initial' };
     
     // Simulate concurrent updates
-    mockUpdateDoc.mockImplementation(async (docRef, data) => {
+    mockUpdateDoc.mockImplementation(async (_docRef, data) => {
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, Math.random() * 10));
       globalProfileState = { ...globalProfileState, ...data };
@@ -43,13 +43,13 @@ describe('Stress Testing Module - Concurrency & Race Conditions', () => {
     let successCount = 0;
     let failureCount = 0;
 
-    mockRunTransaction.mockImplementation(async (db, transactionHandler) => {
+    mockRunTransaction.mockImplementation(async (_db, transactionHandler) => {
       const mockTransaction = {
         get: vi.fn().mockResolvedValue({
           exists: () => true,
           data: () => ({ dailyCount: quotaState })
         }),
-        update: vi.fn().mockImplementation((docRef, data) => {
+        update: vi.fn().mockImplementation((_docRef, data) => {
           quotaState = data.dailyCount;
         })
       };

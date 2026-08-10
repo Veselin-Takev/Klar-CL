@@ -7,7 +7,7 @@ const mockRunTransaction = vi.fn();
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(),
-  doc: vi.fn((db, collection, id) => ({ id, collection })),
+  doc: vi.fn((_db, collection, id) => ({ id, collection })),
   updateDoc: (...args: any[]) => mockUpdateDoc(...args),
   setDoc: (...args: any[]) => mockSetDoc(...args),
   runTransaction: (...args: any[]) => mockRunTransaction(...args),
@@ -20,7 +20,7 @@ describe('Critical Paths: Profile & Matching', () => {
 
   it('prevents race conditions during matching via transactions', async () => {
     // Simulate a concurrent like action
-    mockRunTransaction.mockImplementation(async (db, transactionHandler) => {
+    mockRunTransaction.mockImplementation(async (_db, transactionHandler) => {
       const mockTransaction = {
         get: vi.fn().mockResolvedValue({
           exists: () => true,
