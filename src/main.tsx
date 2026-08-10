@@ -90,12 +90,36 @@ createRoot(document.getElementById('root')!).render(
 );
 
 
+// BEFUND 10.08.2026, teuer bezahlt: Im Entwicklungsmodus lieferte der
+// Service Worker alte Bausteine aus. Eine korrigierte firebase.ts und ein
+// korrigiertes Dashboard.tsx lagen im Repo, im Browser lief weiter die alte
+// Fassung -- die Konsole zeigte Zeilennummern, die es nicht mehr gab. Bis
+// das auffiel, verging eine Stunde.
+//
+// Deshalb: Registrierung nur im gebauten Stand. Beim Entwickeln wird eine
+// vorhandene Registrierung aktiv entfernt und der Speicher geleert, damit
+// dieselbe Falle nicht ein zweites Mal zuschnappt.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((registration) => {
-      console.log('SW registered: ', registration);
-    }).catch((registrationError) => {
-      console.log('SW registration failed: ', registrationError);
+  if (import.meta.env.DEV) {
+    navigator.serviceWorker.getRegistrations().then((alle) => {
+      for (const r of alle) {
+        void r.unregister();
+      }
+      if (alle.length > 0) {
+        console.info(
+          'Entwicklungsmodus: Service Worker entfernt. Einmal neu laden, ' +
+            'dann laeuft garantiert der aktuelle Stand.',
+        );
+      }
     });
-  });
+    if ('caches' in window) {
+      void caches.keys().then((namen) => namen.forEach((n) => caches.delete(n)));
+    }
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .catch((fehler) => console.warn('SW-Registrierung fehlgeschlagen:', fehler));
+    });
+  }
 }
