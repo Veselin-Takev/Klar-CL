@@ -1003,12 +1003,22 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                           if (checked && !aiMatchScores) {
                             setIsCalculatingAiScores(true);
                             try {
-                              const res = await fetch("/api/ai-match", {
+                              // BEFUND 10.08.2026: Hier stand "/api/ai-match".
+                              // Diese Route gibt es in server.ts nicht -- der
+                              // Endpunkt heisst /api/ai-passgenauigkeit und
+                              // erwartet genau diese Nutzlast. Offenbar
+                              // umbenannt und der Client nie nachgezogen. Der
+                              // Schalter "KI-Deep-Match" konnte nie
+                              // funktionieren; der Fehler wurde abgefangen und
+                              // der Schalter setzte sich still zurueck.
+                              const res = await fetch("/api/ai-passgenauigkeit", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
                                   userInterests,
-                                  profiles: availableProfiles.map(p => ({ id: p.id, bio: p.bio, interests: p.interests }))
+                                  // name fehlte, obwohl der Prompt ihn benutzt --
+                                  // dort stand bisher "Name: undefined".
+                                  profiles: availableProfiles.map(p => ({ id: p.id, name: p.name, bio: p.bio, interests: p.interests }))
                                 })
                               });
                               if (!res.ok) throw new Error("API request failed");

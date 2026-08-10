@@ -10,3 +10,7 @@ dist/
 
 # Schuetzt auch .env.local.sicherung und jede andere Variante.
 .env*
+
+# Einmalige Reparaturskripte gehoeren nicht ins Repo.
+klar-fix*.mjs
+klarfix*.mjs
