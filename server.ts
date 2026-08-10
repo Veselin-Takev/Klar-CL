@@ -47,7 +47,36 @@ import {
 } from './src/server/klarCore';
 
 if (!getApps().length) {
-  initializeApp();
+  // ── Lokaler Entwicklungsmodus (09.08.2026) ────────────────────────────
+  // BEFUND: Hier stand `initializeApp()` ohne jede Angabe. Firebase Admin
+  // sucht dann nach Application Default Credentials. Im Codespace gibt es
+  // keine — jeder Firestore-Zugriff des Servers scheiterte, und seit der
+  // Altersprüfung war das sperrend: `isAdult` liess sich nicht setzen, das
+  // Gate öffnete nie, kein KI-Endpunkt war erreichbar.
+  //
+  // `firebase emulators:exec` setzt FIRESTORE_EMULATOR_HOST und
+  // FIREBASE_AUTH_EMULATOR_HOST. Sind sie gesetzt, spricht das Admin-SDK mit
+  // den Emulatoren und braucht keine Zugangsdaten — es braucht aber eine
+  // Projekt-ID, die es sonst ebenfalls aus den Zugangsdaten zöge.
+  const imEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
+  const projekt = process.env.GCLOUD_PROJECT
+    ?? process.env.GOOGLE_CLOUD_PROJECT
+    ?? (imEmulator ? "demo-klar" : undefined);
+  initializeApp(projekt ? { projectId: projekt } : undefined);
+  if (imEmulator) {
+    console.log(
+      `\n  Klar laeuft LOKAL gegen die Emulatoren (Projekt ${projekt}).\n` +
+      `  Firestore ${process.env.FIRESTORE_EMULATOR_HOST}` +
+      `  ·  Auth ${process.env.FIREBASE_AUTH_EMULATOR_HOST ?? "aus"}\n` +
+      `  Keine echten Daten. Alles ist beim Beenden wieder weg.\n`,
+    );
+  } else if (!projekt) {
+    console.warn(
+      "\n  WARNUNG: Weder Emulator noch Projekt-ID. Firebase Admin hat keine\n" +
+      "  Zugangsdaten — jeder Firestore-Zugriff wird scheitern. Fuer den\n" +
+      "  lokalen Betrieb: npm run dev:lokal\n",
+    );
+  }
 }
 
 // Middleware to verify Firebase Auth Token
