@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertOctagon, WifiOff } from 'lucide-react';
-import { db } from '../lib/firebase';
-import { getDoc, doc } from 'firebase/firestore';
+// db, getDoc und doc entfallen mit der Umstellung auf /api/health.
+// Unter noUnusedLocals braechen sie sonst den Build.
 
 export function GlobalErrorOverlay() {
   const [hasError, setHasError] = useState(false);
@@ -15,17 +15,38 @@ export function GlobalErrorOverlay() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Simulate Firebase connection check
+    // BEFUND 10.08.2026: Hier stand
+    // await getDoc(doc(db, 'system', 'health_check')), mit dem Kommentar
+    // "Simulate Firebase connection check". Die Pruefung war nie echt und
+    // konnte gar nicht gelingen: Fuer die Sammlung system gibt es in
+    // firestore.rules keine Regel, und bei Deny-by-default heisst das
+    // "No matching allow statements" -- bei jedem Durchlauf, alle 30
+    // Sekunden.
+    //
+    // Die Folge war schwerer als der Fehler selbst: Diese Komponente legt
+    // sich bildschirmfuellend ueber die App. Wer Klar oeffnete, sah
+    // "Verbindung zum Server fehlgeschlagen" und kam nicht weiter -- bei
+    // einwandfreier Verbindung.
+    //
+    // Jetzt gegen /api/health, eine Route ohne Anmeldung und ohne Daten.
+    // ZWEI Fehlversuche in Folge, bevor die Meldung erscheint: Ein
+    // einzelner Aussetzer -- Neustart des Servers, kurze Funkluecke --
+    // darf die Oberflaeche nicht sperren.
+    let fehlversuche = 0;
     const checkConnection = async () => {
+      if (isOffline) return;
       try {
-        if (!isOffline) {
-          await getDoc(doc(db, 'system', 'health_check'));
-          setHasError(false);
-        }
+        const antwort = await fetch('/api/health', { cache: 'no-store' });
+        if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`);
+        fehlversuche = 0;
+        setHasError(false);
       } catch (err) {
-        console.error("Firebase connection error:", err);
-        setHasError(true);
-        setErrorMessage("Verbindung zum Server fehlgeschlagen. Bitte versuche es später erneut.");
+        fehlversuche += 1;
+        console.warn(`Verbindungspruefung fehlgeschlagen (${fehlversuche}/2):`, err);
+        if (fehlversuche >= 2) {
+          setHasError(true);
+          setErrorMessage("Verbindung zum Server fehlgeschlagen. Bitte versuche es später erneut.");
+        }
       }
     };
     

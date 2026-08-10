@@ -303,6 +303,24 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
     return requireAuth(req, res, next);
   });
 
+  // BEFUND 10.08.2026: /api/health stand in BEIDEN Ausnahmelisten
+  // (OEFFENTLICH und OHNE_ALTERSPRUEFUNG) -- die Route selbst gab es
+  // nirgends. Ein Aufruf landete im 404-Zweig.
+  //
+  // Gebraucht wird sie von GlobalErrorOverlay: Der prueft die Verbindung
+  // und tat das bis heute mit getDoc(doc(db, 'system', 'health_check')).
+  // Fuer die Sammlung system gibt es in firestore.rules keine Regel; bei
+  // Deny-by-default schlug das zwangslaeufig fehl. Ergebnis war alle 30
+  // Sekunden ein bildschirmfuellendes "Verbindung zum Server
+  // fehlgeschlagen" -- bei einwandfreier Verbindung.
+  //
+  // Diese Antwort enthaelt bewusst KEINE Daten: kein Zustand, keine
+  // Version, keine Zaehlwerte. Sie ist ohne Anmeldung erreichbar, und
+  // alles darin waere oeffentlich.
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true });
+  });
+
   // ── GEGENPRÜFUNG 09.08.2026 ─────────────────────────────────────────────
   // BEFUND: Die Altersprüfung und die Einwilligung wirkten AUSSCHLIESSLICH
   // im Browser. `isAdult` kam in keiner einzigen `allow`-Bedingung der
