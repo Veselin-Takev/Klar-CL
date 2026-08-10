@@ -1,10 +1,35 @@
 
+// ── BEFUND 10.08.2026, beim ersten Serverstart ──────────────────────────
+// `dotenv` steht seit jeher in den Abhaengigkeiten und wurde NIRGENDS
+// importiert. `.env.local` wurde also nie gelesen — GEMINI_API_KEY,
+// GEMINI_MODEL, TRUST_PROXY_HOPS kamen nie an. Sichtbar wurde es an
+// „API key should be set when using the Gemini API" beim Start.
+//
+// Das erklaert auch, warum der KI-Coach nie antworten konnte: Nicht der
+// Schluessel fehlte, sondern der Weg, ihn einzulesen.
+//
+// ZUR REIHENFOLGE — ich hatte hier zuerst geschrieben, das muesse „vor
+// jedem anderen Import stehen". Das stimmt so nicht: In ESM werden ALLE
+// Importe ausgewertet, bevor die erste Anweisung des Moduls laeuft. Die
+// Position im Quelltext aendert daran nichts.
+//
+// Es funktioniert trotzdem, und zwar aus einem anderen Grund: Kein
+// importiertes Modul liest `process.env` beim Laden. Die Gemini-Clients
+// entstehen erst in `startServer()` bzw. in den Endpunkten, also nach
+// diesen beiden Zeilen. Geprueft, nicht angenommen.
+//
+// Sollte je ein Modul dazukommen, das beim Import Umgebungsvariablen
+// liest, waere `node --env-file=.env.local` der richtige Weg.
+import { config as ladeUmgebung } from "dotenv";
+ladeUmgebung({ path: ".env.local" });   // Vorrang
+ladeUmgebung();                          // .env als Ergaenzung, ueberschreibt nichts
+
 import express from "express";
 import helmet from "helmet";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import crypto from 'crypto';
@@ -352,7 +377,17 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
   const kiLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 60,
-    keyGenerator: (req) => (req as any).user?.uid ?? req.ip ?? "unbekannt",
+    // GEGENPRUEFUNG 10.08.2026: Hier stand `?? req.ip ?? "unbekannt"`.
+    // express-rate-limit lehnt das ab (ERR_ERL_KEY_GEN_IPV6): Eine rohe
+    // IPv6-Adresse als Schluessel laesst sich umgehen, weil ein Anschluss
+    // ueber sehr viele Adressen verfuegt — jede waere ein eigener Zaehler.
+    // `ipKeyGenerator` fasst sie zu einem Subnetz zusammen.
+    // Der Fehler erschien bei jedem Serverstart; er war meiner.
+    keyGenerator: (req) => {
+      const konto = (req as any).user?.uid;
+      if (konto) return `konto-${konto}`;
+      return ipKeyGenerator(req.ip ?? "");
+    },
     message: { error: "Zu viele KI-Anfragen in kurzer Zeit. Bitte später erneut." },
     standardHeaders: true,
     legacyHeaders: false,
@@ -2007,13 +2042,39 @@ Gib die Antwort als JSON zurück.`,
     }
   }
 
-  // Initial scan on startup, then every 24 hours (86400000 ms)
-  runLegalScan();
-  setInterval(runLegalScan, 24 * 60 * 60 * 1000);
+  // ══ BEFUND 10.08.2026 — STILLGELEGT ══════════════════════════════════
+  // `runLegalScan()` lief beim Start und danach alle 24 Stunden. Sein
+  // Prompt lautet woertlich:
+  //
+  //     „Generiere 1-2 fiktive, aber realistische aktuelle Updates."
+  //
+  // Das Ergebnis landete in `legalUpdatesDB`, wurde ueber
+  // /api/legal-updates ausgeliefert und in App.tsx als Hinweisfenster mit
+  // Bestaetigungspflicht angezeigt — samt `aiSummary`, „was das konkret
+  // fuer dich bedeutet". Faellt der Aufruf aus, greift ein fest
+  // eingebauter Ersatzeintrag („KI-Verordnung (AI Act) in Kraft").
+  //
+  // Die App hat damit ERFUNDENE GESETZESAENDERUNGEN als echte
+  // Rechtsinformation dargestellt und die bedienende Person aufgefordert,
+  // sie zur Kenntnis zu nehmen. Das ist keine Anzeige mit Platzhaltern —
+  // es ist eine unzutreffende Angabe ueber die Rechtslage der Nutzer.
+  //
+  // Ich lege den Vorgang still, statt ihn zu kennzeichnen. Eine
+  // Rechtsinformation, die als solche gekennzeichnet erfunden ist, hat
+  // keinen Nutzen; eine echte braucht eine echte Quelle.
+  //
+  // ZU ENTSCHEIDEN: entweder eine belastbare Quelle anbinden (EUR-Lex hat
+  // eine offene Schnittstelle) und die Texte von einer Fachstelle
+  // freigeben lassen — oder die Funktion ersatzlos entfernen.
+  // Bis dahin liefert der Endpunkt eine leere Liste; das Hinweisfenster
+  // erscheint dann gar nicht.
+  //
+  // runLegalScan();
+  // setInterval(runLegalScan, 24 * 60 * 60 * 1000);
+  void runLegalScan;   // bleibt referenziert, damit noUnusedLocals nicht bricht
 
-  // Endpoint to serve updates to UI
   app.get("/api/legal-updates", (_req, res) => {
-    res.json(legalUpdatesDB);
+    res.json([]);
   });
 
   
