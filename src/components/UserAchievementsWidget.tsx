@@ -49,11 +49,11 @@ export const UserAchievementsWidget: React.FC = () => {
         {achievements.map((achievement) => {
           const Icon = achievement.icon;
           return (
-            <div key={achievement.id} className={`flex flex-col items-center text-center p-3 rounded-xl border \${achievement.unlocked ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 opacity-60'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 \${achievement.unlocked ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-500' : 'bg-stone-200 dark:bg-stone-700 text-stone-400'}`}>
+            <div key={achievement.id} className={`flex flex-col items-center text-center p-3 rounded-xl border ${achievement.unlocked ? 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800' : 'bg-stone-50 dark:bg-stone-800/50 border-stone-100 dark:border-stone-700 opacity-60'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${achievement.unlocked ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-500' : 'bg-stone-200 dark:bg-stone-700 text-stone-400'}`}>
                 <Icon size={20} />
               </div>
-              <span className={`text-xs font-semibold mb-1 \${achievement.unlocked ? 'text-stone-900 dark:text-stone-100' : 'text-stone-500'}`}>{achievement.title}</span>
+              <span className={`text-xs font-semibold mb-1 ${achievement.unlocked ? 'text-stone-900 dark:text-stone-100' : 'text-stone-500'}`}>{achievement.title}</span>
               <span className="text-[10px] text-stone-500 leading-tight">{achievement.description}</span>
             </div>
           );

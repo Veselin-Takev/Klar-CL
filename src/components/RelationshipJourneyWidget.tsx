@@ -72,7 +72,7 @@ export const RelationshipJourneyWidget: React.FC = () => {
             return (
               <div key={step.id} className="flex flex-col items-center gap-2">
                 <div 
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors \${
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                     step.completed 
                       ? 'bg-brand dark:bg-brand-light text-white dark:text-stone-900 shadow-sm' 
                       : 'bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-500'
@@ -80,7 +80,7 @@ export const RelationshipJourneyWidget: React.FC = () => {
                 >
                   <Icon size={14} />
                 </div>
-                <span className={`text-[9px] font-semibold uppercase tracking-wider text-center max-w-[60px] \${step.completed ? 'text-stone-700 dark:text-stone-300' : 'text-stone-400 dark:text-stone-500'}`}>
+                <span className={`text-[9px] font-semibold uppercase tracking-wider text-center max-w-[60px] ${step.completed ? 'text-stone-700 dark:text-stone-300' : 'text-stone-400 dark:text-stone-500'}`}>
                   {step.label}
                 </span>
               </div>

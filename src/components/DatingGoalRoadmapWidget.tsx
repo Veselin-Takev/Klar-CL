@@ -121,7 +121,7 @@ export function DatingGoalRoadmapWidget() {
             <div key={step.id} className="relative pl-8 pb-5 last:pb-0">
               {/* Line connector */}
               {index !== ROADMAP_STEPS.length - 1 && (
-                <div className={`absolute left-[11px] top-6 bottom-[-10px] w-0.5 \${isCompleted ? 'bg-indigo-500' : 'bg-stone-200 dark:bg-stone-800'}`} />
+                <div className={`absolute left-[11px] top-6 bottom-[-10px] w-0.5 ${isCompleted ? 'bg-indigo-500' : 'bg-stone-200 dark:bg-stone-800'}`} />
               )}
               
               {/* Step indicator */}
@@ -143,7 +143,7 @@ export function DatingGoalRoadmapWidget() {
               {/* Step Content */}
               <motion.div 
                 animate={{ opacity: isCompleted || isNext ? 1 : 0.5 }}
-                className={`bg-stone-50 dark:bg-stone-800/50 rounded-2xl p-3 border transition-colors \${isCompleted ? 'border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-900/10' : isNext ? 'border-indigo-300 dark:border-indigo-500/50' : 'border-stone-100 dark:border-stone-800'} relative overflow-hidden`}
+                className={`bg-stone-50 dark:bg-stone-800/50 rounded-2xl p-3 border transition-colors ${isCompleted ? 'border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-900/10' : isNext ? 'border-indigo-300 dark:border-indigo-500/50' : 'border-stone-100 dark:border-stone-800'} relative overflow-hidden`}
               >
                 {activeParticleStep === step.id && (
                   <motion.div 
@@ -156,7 +156,7 @@ export function DatingGoalRoadmapWidget() {
                   </motion.div>
                 )}
                 <div className="flex justify-between items-center mb-1 relative z-10">
-                  <h4 className={`text-sm font-semibold \${isCompleted ? 'text-indigo-700 dark:text-indigo-300' : 'text-stone-900 dark:text-stone-100'}`}>
+                  <h4 className={`text-sm font-semibold ${isCompleted ? 'text-indigo-700 dark:text-indigo-300' : 'text-stone-900 dark:text-stone-100'}`}>
                     {step.title}
                   </h4>
                   {isNext && (

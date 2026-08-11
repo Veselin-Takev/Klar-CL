@@ -76,12 +76,35 @@ export function DateRatingChartWidget() {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {data.map((entry) => (
-                    <Cell key={`cell-\${index}`} fill={entry.color} />
+                  {/* BEFUND 11.08.2026: Der Schluessel enthielt einen
+                      maskierten Platzhalter (Rueckstrich vor dem
+                      Dollarzeichen). Dadurch bekam JEDES Segment denselben
+                      Schluessel — React kann sie so nicht auseinanderhalten.
+                      Nach dem Entfernen der Maskierung war `index` gar nicht
+                      definiert: Die Rueckruffunktion nahm nur `entry`. Zwei
+                      Fehler uebereinander, beide unsichtbar, weil der
+                      Ausdruck als Text durchlief.
+                      Bewacht von scripts/check-vorlagen.mjs. */}
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  formatter={(_value: any) => [`\${value} Dates`, 'Anzahl']}
+                {/* Zwei Befunde an der Formatierung unten:
+
+                    1. Der Parameter hiess `_value`, benutzt wurde `value`.
+                       Ohne die Maskierung des Platzhalters waere das ein
+                       ReferenceError gewesen; mit ihr stand im Tooltip
+                       woertlich der Platzhaltertext statt der Zahl.
+
+                    2. `any` ist bewusst gesetzt und bleibt. Recharts erwartet
+                       `Formatter<ValueType, NameType>`, und `ValueType`
+                       schliesst `undefined` ein; eine engere Angabe (`number`)
+                       lehnt TypeScript deshalb ab (TS2322, kontravariante
+                       Pruefung des Parameters). Das ist die Signatur, mit der
+                       diese Zeile schon vorher uebersetzt wurde — geaendert
+                       ist allein der Name des Parameters. */}
+                <Tooltip
+                  formatter={(value: any) => [`${value} Dates`, 'Anzahl']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
               </PieChart>

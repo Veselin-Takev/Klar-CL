@@ -40,7 +40,7 @@ export const ProfileCardThemeSelector: React.FC = () => {
           <button
             key={theme.id}
             onClick={() => handleSelectTheme(theme.id)}
-            className={`relative aspect-square rounded-xl border-2 transition-all \${theme.color} \${
+            className={`relative aspect-square rounded-xl border-2 transition-all ${theme.color} ${
               activeTheme === theme.id 
                 ? 'border-brand dark:border-brand-light scale-105 shadow-md z-10' 
                 : 'border-transparent hover:scale-105'

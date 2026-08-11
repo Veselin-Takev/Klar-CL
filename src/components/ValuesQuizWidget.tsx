@@ -85,7 +85,7 @@ export function ValuesQuizWidget() {
           <div className="w-full h-1.5 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden mb-2">
             <div 
               className="h-full bg-purple-500 transition-all duration-500" 
-              style={{ width: `\${(step / questions.length) * 100}%` }}
+              style={{ width: `${(step / questions.length) * 100}%` }}
             />
           </div>
           

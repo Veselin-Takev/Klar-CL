@@ -90,8 +90,8 @@ export function SmartDatingJournalWidget() {
         </div>
         {!analysis && !isLoading && (
           <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-lg">
-            <button onClick={() => setMode("text")} className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors \${mode === "text" ? "bg-white dark:bg-stone-700 shadow-sm text-stone-900 dark:text-stone-100" : "text-stone-500"}`}>Text</button>
-            <button onClick={() => setMode("quicklog")} className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors flex items-center gap-1 \${mode === "quicklog" ? "bg-white dark:bg-stone-700 shadow-sm text-stone-900 dark:text-stone-100" : "text-stone-500"}`}><SmilePlus size={10} /> Quick-Log</button>
+            <button onClick={() => setMode("text")} className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors ${mode === "text" ? "bg-white dark:bg-stone-700 shadow-sm text-stone-900 dark:text-stone-100" : "text-stone-500"}`}>Text</button>
+            <button onClick={() => setMode("quicklog")} className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors flex items-center gap-1 ${mode === "quicklog" ? "bg-white dark:bg-stone-700 shadow-sm text-stone-900 dark:text-stone-100" : "text-stone-500"}`}><SmilePlus size={10} /> Quick-Log</button>
           </div>
         )}
       </div>
@@ -109,7 +109,7 @@ export function SmartDatingJournalWidget() {
                     <button 
                       key={emoji}
                       onClick={() => toggleEmoji(emoji)}
-                      className={`text-2xl w-12 h-12 flex items-center justify-center rounded-xl transition-all \${selectedEmojis.includes(emoji) ? "bg-rose-200 dark:bg-rose-800 scale-110 shadow-sm" : "bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 opacity-70 hover:opacity-100"}`}
+                      className={`text-2xl w-12 h-12 flex items-center justify-center rounded-xl transition-all ${selectedEmojis.includes(emoji) ? "bg-rose-200 dark:bg-rose-800 scale-110 shadow-sm" : "bg-white dark:bg-stone-800 hover:bg-stone-50 dark:hover:bg-stone-700 opacity-70 hover:opacity-100"}`}
                     >
                       {emoji}
                     </button>
@@ -148,7 +148,7 @@ export function SmartDatingJournalWidget() {
                     <button
                       key={vibe}
                       onClick={() => toggleVibe(vibe)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors \${
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
                         selectedVibes.includes(vibe) 
                           ? 'bg-rose-100 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-400' 
                           : 'bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-600'
