@@ -29,6 +29,11 @@ import helmet from "helmet";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
+// 11.08.2026 — der eine Weg, auf dem ein KI-Aufruf stattfindet.
+// Befund: src/server/kiPolitik.ts hatte bis heute null Aufrufer im
+// Produktionscode. Siehe src/server/kiAufruf.ts und klar/20-enterprise-reife.md.
+import { beantworte } from "./src/server/kiAufruf";
+import { COACH_IMPULS, DATING_BEREITSCHAFT } from "./src/server/kuratiert";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -737,10 +742,26 @@ Regeln:
   
   
   // API Route for Daily Coach Insight
+  // UMGESTELLT 11.08.2026 auf kiAufruf.beantworte(). Vorher zwei Befunde:
+  //   1. `JSON.parse(response.text || '{"insight":""}')` — eine leere
+  //      Antwort wurde zu einem leeren Ergebnis und damit zu einer
+  //      Auswertung, die es nicht gab.
+  //   2. Bei erschoepftem Kontingent wurde "Vertraue dem Prozess und sei du
+  //      selbst." ausgeliefert — unmarkiert, an einer Stelle, die eine
+  //      Auswertung der eigenen Aktivitaeten versprochen hatte.
+  // Jetzt: Zeitgrenze, zweiter Versuch, JSON-Pruefung, und bei Ausfall ein
+  // von Menschen geschriebener Text MIT Kennzeichnung.
   app.post("/api/gemini/daily-coach-insight", async (req, res) => {
-    try {
-      const { recentActivity, userGoals } = req.body;
-      const response = await ai.models.generateContent({
+    const { recentActivity, userGoals } = req.body;
+    const antwort = await beantworte(
+      "/api/gemini/daily-coach-insight",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht: Ob
+      // @google/genai in der hier verwendeten Fassung `config.abortSignal`
+      // auswertet, konnte ich nicht belegen — und eine unbelegte Zusage ist
+      // an dieser Stelle schlimmer als keine. `rufeKi` erzwingt die
+      // Zeitgrenze ohnehin ueber einen harten Wettlauf; ohne Signal laeuft
+      // der Aufruf im Hintergrund weiter, die Anfrage kehrt aber zurueck.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere die letzten Interaktionen und Ziele des Nutzers:\nZiele: ${userGoals || "Partnersuche"}\nLetzte Aktivitäten: ${recentActivity || "Keine"}\nErstelle EINEN kurzen, personalisierten und ermutigenden Ratschlag (Daily Coach Insight).`,
         config: {
@@ -754,23 +775,27 @@ Regeln:
             required: ["insight"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"insight":""}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ insight: "Vertraue dem Prozess und sei du selbst. Jeder Schritt ist ein Fortschritt." });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
-    }
+      }),
+      { kuratiert: { ...COACH_IMPULS } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Dating Readiness
+  // UMGESTELLT 11.08.2026. Vorher: `JSON.parse(response.text ||
+  // '{"wisdom":"","actionableAdvice":""}')` — eine leere Antwort wurde zu
+  // zwei leeren Feldern, die in der Oberflaeche wie ein Ergebnis aussahen.
   app.post("/api/gemini/dating-readiness", async (req, res) => {
-    try {
-      const { goals, recentActivity } = req.body;
-      const response = await ai.models.generateContent({
+    const { goals, recentActivity } = req.body;
+    const antwort = await beantworte(
+      "/api/gemini/dating-readiness",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht: Ob
+      // @google/genai in der hier verwendeten Fassung `config.abortSignal`
+      // auswertet, konnte ich nicht belegen — und eine unbelegte Zusage ist
+      // an dieser Stelle schlimmer als keine. `rufeKi` erzwingt die
+      // Zeitgrenze ohnehin ueber einen harten Wettlauf; ohne Signal laeuft
+      // der Aufruf im Hintergrund weiter, die Anfrage kehrt aber zurueck.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Generiere eine tägliche Dating-Weisheit für einen Nutzer basierend auf folgenden Daten:\nZiele: ${goals || "Authentische Verbindungen finden"}\nLetzte Aktivität: ${recentActivity || "Keine besondere Aktivität"}`,
         config: {
@@ -785,17 +810,19 @@ Regeln:
             required: ["wisdom", "actionableAdvice"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"wisdom":"","actionableAdvice":""}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ wisdom: "Sei du selbst und genieße den Moment.", actionableAdvice: "Lächle heute jemanden an." });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
-    }
+      }),
+      { kuratiert: { ...DATING_BEREITSCHAFT } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
+
+  // ENTFERNT 11.08.2026: Der alte Ausfallpfad lieferte bei Kontingentfehler
+  // { wisdom: "Sei du selbst und genieße den Moment.",
+  //   actionableAdvice: "Lächle heute jemanden an." }
+  // — unmarkiert, an einer Stelle, die eine Auswertung der eigenen Ziele
+  // und Aktivitaeten versprochen hatte. Ersetzt durch DATING_BEREITSCHAFT
+  // aus kuratiert.ts, das `entscheideAntwort` als solches kennzeichnet.
+  // Kein toter Code stehen gelassen: Der Pfad ist weg, nicht auskommentiert.
 
   // API Route for Dating Success Score
   app.post("/api/dating-success-score", async (req, res) => {
@@ -1858,16 +1885,43 @@ Gib das Ergebnis im vorgegebenen JSON-Format zurück.`,
       }
     }
   });
+  // UMGESTELLT 11.08.2026 auf kiAufruf.beantworte(), Strategie `leer`.
+  //
+  // Der gesamte Ausfallpfad war eine Zeile:
+  //     catch(e) { res.json({ insight: "Tolle Basis! Bereit für KI-Feedback?" }); }
+  //
+  // Drei Dinge daran:
+  //   1. Es ist ein Urteil ueber das Profil einer Person — erfunden, mit
+  //      HTTP 200, nicht von einer echten Auswertung zu unterscheiden.
+  //   2. Der Fehler wurde vollstaendig verschluckt: kein Protokolleintrag,
+  //      keine Unterscheidung zwischen "Kontingent erschoepft" und "Server
+  //      kaputt".
+  //   3. Es hat gewirkt. Genau diese Zeile stand am 10.08.2026 in der Liste
+  //      der 29 erfundenen Ersatzantworten und war der Anlass fuer die Regel
+  //      in kiPolitik.ts.
+  //
+  // `leer` heisst hier: Die Kachel blendet sich aus. Ein kurzer Satz ueber
+  // ein Profil laesst sich nicht kuratieren, ohne wieder ein Urteil zu sein.
+  //
+  // `feld: 'insight'` erhaelt den Vertrag mit der Oberflaeche: Sie liest
+  // genau dieses Feld. Ohne die Angabe hiesse es `text`, und die Anzeige
+  // waere leer geblieben — ohne Fehler, ohne Meldung.
   app.post("/api/quick-insight", async (req, res) => {
-    try {
-      const { bio } = req.body;
-      if (!bio || bio.trim().length === 0) return res.json({ insight: "Füge Text hinzu, um KI-Feedback zu erhalten." });
-      const response = await ai.models.generateContent({
+    const { bio } = req.body;
+    // Kein KI-Fall: Ohne Text gibt es nichts auszuwerten. Das ist eine
+    // Aufforderung, kein Ergebnis, und bleibt deshalb wie gehabt.
+    if (!bio || bio.trim().length === 0) {
+      return res.json({ insight: "Füge Text hinzu, um KI-Feedback zu erhalten." });
+    }
+    const antwort = await beantworte(
+      "/api/quick-insight",
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere folgendes Profil in genau einem ganz kurzen, positiven Satz (max. 5-7 Wörter) der neugierig macht auf mehr Feedback. Profil: ${bio}`,
-      });
-      res.json({ insight: response.text?.trim() });
-    } catch(e) { res.json({ insight: "Tolle Basis! Bereit für KI-Feedback?" }); }
+      }),
+      { json: false, feld: 'insight' },
+    );
+    return res.status(antwort.status).json(antwort.koerper);
   });
 
 
@@ -1947,11 +2001,27 @@ Du beurteilst:
     }
   });
 
+  // UMGESTELLT 11.08.2026 auf kiAufruf.beantworte(), Strategie `leer`.
+  //
+  // Dies ist der Endpunkt mit dem heikelsten Ersatz im ganzen Bestand. Bei
+  // erschoepftem Kontingent lieferte er:
+  //     { moodCategory: "harmonisch", score: 70, comment: "Alles bestens." }
+  // — eine erfundene Stimmungsauswertung ueber die letzten fuenf Gespraeche
+  // einer Person, nicht von einer echten zu unterscheiden. Eine belastende
+  // Dynamik waere damit als "harmonisch, 70, Alles bestens" ueberdeckt
+  // worden.
+  //
+  // Ebenso entfaellt der Vorgabewert im JSON.parse
+  // ('{"moodCategory":"harmonisch","score":50,...}'): Eine leere
+  // Modellantwort wurde dadurch zu einer Auswertung mit Zahl.
+  //
+  // Strategie `leer` heisst: Das Widget blendet sich aus. Es gibt hier
+  // nichts, was ehrlich an die Stelle treten koennte.
   app.post("/api/mood-monitor", async (req, res) => {
-    try {
-      const { chats } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const { chats } = req.body;
+    const antwort = await beantworte(
+      "/api/mood-monitor",
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere die folgenden letzten 5 Chats und bestimme die allgemeine Stimmung (Sentiment).
 Chats:
@@ -1974,17 +2044,9 @@ Gib das Ergebnis im JSON-Format zurück.`,
             required: ["moodCategory", "score", "comment"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"moodCategory":"harmonisch","score":50,"comment":"Keine ausreichenden Daten."}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ moodCategory: "harmonisch", score: 70, comment: "Alles bestens." });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Profile Import

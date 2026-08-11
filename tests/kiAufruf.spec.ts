@@ -79,6 +79,16 @@ describe('rufeKi — Ablauf', () => {
     assert.equal(!e.ok && e.code, 'ki_zeitueberschreitung');
   });
 
+  it('bricht auch ab, wenn der Aufruf das Signal IGNORIERT', async () => {
+    // ENTSCHEIDUNG: Eine Zeitgrenze, die von der Mitarbeit des Aufgerufenen
+    // abhaengt, ist keine. Ob `@google/genai` `config.abortSignal`
+    // auswertet, ist nicht belegt — also darf sich nichts darauf verlassen.
+    const aufruf = () => new Promise<{ text?: string }>(() => { /* nie */ });
+    const e = await rufeKi(aufruf, 30);
+    assert.equal(e.ok, false);
+    assert.equal(!e.ok && e.code, 'ki_zeitueberschreitung');
+  });
+
   it('reicht das Signal an den Aufruf durch', async () => {
     let bekommen: AbortSignal | null = null;
     await rufeKi(async (signal) => { bekommen = signal; return { text: '{}' }; });
@@ -160,6 +170,20 @@ describe('beantworte — Zusammenspiel mit der Ersatzregel', () => {
     assert.equal(a.status, 200);
     assert.equal(a.koerper.herkunft, 'kuratiert');
     assert.equal(typeof a.koerper.hinweis, 'string');
+  });
+
+  it('json:false mit `feld` legt den Text unter dem gewuenschten Namen ab', async () => {
+    // ENTSCHEIDUNG: Der Feldname gehoert zum Vertrag mit der Oberflaeche.
+    // Ein stiller Wechsel von `insight` auf `text` erzeugt dort eine leere
+    // Anzeige — ohne Fehler, ohne Meldung.
+    const a = await beantworte(
+      '/api/quick-insight',
+      async () => ({ text: 'Kurzer Satz' }),
+      { json: false, feld: 'insight' },
+    );
+    assert.equal(a.status, 200);
+    assert.equal(a.koerper.insight, 'Kurzer Satz');
+    assert.equal(a.koerper.text, undefined);
   });
 
   it('json:false liefert den Rohtext', async () => {

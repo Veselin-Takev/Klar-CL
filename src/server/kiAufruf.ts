@@ -72,6 +72,18 @@ export interface Beiwerk {
   zeitgrenzeMs?: number;
   /** Erwartet der Endpunkt JSON? Dann wird geparst und geprüft. */
   json?: boolean;
+  /**
+   * Nur für Endpunkte mit `json: false`. Legt fest, unter welchem Namen der
+   * Text in der Antwort steht.
+   *
+   * BEFUND 11.08.2026: Ohne das lieferte `beantworte` bei `json: false`
+   * immer `{ text: … }`. Endpunkte wie `/api/quick-insight` liefern aber
+   * `{ insight: … }`, und die Oberfläche liest genau dieses Feld. Ein
+   * stiller Namenswechsel hätte dort eine leere Anzeige erzeugt — ohne
+   * Fehler, ohne Meldung. Genau die Sorte Befund, die dieses Projekt
+   * seit Tagen einsammelt.
+   */
+  feld?: string;
 }
 
 /** Ergebnis eines Rohaufrufs — ohne Ersatzregel, nur Erfolg oder Fehlercode. */
@@ -102,7 +114,26 @@ export async function rufeKi(aufruf: Aufruf, zeitgrenzeMs = ZEITGRENZE_MS): Prom
     const uhr: ReturnType<typeof setTimeout> = setTimeout(() => abbruch.abort(), zeitgrenzeMs);
 
     try {
-      const roh = await aufruf(abbruch.signal);
+      // BEFUND 11.08.2026 bei der ersten Umstellung eines Endpunkts: Die
+      // Zeitgrenze verliess sich darauf, dass der Aufruf das `AbortSignal`
+      // beachtet. Ob `@google/genai` in der hier verwendeten Fassung
+      // `config.abortSignal` auswertet, konnte ich nicht belegen — und eine
+      // Zeitgrenze, die von der Mitarbeit des Aufgerufenen abhaengt, ist
+      // keine. Ignoriert das SDK das Signal, haette `rufeKi` unbegrenzt
+      // gewartet: genau der Zustand, den es beseitigen soll.
+      //
+      // Deshalb zusaetzlich ein harter Wettlauf. Das Signal wird weiter
+      // gesetzt und weitergereicht — beachtet es der Aufruf, wird die
+      // Verbindung sauber abgebrochen; beachtet er es nicht, laeuft er im
+      // Hintergrund weiter, aber die Anfrage kehrt zurueck.
+      const roh = await Promise.race([
+        aufruf(abbruch.signal),
+        new Promise<never>((_erfuellen, ablehnen) => {
+          abbruch.signal.addEventListener('abort', () =>
+            ablehnen(new Error('Zeitüberschreitung')),
+          );
+        }),
+      ]);
       const text = typeof roh?.text === 'string' ? roh.text.trim() : '';
       if (text.length === 0) {
         // Eine leere Antwort ist kein Erfolg. Vorher wurde daraus an
@@ -178,7 +209,7 @@ export async function beantworte(
   const ergebnis = await rufeKi(aufruf, beiwerk.zeitgrenzeMs);
 
   if (ergebnis.ok) {
-    if (beiwerk.json === false) return erfolg({ text: ergebnis.text });
+    if (beiwerk.json === false) return erfolg({ [beiwerk.feld ?? 'text']: ergebnis.text });
     try {
       const daten = JSON.parse(schaeleJson(ergebnis.text)) as unknown;
       if (daten === null || typeof daten !== 'object') {
