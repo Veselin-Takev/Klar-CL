@@ -37,12 +37,13 @@ before(async () => {
   // spricht garantiert nie mit echten Daten. Dieselbe ID steht in
   // `test:rules` hinter `--project`; weichen beide voneinander ab, lehnt
   // der Emulator wegen `singleProjectMode` jede Anfrage ab.
+  const [wirt, hafen] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
   env = await initializeTestEnvironment({
     projectId: 'demo-klar',
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host: '127.0.0.1',
-      port: 8080,
+      host: wirt || '127.0.0.1',
+      port: Number(hafen) || 8080,
     },
   });
 });

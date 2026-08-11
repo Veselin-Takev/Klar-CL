@@ -20,7 +20,7 @@
     "check:namen": "node scripts/check-namen.mjs src",
     "check:vorlagen": "node scripts/check-vorlagen.mjs src",
     "check:ki": "node scripts/kiErsatzPruefung.mjs",
-    "test:rules": "firebase emulators:exec --project demo-klar --only firestore \"tsx --test tests/rules.spec.ts\"",
+    "test:rules": "firebase emulators:exec --project demo-klar --only firestore --config firebase.pruefung.json \"tsx --test tests/rules.spec.ts\"",
     "dev:lokal": "firebase emulators:exec --project demo-klar --only auth,firestore \"VITE_EMULATOR=true tsx server.ts\"",
     "dev:moderator": "node scripts/dev-moderator.mjs"
   },
