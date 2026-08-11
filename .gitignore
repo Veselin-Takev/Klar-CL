@@ -14,3 +14,4 @@ dist/
 # Einmalige Reparaturskripte gehoeren nicht ins Repo.
 klar-fix*.mjs
 klarfix*.mjs
+*.tar.gz
