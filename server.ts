@@ -32,8 +32,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 // 11.08.2026 — der eine Weg, auf dem ein KI-Aufruf stattfindet.
 // Befund: src/server/kiPolitik.ts hatte bis heute null Aufrufer im
 // Produktionscode. Siehe src/server/kiAufruf.ts und klar/20-enterprise-reife.md.
-import { beantworte } from "./src/server/kiAufruf";
-import { COACH_IMPULS, DATING_BEREITSCHAFT } from "./src/server/kuratiert";
+import { beantworte, ausfall } from "./src/server/kiAufruf";
+import {
+  COACH_IMPULS, DATING_BEREITSCHAFT,
+  DATE_CHECKLISTE, DATE_IDEEN, ICEBREAKER_VORSCHLAEGE, VERBINDUNG_KONZEPTE,
+} from "./src/server/kuratiert";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -684,11 +687,11 @@ Regeln:
   
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ text: "Das ist eine simulierte Antwort, da das KI-Limit erreicht wurde. Versuche, authentisch und du selbst zu sein!" });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/chat", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -731,11 +734,11 @@ Regeln:
       res.json(JSON.parse(response.text || '{"data":[]}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ data: [] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/compatibility-radar", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -872,11 +875,11 @@ Regeln:
       res.json(JSON.parse(response.text || '{"scores":[],"insight":""}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ scores: [{category: "Kommunikation", score: 80}], insight: "Du bist auf einem guten Weg!" });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/dating-success-score", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1264,11 +1267,11 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
       res.json(JSON.parse(response.text || '{"patterns":[],"learning":""}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ patterns: ["Gute Gespräche"], learning: "Immer positiv bleiben." });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/date-archive-analysis", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1308,11 +1311,11 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
       res.json(JSON.parse(response.text || '{"items":[]}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ items: [{category: "Mindset", text: "Entspann dich!"}] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/date-checklist", e, { kuratiert: { ...DATE_CHECKLISTE } });
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1354,18 +1357,11 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
       res.json(JSON.parse(t.trim()));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ ideas: [
-          {
-            title: "Kaffee & Spaziergang",
-            description: "Ein klassisches Date, das immer funktioniert.",
-            category: "Casual",
-            whyItWorks: "Entspannte Atmosphäre"
-          }
-        ]});
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/gemini/date-inspiration", e, { kuratiert: { ...DATE_IDEEN } });
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1395,11 +1391,11 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
       res.json({ ideas: JSON.parse(response.text || "[]") });
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ ideas: [{title: "Spaziergang", description: "Im Park"}] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/date-ideas", e, { kuratiert: { ...DATE_IDEEN } });
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1451,11 +1447,11 @@ Keine Halluzinationen. Halte es prägnant, charmant und nachvollziehbar.`,
       res.json({ summary: response.text });
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ summary: "Dies ist eine simulierte Zusammenfassung." });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/profile-summary", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1771,11 +1767,11 @@ Gib genau 3 verschiedene Vorschläge zurück. Jeder Vorschlag sollte natürlich 
       res.json(JSON.parse(response.text || '{"suggestions":[]}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ suggestions: ["Hallo, wie gehts?"] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/icebreakers", e, { kuratiert: { ...ICEBREAKER_VORSCHLAEGE } });
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1817,11 +1813,11 @@ Basierend auf diesen Daten, erstelle 3 alternative, kreative Date-Konzepte oder 
       res.json(JSON.parse(response.text || '{"concepts":[]}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ concepts: [{ title: "Kreativer Nachmittag", description: "Zusammen etwas Neues ausprobieren", tag: "Kreativ" }] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/verbindung-optimizer", e, { kuratiert: { ...VERBINDUNG_KONZEPTE } });
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -1878,11 +1874,11 @@ Gib das Ergebnis im vorgegebenen JSON-Format zurück.`,
       res.json(JSON.parse(response.text || '{"tonalityOverTime":[],"topics":[]}'));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ tonalityOverTime: [{ section: "Start", score: 60, theme: "Kennenlernen" }], topics: [{ name: "Allgemein", count: 1 }] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/analyze-relationship", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
   // UMGESTELLT 11.08.2026 auf kiAufruf.beantworte(), Strategie `leer`.
@@ -2085,11 +2081,11 @@ Erstelle daraus:
       res.json(JSON.parse(response.text || "{}"));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ bio: "Dies ist eine simulierte Bio, da das KI-Limit vorübergehend erreicht wurde.", interests: ["Musik", "Reisen", "Kochen"] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/parse-profile-import", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 
@@ -2133,11 +2129,11 @@ Gib die Antwort als JSON zurück.`,
       res.json(JSON.parse(response.text || "{}"));
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      if (isQuotaExceeded(e)) {
-        res.json({ optimizedBio: (req.body.bio || "") + "\n\n(Optimierte Version)", suggestedInterests: [...(req.body.interests || []), "Neues Hobby"] });
-      } else {
-        res.status(500).json({ error: "Fehler bei der KI-Verarbeitung." });
-      }
+      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
+      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
+      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      const antwort = ausfall("/api/optimize-profile", e);
+      res.status(antwort.status).json(antwort.koerper);
     }
   });
 

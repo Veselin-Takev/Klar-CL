@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { rufeKi, schaeleJson, beantworte, schluesselFehlt } from '../src/server/kiAufruf.ts';
+import { rufeKi, schaeleJson, beantworte, schluesselFehlt, ausfall } from '../src/server/kiAufruf.ts';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Tests für den KI-Aufrufweg.
@@ -207,5 +207,44 @@ describe('schluesselFehlt', () => {
       if (vorher === undefined) delete process.env.GEMINI_API_KEY;
       else process.env.GEMINI_API_KEY = vorher;
     }
+  });
+});
+
+describe('ausfall — die Zwischenstufe fuer noch nicht umgestellte Endpunkte', () => {
+  it('kein_ersatz liefert niemals 200', () => {
+    const a = ausfall('/api/chat', new Error('quota exceeded'));
+    assert.notEqual(a.status, 200);
+    assert.equal(a.koerper.herkunft, 'keine');
+  });
+
+  it('zwischenspeicher ohne Zwischenspeicher scheitert ehrlich', () => {
+    // ENTSCHEIDUNG: Solange es keinen Zwischenspeicher gibt, wird nichts
+    // erfunden. Ein leerer Speicher ist kein Grund fuer eine Antwort.
+    const a = ausfall('/api/dating-success-score', new Error('quota'));
+    assert.notEqual(a.status, 200);
+  });
+
+  it('leer setzt ausblenden', () => {
+    const a = ausfall('/api/city-trend-radar', new Error('quota'));
+    assert.equal(a.koerper.ausblenden, true);
+  });
+
+  it('kuratiert liefert den mitgegebenen Text, gekennzeichnet', () => {
+    const a = ausfall('/api/conversation-tuning', new Error('quota'), {
+      kuratiert: { hinweise: ['Stell eine offene Frage.'] },
+    });
+    assert.equal(a.status, 200);
+    assert.equal(a.koerper.herkunft, 'kuratiert');
+  });
+
+  it('ein unbekannter Endpunkt faellt auf die strengste Regel', () => {
+    const a = ausfall('/api/gibt-es-nicht', new Error('quota'));
+    assert.notEqual(a.status, 200);
+    assert.equal(a.koerper.herkunft, 'keine');
+  });
+
+  it('unterscheidet Kontingent von sonstigem Fehler', () => {
+    assert.equal(ausfall('/api/chat', Object.assign(new Error('x'), { status: 429 })).koerper.code, 'ki_kontingent');
+    assert.equal(ausfall('/api/chat', new Error('irgendwas')).koerper.code, 'ki_fehler');
   });
 });

@@ -58,3 +58,64 @@ export const ICEBREAKER = {
     'Woran merkst du, dass du einen guten Tag hattest?',
   ],
 } as const;
+
+// ── Fuer die fuenf Endpunkte mit Strategie `kuratiert`, die am 11.08.2026
+//    umgestellt wurden ────────────────────────────────────────────────────
+//
+// Jeder dieser Texte ist allgemein. Keiner sagt etwas ueber die lesende
+// Person oder ihr Gegenueber aus. Die alten Ersatzwerte taten das teils
+// doch — „Entspann dich!" als Ergebnis einer Checkliste zum bevorstehenden
+// Date ist ein Ratschlag an eine bestimmte Person in einer bestimmten Lage.
+
+/** Checkliste vor einem Date. Gilt fuer jedes Date, nicht fuer ein bestimmtes. */
+export const DATE_CHECKLISTE = {
+  items: [
+    { category: 'Vorher', text: 'Ort und Uhrzeit noch einmal bestaetigen.' },
+    { category: 'Vorher', text: 'Jemandem sagen, wo du bist und mit wem.' },
+    { category: 'Unterwegs', text: 'Eigene Anreise und eigene Rueckfahrt planen.' },
+    { category: 'Waehrend', text: 'Getraenk im Blick behalten.' },
+    { category: 'Danach', text: 'Kurz aufschreiben, wie es war — bevor der Eindruck verblasst.' },
+  ],
+} as const;
+
+/** Date-Vorschlaege ohne Ortsbezug: Sie passen ueberall im deutschsprachigen Raum. */
+export const DATE_IDEEN = {
+  ideas: [
+    {
+      title: 'Spaziergang mit Ziel',
+      description: 'Ein Weg mit einem Punkt am Ende — Aussicht, Cafe, Buchladen. Reden faellt beim Gehen leichter als am Tisch.',
+      category: 'Ruhig',
+      whyItWorks: 'Kein Blickkontaktzwang, jederzeit beendbar.',
+    },
+    {
+      title: 'Markt am Vormittag',
+      description: 'Wochenmarkt, zwei Stunden, offenes Ende.',
+      category: 'Alltagsnah',
+      whyItWorks: 'Viel zu sehen, wenig Stille auszuhalten.',
+    },
+    {
+      title: 'Etwas ausprobieren, das beide nicht koennen',
+      description: 'Toepfern, Bouldern, ein Kochkurs. Gemeinsames Nichtkoennen verbindet schneller als gemeinsames Koennen.',
+      category: 'Aktiv',
+      whyItWorks: 'Der Fokus liegt auf der Sache, nicht auf der Bewertung.',
+    },
+  ],
+} as const;
+
+/** Gespraechsanfaenge ohne Bezug auf ein konkretes Profil. */
+export const ICEBREAKER_VORSCHLAEGE = {
+  suggestions: [
+    'Was hast du zuletzt gemacht, wovon du vorher dachtest, es waere nichts fuer dich?',
+    'Gibt es einen Ort in dieser Stadt, an dem du dich zuverlaessig wohlfuehlst?',
+    'Woran merkst du, dass du einen guten Tag hattest?',
+  ],
+} as const;
+
+/** Allgemeine Date-Konzepte. Bewusst ohne Zuschnitt auf ein Gespraech. */
+export const VERBINDUNG_KONZEPTE = {
+  concepts: [
+    { title: 'Kurz und offen', description: 'Eine Stunde, ohne Plan fuer danach. Wer laenger will, verlaengert.', tag: 'Ruhig' },
+    { title: 'Gemeinsam etwas erledigen', description: 'Einkauf, Flohmarkt, Pflanze aussuchen. Nebeneinander statt gegenueber.', tag: 'Alltagsnah' },
+    { title: 'Etwas ansehen, ueber das man danach reden kann', description: 'Ausstellung, Konzert, Kino. Der Gespraechsstoff ist eingebaut.', tag: 'Kulturell' },
+  ],
+} as const;

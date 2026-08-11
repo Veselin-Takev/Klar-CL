@@ -243,6 +243,36 @@ export async function beantworte(
 }
 
 /**
+ * Für Endpunkte, die noch nicht auf `beantworte` umgestellt sind: entscheidet
+ * im `catch` nach derselben Regel, statt eine Antwort zu erfinden.
+ *
+ * ── WOZU ──────────────────────────────────────────────────────────────────
+ * Am 11.08.2026 standen in `server.ts` noch 13 `catch`-Bloecke, die bei
+ * erschöpftem Kontingent mit HTTP 200 und erfundenem Inhalt antworteten —
+ * darunter „Du bist auf einem guten Weg!" mit Punktzahlen, eine erfundene
+ * Gesprächsauswertung mit Zeitverlauf, und eine „optimierte Bio", die aus
+ * der unveränderten eigenen Bio plus dem Zusatz „(Optimierte Version)"
+ * bestand.
+ *
+ * Diese Endpunkte vollständig auf `beantworte` umzustellen ist der richtige
+ * Weg, aber er ändert je Endpunkt viel. `ausfall` ändert je Endpunkt eine
+ * Zeile und beseitigt sofort das Schlimmste: die erfundene Antwort.
+ *
+ * WAS ES NICHT TUT: Zeitgrenze und Wiederholung fehlen weiterhin — die
+ * kommen erst mit der vollständigen Umstellung. Das ist eine bewusste
+ * Zwischenstufe, keine Lösung.
+ */
+export function ausfall(endpunkt: string, e: unknown, beiwerk: Beiwerk = {}): Antwort {
+  const strategie: Ersatzstrategie = STRATEGIE[endpunkt] ?? 'kein_ersatz';
+  return entscheideAntwort(
+    strategie,
+    klassifiziereKiFehler(e),
+    beiwerk.zwischenspeicher ?? null,
+    beiwerk.kuratiert ?? null,
+  );
+}
+
+/**
  * Prüft den Schlüssel, bevor überhaupt ein Aufruf versucht wird.
  * Gemessen am 11.08.2026: 5 von 55 Aufrufstellen taten das. Die übrigen 50
  * liefen in einen SDK-Fehler, dessen Text je nach Version anders lautet.
