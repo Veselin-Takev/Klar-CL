@@ -2,9 +2,29 @@
 import { useUsageAnalytics } from "../lib/useUsageAnalytics";
 // FE-05: haengt Widgets erst ein, wenn sie in Sichtnaehe kommen.
 import { BeiSicht } from "../components/BeiSicht";
-// useRef fehlte hier und wird in Zeile 156 benutzt (undoTimerRef).
-// Ergebnis: ReferenceError, weisser Bildschirm. Unsichtbar wegen @ts-nocheck.
+// `useRef` fehlte hier und wird in Zeile 156 benutzt (`undoTimerRef`).
+// Ergebnis war ein weisser Bildschirm: ReferenceError: useRef is not defined.
+// Unsichtbar, weil `@ts-nocheck` oben in dieser Datei den Compiler abschaltet.
+// `scripts/check-hooks.mjs` prüft das jetzt bei jedem `npm run verify`.
 import { useState, useEffect, useMemo, useRef } from "react";
+// ── 11.08.2026: Kontingent kommt ab jetzt vom Server ──────────────────────
+// Vorher lag der Kontostand in `localStorage['klar_contacts_left']`, samt
+// zweier Schaltflächen „Reset für Demo". Ein Kontingent, das das Gerät
+// selbst setzt, ist keines — und die Anzeige oben in der Leiste las bereits
+// den echten Serverwert. Zwei Wahrheiten auf einem Bildschirm.
+//
+// `/api/contact` war vollständig gebaut und hatte null Aufrufer: eine
+// Firestore-Transaktion, die zählt, die Verifizierung prüft und über die
+// Dokument-ID `<von>_<an>` einen zweiten Kontakt an dieselbe Person
+// technisch unmöglich macht.
+//
+// FOLGE, DIE ICH BENENNE: Der Server verlangt `isVerified === true`. Ohne
+// Verifizierung antwortet er mit 409 `nicht_verifiziert`. Das ist dieselbe
+// Bedingung wie in den Firestore-Regeln — aber es heisst, dass ohne
+// Verifizierung niemand mehr kontaktiert werden kann. Die Meldung führt
+// deshalb zur Verifizierung, statt in einer Sackgasse zu enden.
+import { beginneKontakt, nimmKontaktZurueck } from "../lib/klar";
+import { meldeKontaktVerbraucht } from "../components/KontingentAnzeige";
 import { allProfiles } from "../data";
 import type { Profile } from "../data";
 import { Info, X, Heart, BatteryFull, BatteryMedium, BatteryLow, Sparkles, Filter, ShieldCheck, MapPin, ChevronDown, Star, Sun, Moon } from "lucide-react";
@@ -40,7 +60,9 @@ import { DatingSuccessArchiveWidget } from "../components/DatingSuccessArchiveWi
 import { DatingKarmaWidget } from "../components/DatingKarmaWidget";
 import { WeeklyMoodSummaryWidget } from "../components/WeeklyMoodSummaryWidget";
 
-import { Focus, Lock } from "lucide-react";
+// Lock entfaellt mit dem alten Sperrbildschirm — noUnusedLocals braeche
+// sonst den Build, sobald @ts-nocheck aus dieser Datei verschwindet.
+import { Focus } from "lucide-react";
 import { QuickThemeToggle } from "../components/QuickThemeToggle";
 import { DatingProgressChartWidget } from "../components/DatingProgressChartWidget";
 import { WeeklyTimelineWidget } from "../components/WeeklyTimelineWidget";
@@ -156,11 +178,14 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 export default function Dashboard() {
   const { trackEvent } = useUsageAnalytics();
   const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
-  // BEFUND 10.08.2026: showFilterSheet wurde in Zeile 973 gelesen und in
+  // BEFUND 10.08.2026: `showFilterSheet` wurde in Zeile 973 gelesen und in
   // 958/984 gesetzt, aber nirgends deklariert. ReferenceError beim ersten
-  // Rendern -- der weisse Bildschirm nach dem Onboarding. Dritter Fall
-  // derselben Sorte an einem Tag; @ts-nocheck verdeckt alle drei.
+  // Rendern — der weisse Bildschirm nach dem Onboarding. Dritter Fall
+  // derselben Sorte an einem Tag; `@ts-nocheck` verdeckt alle drei.
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  /** Wortlaut des Servers, wenn ein Kontakt abgelehnt wurde. `null` heisst:
+   *  keine Ablehnung — nicht „alles in Ordnung, aber unbekannt". */
+  const [kontaktFehler, setKontaktFehler] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
@@ -189,16 +214,21 @@ export default function Dashboard() {
   
   const [weeklyReview, setWeeklyReview] = useState<string | null>(null);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const [isSmartLockEnabled, setIsSmartLockEnabled] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  
-  useEffect(() => {
-    // If smart lock is enabled, we could lock if a date is soon, but for demo we just show the toggle
-    if (isSmartLockEnabled) {
-      // simulated check
-
-    }
-  }, [isSmartLockEnabled]);
+  // ── 11.08.2026: toter Smart-Lock-Apparat entfernt ────────────────────────
+  // Hier standen drei Dinge, die zusammen nichts taten:
+  //
+  //   const [isSmartLockEnabled, setIsSmartLockEnabled] = useState(false);
+  //   const [isLocked, setIsLocked] = useState(false);
+  //   useEffect(() => { if (isSmartLockEnabled) { /* simulated check */ } },
+  //             [isSmartLockEnabled]);
+  //
+  // `setIsSmartLockEnabled` hatte im ganzen Projekt keinen Aufrufer, der
+  // Effekt einen leeren Rumpf, und der Kommentar sagte „for demo we just
+  // show the toggle" — einen Schalter gab es nicht. `isLocked` wurde nur
+  // vom Sperrbildschirm gelesen, den niemand einschalten konnte.
+  //
+  // Der Sichtschutz liegt jetzt in `components/Sichtschutz.tsx` und ist in
+  // `App.tsx` über allen Routen eingehängt.
 
 
   const [isFetchingReview, setIsFetchingReview] = useState(false);
@@ -341,28 +371,35 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Try to load from localStorage
-    const savedContacts = localStorage.getItem('klar_contacts_left');
-    const savedDate = localStorage.getItem('klar_contacts_date');
-    const savedSeenIds = localStorage.getItem('klar_seen_ids');
-    const today = new Date().toDateString();
-
-    if (savedDate === today && savedContacts !== null) {
-      setContactsLeft(parseInt(savedContacts, 10));
-      if (savedSeenIds) {
-        try {
-          setSeenIds(JSON.parse(savedSeenIds));
-            } catch (e) {}
+    // ── Kontingent vom Server, nicht aus dem Gerät ────────────────────────
+    // Der Tageswechsel liegt bei 4 Uhr Berliner Zeit (`pure.ts:RESET_HOUR`),
+    // nicht um Mitternacht. Die alte Fassung hier verglich
+    // `new Date().toDateString()` — das setzte um Mitternacht zurück und
+    // schenkte damit jede Nacht vier Stunden lang zusätzliche Kontakte.
+    // Der Server rechnet richtig; der Browser braucht es nicht zu wissen.
+    let weg = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/quota');
+        if (!res.ok) throw new Error(String(res.status));
+        const d = await res.json();
+        if (!weg && typeof d.uebrig === 'number') setContactsLeft(d.uebrig);
+      } catch {
+        // Kein erfundener Wert: Bei einem Fehler bleibt der Anfangswert
+        // stehen, und der erste Kontaktversuch bringt die Wahrheit vom
+        // Server. Eine geratene Restanzeige wäre schlechter als eine, die
+        // sich beim nächsten Versuch korrigiert.
       }
-    } else {
-  
-      // Reset for a new day
-      setContactsLeft(DAILY_LIMIT);
-      localStorage.setItem('klar_contacts_date', today);
-      localStorage.setItem('klar_contacts_left', DAILY_LIMIT.toString());
-      localStorage.removeItem('klar_seen_ids');
+    })();
 
-
+    // `seenIds` bleibt lokal: Es ist eine Anzeigehilfe („schon gesehen"),
+    // kein Anspruch. Der Server verhindert Doppelkontakte über die
+    // Dokument-ID, unabhängig davon, was das Gerät sich merkt.
+    const savedSeenIds = localStorage.getItem('klar_seen_ids');
+    if (savedSeenIds) {
+      try {
+        setSeenIds(JSON.parse(savedSeenIds));
+      } catch { /* unbrauchbarer Eintrag — dann eben ohne */ }
     }
     try {
       const interests = localStorage.getItem("userInterests");
@@ -669,37 +706,64 @@ export default function Dashboard() {
     }
   };
 
-  const handleContact = (profile: Profile, interaction: "nachricht" | "pass") => {
-    // Analytics
+  const handleContact = async (profile: Profile, interaction: "nachricht" | "pass") => {
     trackEvent('profile_interaction', { profileId: profile.id, interaction });
 
     if (interaction === "nachricht") {
       if (contactsLeft <= 0) return;
-      
-      const newContactsLeft = contactsLeft - 1;
-      setContactsLeft(newContactsLeft);
-      localStorage.setItem('klar_contacts_left', newContactsLeft.toString());
-      
+
+      // ── Der Server entscheidet, nicht der Browser ──────────────────────
+      // Vorher wurde hier `localStorage` heruntergezählt. Das war weder
+      // fälschungssicher noch mit der Anzeige oben synchron — und der
+      // Doppelkontakt an dieselbe Person war nicht verhindert.
+      let uebrig: number | null;
+      try {
+        const ergebnis = await beginneKontakt(profile.id);
+        uebrig = ergebnis.uebrig;
+      } catch (e) {
+        // Die Meldung kommt WÖRTLICH vom Server. Sie unterscheidet drei
+        // Fälle — Kontingent erschöpft, nicht verifiziert, bereits
+        // angeschrieben — und jeder braucht eine andere Reaktion. Eine
+        // eigene Formulierung hier würde diesen Unterschied einebnen.
+        const text = e instanceof Error ? e.message : 'Der Kontakt konnte nicht angelegt werden.';
+        setKontaktFehler(text);
+        // Restanzeige nachziehen: Vielleicht ist das Kontingent gerade auf
+        // einem anderen Gerät verbraucht worden.
+        meldeKontaktVerbraucht();
+        return;
+      }
+
+      setKontaktFehler(null);
+      if (typeof uebrig === 'number') setContactsLeft(uebrig);
+      meldeKontaktVerbraucht();
+
       const newSeenIds = [...seenIds, profile.id];
       setSeenIds(newSeenIds);
       localStorage.setItem('klar_seen_ids', JSON.stringify(newSeenIds));
 
-      // Notification with Undo
       setNotification({
         id: 'kontakt_' + profile.id,
         message: 'Kontaktanfrage gesendet',
-        onUndo: () => {
-          // Revert contacts
-          setContactsLeft(contactsLeft);
-          localStorage.setItem('klar_contacts_left', contactsLeft.toString());
-          
-          // Revert seen
+        onUndo: async () => {
+          // Die Rücknahme geht ebenfalls an den Server — er setzt den
+          // Zähler zurück und löscht den Kontakt. Eine Rücknahme, die nur
+          // die Anzeige zurückdreht, ist keine.
+          try {
+            await nimmKontaktZurueck(profile.id);
+            setContactsLeft(contactsLeft);
+            meldeKontaktVerbraucht();
+          } catch (e) {
+            // Die Frist von 5 Sekunden prüft der Server. Ist sie abgelaufen,
+            // bleibt der Kontakt bestehen — und das ist zu sagen.
+            setKontaktFehler(e instanceof Error ? e.message : 'Die Rücknahme war nicht mehr möglich.');
+          }
+
           setSeenIds(seenIds);
           localStorage.setItem('klar_seen_ids', JSON.stringify(seenIds));
-          
+
           setNotification(null);
           if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-            }
+        }
       });
       
       // Process after 5 seconds
@@ -790,17 +854,15 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
         <p className="text-stone-600 dark:text-stone-400 mb-6">
           Du hast dein Limit für heute erreicht. Nimm dir Zeit für echte Gespräche mit deinen bisherigen Verbindungen.
         </p>
-        <button 
-          onClick={() => {
-            setContactsLeft(DAILY_LIMIT);
-            setSeenIds([]);
-            localStorage.setItem('klar_contacts_left', DAILY_LIMIT.toString());
-            localStorage.setItem('klar_seen_ids', JSON.stringify([]));
-              }}
-          className="px-6 py-3 bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-xl font-medium shadow-md hover:opacity-90 transition-opacity"
-        >
-          Reset für Demo
-        </button>
+        {/* 11.08.2026: Hier stand „Reset für Demo" — eine Schaltfläche, die
+            das Tageslimit zurücksetzte. Das Limit IST das Produkt („Weniger
+            Swipes. Mehr echte Gespräche."); ein Knopf, der es aufhebt,
+            widerspricht dem Versprechen und hätte in einer ausgelieferten
+            Fassung nichts zu suchen. Der Zähler steht jetzt ohnehin auf dem
+            Server und liesse sich von hier gar nicht mehr zurücksetzen. */}
+        <p className="text-sm text-stone-500 dark:text-stone-500">
+          Neue Kontakte gibt es morgen um 4 Uhr.
+        </p>
       </div>
     );
   }
@@ -837,26 +899,38 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
               Filter zurücksetzen
             </button>
           )}
-                    <button 
+          {/* Zweite „Reset für Demo"-Schaltfläche, entfernt am 11.08.2026 —
+              siehe Begründung oben. Was hier bleibt, ist das Zurücksetzen
+              der bereits gesehenen Profile: Das ist eine reine Anzeigehilfe
+              und hebt kein Limit auf. */}
+          <button
             onClick={() => {
-              setContactsLeft(DAILY_LIMIT);
               setSeenIds([]);
-              localStorage.setItem('klar_contacts_left', DAILY_LIMIT.toString());
               localStorage.setItem('klar_seen_ids', JSON.stringify([]));
             }}
             className="px-6 py-3 bg-stone-200 dark:bg-stone-800 text-stone-900 dark:text-stone-100 rounded-xl font-medium shadow-md hover:opacity-90 transition-opacity"
           >
-            Reset für Demo
+            Bereits gesehene erneut zeigen
           </button>
         </div>
       </div>
     );
   }
 
+  // ── 11.08.2026: Farbwechsel entfernt ─────────────────────────────────────
+  // Hier stand `text-amber-500` ab 3 und `text-rose-500` ab 1. Das
+  // widerspricht der eigenen Vorgabe in KontingentAnzeige.tsx:14:
+  //   „BEWUSST NICHT: kein Countdown, kein Rot bei „1 übrig", kein
+  //    pulsender Punkt. Künstliche Dringlichkeit ist in §12 verboten."
+  // Zwei Komponenten derselben App widersprachen sich in einer
+  // dokumentierten Entwurfsregel. Das Symbol zeigt weiterhin den Füllstand
+  // — nur ohne Warnfarbe. Wer acht Kontakte hat und noch einen übrig, soll
+  // ihn in Ruhe vergeben, nicht unter Zeitdruck.
   const getBatteryIcon = () => {
-    if (contactsLeft > 3) return <BatteryFull size={16} className="text-brand dark:text-brand-light" />;
-    if (contactsLeft > 1) return <BatteryMedium size={16} className="text-amber-500" />;
-    return <BatteryLow size={16} className="text-rose-500" />;
+    const farbe = "text-brand dark:text-brand-light";
+    if (contactsLeft > 3) return <BatteryFull size={16} className={farbe} />;
+    if (contactsLeft > 1) return <BatteryMedium size={16} className={farbe} />;
+    return <BatteryLow size={16} className={farbe} />;
   };
 
 
@@ -869,18 +943,20 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
   // Hooks weniger auf: „Rendered fewer hooks than expected". Statt der
   // Sperre erschien der Fehlerbildschirm — die Privatsphäre-Funktion
   // hätte also genau dann versagt, wenn man sie braucht.
-  if (isLocked) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center bg-stone-900 text-white p-6 relative z-50">
-        <Lock size={48} className="text-brand mb-4 opacity-80" />
-        <h2 className="text-xl font-bold mb-2">Smart-Lock Aktiv</h2>
-        <p className="text-stone-400 text-center text-sm mb-8">Deine Privatsphäre ist geschützt. Bitte entsperren (PIN / FaceID).</p>
-        <button onClick={() => setIsLocked(false)} className="px-8 py-3 bg-brand text-white rounded-full font-medium shadow-lg">
-          Entsperren (Demo)
-        </button>
-      </div>
-    );
-  }
+  // ── 11.08.2026: Sperrbildschirm hierher entfernt ────────────────────────
+  // Hier stand ein vollständiger Sperrbildschirm („Smart-Lock Aktiv"), der
+  // sich nicht einschalten liess: `setIsLocked(true)` kam im ganzen Projekt
+  // nicht vor. Er deckte ausserdem nur das Dashboard ab, während die
+  // schutzbedürftigen Inhalte in den Gesprächen stehen.
+  //
+  // Sein Text versprach „Bitte entsperren (PIN / FaceID)", der Knopf hiess
+  // „Entsperren (Demo)" und entsperrte ohne Prüfung — dieselbe Klasse wie
+  // „End-to-End gesichert" im Login (§ 5 UWG, entfernt am 09.08.2026).
+  //
+  // Der Sichtschutz liegt jetzt in `components/Sichtschutz.tsx` und ist in
+  // `App.tsx` über allen Routen eingehängt. Er hat einen sichtbaren
+  // Einstieg, verdeckt sich beim Wechsel in den Hintergrund selbst, und er
+  // sagt auf dem Bildschirm, wovor er NICHT schützt.
 
   return (
     <div className={`h-full flex flex-col p-4 relative transition-colors duration-1000 ${getBackgroundMilestoneClass()}`}>
@@ -891,6 +967,31 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
         <button onClick={() => setActiveTab('discover')} className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'discover' ? 'bg-white dark:bg-stone-700 shadow-sm text-brand dark:text-brand-light' : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'}`}>Entdecken</button>
         <button onClick={() => setActiveTab('inspiration')} className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'inspiration' ? 'bg-white dark:bg-stone-700 shadow-sm text-brand dark:text-brand-light' : 'text-stone-500 hover:text-stone-700 dark:hover:text-stone-300'}`}>Inspiration</button>
       </div>
+
+      {/* ── Ablehnung des Servers, im Wortlaut ──────────────────────────────
+          Drei Fälle mit drei verschiedenen Antworten: Kontingent erschöpft,
+          nicht verifiziert, bereits angeschrieben. Die Verifizierung ist der
+          einzige, aus dem heraus es weitergeht — deshalb steht dort ein Weg
+          und keine Sackgasse. */}
+      {kontaktFehler && (
+        <div role="alert" className="mb-3 shrink-0 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+          <p className="text-sm text-stone-700 dark:text-stone-300">{kontaktFehler}</p>
+          {kontaktFehler.includes('Verifizierung') && (
+            <a
+              href="/verifizierung"
+              className="mt-3 inline-block px-4 py-2 rounded-xl bg-brand dark:bg-brand-light text-white dark:text-stone-900 text-sm font-medium"
+            >
+              Jetzt verifizieren
+            </a>
+          )}
+          <button
+            onClick={() => setKontaktFehler(null)}
+            className="mt-3 ml-3 text-sm text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 underline"
+          >
+            Schliessen
+          </button>
+        </div>
+      )}
 
       <div className={`flex-1 flex-col overflow-hidden relative ${activeTab === 'discover' ? 'flex' : 'hidden'}`}>
         <AnimatePresence>
@@ -1004,20 +1105,22 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                             setIsCalculatingAiScores(true);
                             try {
                               // BEFUND 10.08.2026: Hier stand "/api/ai-match".
-                              // Diese Route gibt es in server.ts nicht -- der
+                              // Diese Route gibt es in server.ts nicht — der
                               // Endpunkt heisst /api/ai-passgenauigkeit und
-                              // erwartet genau diese Nutzlast. Offenbar
-                              // umbenannt und der Client nie nachgezogen. Der
-                              // Schalter "KI-Deep-Match" konnte nie
+                              // erwartet genau diese Nutzlast. Offenbar wurde
+                              // er umbenannt und der Client nie nachgezogen.
+                              // Der Schalter „KI-Deep-Match" konnte damit nie
                               // funktionieren; der Fehler wurde abgefangen und
-                              // der Schalter setzte sich still zurueck.
+                              // der Schalter setzte sich still zurück.
+                              //
+                              // `name` fehlte ausserdem in der Nutzlast, obwohl
+                              // der Prompt ihn benutzt — dort stand bisher
+                              // „Name: undefined" für jedes Profil.
                               const res = await fetch("/api/ai-passgenauigkeit", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
                                   userInterests,
-                                  // name fehlte, obwohl der Prompt ihn benutzt --
-                                  // dort stand bisher "Name: undefined".
                                   profiles: availableProfiles.map(p => ({ id: p.id, name: p.name, bio: p.bio, interests: p.interests }))
                                 })
                               });

@@ -14,6 +14,7 @@ import Onboarding from "./screens/Onboarding";
 // DSG-02: Altersangabe, Einwilligung, erreichbare Rechtstexte.
 import Rechtstexte from "./screens/Rechtstexte";
 import { EinwilligungUndAlter } from "./components/EinwilligungUndAlter";
+import { Sichtschutz } from "./components/Sichtschutz";
 // Die geltende Fassung der Rechtstexte. Aus pure.ts, damit Client und Server
 // dieselbe Zahl benutzen — zwei Konstanten wären zwei Wahrheiten.
 import { EINWILLIGUNG_VERSION } from "./server/pure";
@@ -557,7 +558,15 @@ function AppContent() {
           </Routes>
         ) : (
         <Layout>
-          
+          {/* WIEDERHERGESTELLT 11.08.2026 — Sichtschutz.
+              Die Sperre lag bisher in Dashboard.tsx und hatte keinen
+              Einstieg: `setIsLocked(true)` kam im ganzen Projekt nicht vor.
+              Sie deckte ausserdem nur das Dashboard ab — die
+              schutzbedürftigen Inhalte stehen aber in den Gesprächen.
+              Deshalb steht sie jetzt hier, eine Ebene über den Routen, und
+              verdeckt alles. */}
+          <Sichtschutz />
+
           <AnimatedRoutes />
 
         </Layout>
