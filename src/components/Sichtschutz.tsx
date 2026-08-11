@@ -84,10 +84,20 @@ export function Sichtschutz() {
     return (
       <button
         onClick={() => setAktiv(true)}
-        // Immer erreichbar, ohne einen Inhalt zu verdecken. Links unten,
-        // weil rechts unten in dieser App der Fehler-Testknopf und die
-        // Navigationsleiste sitzen.
-        className="fixed bottom-24 left-4 z-40 p-3 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 shadow-lg hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
+        // BEFUND 11.08.2026, eine Stunde nach dem Einbau: Hier stand
+        // `bottom-24 left-4 z-40` — mit dem Kommentar, links unten sei frei,
+        // weil rechts unten der Fehler-Testknopf sitze. Die rechte Seite war
+        // geprüft, die linke nicht. Dort liegt `QuickThemeToggle`
+        // (`bottom-24 left-6 z-40`, Dashboard.tsx), acht Pixel versetzt,
+        // gleiche Ebene, später im DOM — und deckte diesen Knopf vollständig.
+        // Der Sichtschutz war eingebaut und unbedienbar.
+        //
+        // `bottom-24` links ist in dieser App dreifach belegt:
+        // QuickThemeToggle, DatingVibeAnalyzerWidget (`bottom-24 left-4
+        // right-4 z-50`) und die Hinweisleiste in ChatView (dieselbe Angabe).
+        // Deshalb eine Etage höher: `bottom-40` ist im ganzen Projekt sonst
+        // nirgends vergeben (geprüft per Suche über alle .tsx-Dateien).
+        className="fixed bottom-40 left-4 z-40 p-3 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 shadow-lg hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
         aria-label="Bildschirm verdecken"
         title="Bildschirm verdecken"
       >
