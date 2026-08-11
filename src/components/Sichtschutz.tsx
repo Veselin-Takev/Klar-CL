@@ -29,6 +29,26 @@ import { EyeOff, Eye } from 'lucide-react';
 //    „End-to-End gesichert" im Login, das am 09.08.2026 wegen § 5 UWG
 //    entfernt wurde. Hier steht jetzt, was es wirklich ist.
 //
+// ── ZWEITER BEFUND, 11.08.2026 NACHMITTAG ─────────────────────────────────
+// Der Auslöser war zuerst ein schwebender Knopf (`fixed bottom-24 left-4`)
+// und lag damit unsichtbar unter `QuickThemeToggle` (`bottom-24 left-6`).
+// Danach auf `bottom-40` verschoben — sichtbar, aber nur eine Etage höher in
+// derselben Gefahrenzone: `bottom-24` links ist in dieser App dreifach
+// belegt, und jede neue schwebende Schaltfläche kann morgen dieselbe Stelle
+// beanspruchen.
+//
+// DESHALB JETZT GETRENNT:
+//   · `Sichtschutz`      — nur noch die verdeckende Fläche. Steht in
+//                          `Layout`, hat keine eigene Position, kollidiert
+//                          mit nichts.
+//   · `SichtschutzKnopf`  — der Auslöser, als gewöhnliches Kind der
+//                          Systemleiste oben. Keine `fixed`-Angabe, damit
+//                          er auch künftig nichts überdecken kann.
+//
+// Beide reden über ein Fensterereignis miteinander, nicht über Props —
+// dadurch lässt sich der Sichtschutz auch aus beliebigem anderem Code
+// auslösen, etwa aus einem Tastenkürzel.
+//
 // ── WAS DIESE FUNKTION LEISTET UND WAS NICHT ──────────────────────────────
 // Sie schützt vor dem Blick über die Schulter: im Zug, im Wartezimmer, wenn
 // jemand den Raum betritt. Sie schützt NICHT vor jemandem, der das
@@ -46,6 +66,27 @@ export function aktiviereSichtschutz(): void {
   window.dispatchEvent(new Event(SICHTSCHUTZ_EIN));
 }
 
+/**
+ * Der Auslöser für die Systemleiste. Bewusst ohne eigene Positionierung:
+ * Er ist ein gewöhnliches Kind seiner Leiste und kann damit nichts
+ * überdecken und von nichts überdeckt werden.
+ */
+export function SichtschutzKnopf() {
+  return (
+    <button
+      onClick={aktiviereSichtschutz}
+      className="p-2 rounded-full text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
+      aria-label="Bildschirm verdecken"
+      title="Bildschirm verdecken"
+    >
+      <EyeOff size={20} />
+    </button>
+  );
+}
+
+/**
+ * Die verdeckende Fläche. Rendert nichts, solange sie nicht ausgelöst wurde.
+ */
 export function Sichtschutz() {
   const [aktiv, setAktiv] = useState(false);
   const entsperrenRef = useRef<HTMLButtonElement | null>(null);
@@ -61,6 +102,13 @@ export function Sichtschutz() {
     // ABSICHTLICH NUR IN EINE RICHTUNG: Beim Zurückkommen wird NICHT
     // automatisch entsperrt. Sonst wäre die Sperre wirkungslos, sobald das
     // Betriebssystem die Seite kurz in den Hintergrund schiebt.
+    //
+    // BEKANNTE GRENZE, ausdrücklich in Kauf genommen (Entscheidung
+    // 11.08.2026): Am Rechner löst der Wechsel von einem Browserfenster zu
+    // einer anderen Anwendung NICHT aus — das ist für den Browser kein
+    // „hidden". `window.blur` würde das abdecken, aber auch bei jedem Klick
+    // neben das Fenster auslösen. Am Telefon, dem Hauptgerät dieser App,
+    // greift `visibilitychange` vollständig.
     const beiSichtwechsel = () => {
       if (document.visibilityState === 'hidden') setAktiv(true);
     };
@@ -80,31 +128,7 @@ export function Sichtschutz() {
     if (aktiv) entsperrenRef.current?.focus();
   }, [aktiv]);
 
-  if (!aktiv) {
-    return (
-      <button
-        onClick={() => setAktiv(true)}
-        // BEFUND 11.08.2026, eine Stunde nach dem Einbau: Hier stand
-        // `bottom-24 left-4 z-40` — mit dem Kommentar, links unten sei frei,
-        // weil rechts unten der Fehler-Testknopf sitze. Die rechte Seite war
-        // geprüft, die linke nicht. Dort liegt `QuickThemeToggle`
-        // (`bottom-24 left-6 z-40`, Dashboard.tsx), acht Pixel versetzt,
-        // gleiche Ebene, später im DOM — und deckte diesen Knopf vollständig.
-        // Der Sichtschutz war eingebaut und unbedienbar.
-        //
-        // `bottom-24` links ist in dieser App dreifach belegt:
-        // QuickThemeToggle, DatingVibeAnalyzerWidget (`bottom-24 left-4
-        // right-4 z-50`) und die Hinweisleiste in ChatView (dieselbe Angabe).
-        // Deshalb eine Etage höher: `bottom-40` ist im ganzen Projekt sonst
-        // nirgends vergeben (geprüft per Suche über alle .tsx-Dateien).
-        className="fixed bottom-40 left-4 z-40 p-3 rounded-full bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 shadow-lg hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors"
-        aria-label="Bildschirm verdecken"
-        title="Bildschirm verdecken"
-      >
-        <EyeOff size={20} />
-      </button>
-    );
-  }
+  if (!aktiv) return null;
 
   return (
     <div

@@ -14,7 +14,8 @@ import Onboarding from "./screens/Onboarding";
 // DSG-02: Altersangabe, Einwilligung, erreichbare Rechtstexte.
 import Rechtstexte from "./screens/Rechtstexte";
 import { EinwilligungUndAlter } from "./components/EinwilligungUndAlter";
-import { Sichtschutz } from "./components/Sichtschutz";
+import { Sichtschutz, SichtschutzKnopf } from "./components/Sichtschutz";
+import { QuickThemeToggle } from "./components/QuickThemeToggle";
 // Die geltende Fassung der Rechtstexte. Aus pure.ts, damit Client und Server
 // dieselbe Zahl benutzen — zwei Konstanten wären zwei Wahrheiten.
 import { EINWILLIGUNG_VERSION } from "./server/pure";
@@ -158,14 +159,33 @@ function Layout({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {/* P1: Das Kontingent steht ueber allem, was man damit tut —
-              nicht erst im Moment, in dem es zu Ende ist.
-              Design-Richtlinie §1 und §8. */}
-          {!isChatView && (
-            <div className="flex justify-center border-b border-stone-200 dark:border-stone-800 px-4 py-2">
-              <KontingentAnzeige kompakt />
+          {/* ── Systemleiste ────────────────────────────────────────────────
+              BEFUND 11.08.2026: Diese Zeile gab es nur ausserhalb des Chats
+              (`!isChatView`) und sie enthielt allein das Kontingent. Der
+              Hell-/Dunkel-Knopf hing im Dashboard (`Dashboard.tsx:2025`) und
+              existierte auf Profil, Chats, Coach, Tipps und im Chat gar
+              nicht; der Sichtschutz schwebte frei und lag zeitweise
+              unsichtbar unter dem Theme-Knopf.
+
+              Beide gehören zur Bedienung der App selbst, nicht zu einem
+              Bildschirm. Sie stehen deshalb hier — in `Layout`, oberhalb der
+              Routen — und sind damit überall an derselben Stelle, auch im
+              Chat. Als gewöhnliche Kinder einer Leiste, ohne `fixed`: So
+              kann keiner von beiden je wieder etwas überdecken.
+
+              Die Leiste wird immer gerendert, das Kontingent darin nur
+              ausserhalb des Chats (P1, Design-Richtlinie §1 und §8). Der
+              leere Platz links im Chat ist beabsichtigt: Die Knöpfe
+              springen sonst beim Wechsel zwischen den Bildschirmen. */}
+          <div className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 px-2 py-1">
+            <div className="flex-1 flex justify-center">
+              {!isChatView && <KontingentAnzeige kompakt />}
             </div>
-          )}
+            <div className="flex items-center gap-1 shrink-0">
+              <SichtschutzKnopf />
+              <QuickThemeToggle />
+            </div>
+          </div>
           {/* P2: Sprungmarke — mit Tastatur muss man an der Navigation
               vorbeikommen (WCAG 2.4.1). Sichtbar nur bei Fokus. */}
           <a href="#inhalt" className="skip-link">Zum Inhalt springen</a>
@@ -572,18 +592,19 @@ function AppContent() {
         </Layout>
         )}
       </BrowserRouter>
-      {import.meta.env.DEV && (
-        <button 
-          onClick={() => {
-            hapticFeedback('strong');
-            throw new Error("Sentry Test Error from Floating Action Button");
-          }}
-          className="fixed bottom-24 right-4 bg-red-500 text-white p-3 rounded-full shadow-lg z-[100] flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity"
-          aria-label="Test Error"
-        >
-          <X size={20} />
-        </button>
-      )}
+      {/* ENTFERNT 11.08.2026 — Sentry-Testknopf.
+          Hier stand ein roter runder Knopf unten rechts (`fixed bottom-24
+          right-4 z-[100]`), sichtbar nur im Entwicklungsmodus, der beim
+          Antippen absichtlich `new Error("Sentry Test Error…")` warf.
+
+          Er hat seinen Zweck erfüllt: Die Sentry-Anbindung ist verifiziert.
+          Beim Testen des Sichtschutzes wurde er dagegen mehrfach für dessen
+          Auslöser gehalten — mit dem Ergebnis, dass drei Fehlermeldungen in
+          der Konsole standen, die wie Befunde aussahen und keine waren.
+
+          Ein Werkzeug, das beim Prüfen falsche Befunde erzeugt, kostet mehr
+          als es einbringt. Braucht jemand den Fall erneut, genügt in der
+          Browserkonsole:  setTimeout(() => { throw new Error('Test') }) */}
     </ErrorBoundary>
   );
 }

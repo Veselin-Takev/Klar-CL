@@ -8,7 +8,7 @@
 // `Globe` wurde nirgends verwendet und ist deshalb entfallen.
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Eye, EyeOff, Mic, MessageSquare, Phone, Video, Settings, Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile, HelpCircle, FileText, Info, MicOff } from "lucide-react";
+import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Minimize2, Mic, MessageSquare, Phone, Video, Settings, Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile, HelpCircle, FileText, Info, MicOff } from "lucide-react";
 
 import { allProfiles } from "../data";
 
@@ -739,7 +739,18 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
             className={`p-2 rounded-full transition-colors ${isFocusMode ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400' : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'}`}
             title={isFocusMode ? "Fokus-Modus beenden" : "Fokus-Modus aktivieren"}
           >
-            {isFocusMode ? <EyeOff size={20} /> : <Eye size={20} />}
+            {/* BEFUND 11.08.2026: Hier standen `EyeOff`/`Eye` — dasselbe
+                Symbol, das der Sichtschutz in der Systemleiste benutzt.
+                Zwei verschiedene Funktionen mit demselben Bild, beide
+                „etwas ausblenden“: Der Fokus-Modus blendet Widgets in
+                diesem Gespräch aus, der Sichtschutz verdeckt den ganzen
+                Bildschirm. Das musste verwechselt werden — und wurde es.
+                `Minimize2` — vier Pfeile nach innen — benennt, was dieser
+                Knopf tut: zusammenklappen, weniger anzeigen. `Focus`
+                (Kreis mit Eckwinkeln) war zuerst gewaehlt und wurde am
+                11.08.2026 nach dem Blick in den Browser verworfen: bei
+                20 px neben sechs weiteren Symbolen nicht lesbar. */}
+            <Minimize2 size={20} />
           </button>
           <button 
             onClick={() => setShowQualityChart(!showQualityChart)} 

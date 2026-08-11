@@ -31,7 +31,10 @@ import { Info, X, Heart, BatteryFull, BatteryMedium, BatteryLow, Sparkles, Filte
 import { MatchCompatibilityInsights } from "../components/MatchCompatibilityInsights";
 import { VerbindungOptimizerWidget } from "../components/VerbindungOptimizerWidget";
 import { calculateMatchScore, isInterestShared, calculateDeepMatch } from "../services/matchScore";
-import { hapticFeedback, HAPTIC_PATTERNS } from "../lib/haptics";
+// `HAPTIC_PATTERNS` wurde nur vom entfernten Herz-Knopf benutzt und ist
+// hier mit entfallen. Die Datei hat `@ts-nocheck` — ein ungenutzter Import
+// waere hier nie aufgefallen.
+import { hapticFeedback } from "../lib/haptics";
 import { sortProfilesByRecommendation, recordInteraction } from "../services/recommendationEngine";
 import { motion, AnimatePresence } from "motion/react";
 import { DailyPulseWidget } from "../components/DailyPulseWidget";
@@ -63,7 +66,6 @@ import { WeeklyMoodSummaryWidget } from "../components/WeeklyMoodSummaryWidget";
 // Lock entfaellt mit dem alten Sperrbildschirm — noUnusedLocals braeche
 // sonst den Build, sobald @ts-nocheck aus dieser Datei verschwindet.
 import { Focus } from "lucide-react";
-import { QuickThemeToggle } from "../components/QuickThemeToggle";
 import { DatingProgressChartWidget } from "../components/DatingProgressChartWidget";
 import { WeeklyTimelineWidget } from "../components/WeeklyTimelineWidget";
 import { ProfileCheckWidget } from "../components/ProfileCheckWidget";
@@ -2002,27 +2004,32 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
       {showConfetti && <Confetti count={100} />}
       <SmartVerbindungTutorialOverlay />
 
-      <div className="fixed bottom-24 right-4 z-40">
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            hapticFeedback(HAPTIC_PATTERNS.LIGHT_TAP);
-            if (activeTab === 'discover') {
-              if (availableProfiles[0]) {
-                setModalProfile(availableProfiles[0]);
-              }
-            }
-          }}
-          className="bg-brand dark:bg-brand-light text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center hover:opacity-90 transition-opacity"
-        >
-          {activeTab === 'discover' ? <Heart size={24} className="fill-current" /> : <Sparkles size={24} />}
-        </motion.button>
-      </div>
+      {/* ENTFERNT 11.08.2026 — schwebender Herz-Knopf unten rechts.
+          Hier stand ein runder Knopf (`fixed bottom-24 right-4 z-40`) mit
+          einem gefuellten Herzen. Drei Befunde:
+
+            1. Das Herz verspricht „gefaellt mir". Getan hat er etwas
+               anderes: `setModalProfile(availableProfiles[0])` — er oeffnete
+               die Profilkarte. Dasselbe leistet ein Tipp auf die Karte.
+            2. Auf der Registerkarte „Inspiration" war er wirkungslos. Der
+               Rumpf des `onClick` steht vollstaendig in
+               `if (activeTab === 'discover')`; auf der anderen Registerkarte
+               wechselte nur das Symbol zu `Sparkles`, und ein Tipp bewirkte
+               nichts.
+            3. Er stand an derselben schwebenden Stelle, aus der am selben
+               Tag der Sichtschutz und der Theme-Knopf in die Systemleiste
+               verlegt wurden.
+
+          Ersatzlos entfernt (Entscheidung des Auftraggebers, 11.08.2026).
+          Es geht keine Funktion verloren: Die Profilkarte bleibt
+          unveraendert antippbar. */}
 
       </div>
 
-      <QuickThemeToggle />
+      {/* 11.08.2026: Hier stand <QuickThemeToggle />. Der Knopf war damit
+          ausschliesslich im Dashboard vorhanden — auf Profil, Chats, Coach,
+          Tipps und im Chat gab es ihn nicht. Er steht jetzt in der
+          Systemleiste in App.tsx und ist auf jedem Bildschirm erreichbar. */}
       <div className={`flex-1 overflow-y-auto hide-scrollbar pb-24 ${activeTab === 'inspiration' ? 'block' : 'hidden'}`}>
         <div className="flex flex-col gap-4">
           <BeiSicht><SmartVorschlaegeWidget /></BeiSicht>
