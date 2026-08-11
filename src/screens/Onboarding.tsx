@@ -53,7 +53,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     <p className="text-stone-600 dark:text-stone-400">Wähle ein paar Interessen aus, damit wir passende Verbindungen für dich finden können. (Mindestens 1)</p>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto hide-scrollbar pb-24">
+                <div className="flex-1 overflow-y-auto hide-scrollbar pb-4">
                     <div className="flex flex-wrap gap-3">
                         {INTERESTS.map(interest => {
                             const isSelected = selectedInterests.includes(interest.id);
@@ -76,7 +76,14 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     </div>
                 </div>
                 
-                <div className="absolute bottom-6 left-6 right-6 flex flex-col gap-4 bg-light-bg/80 dark:bg-dark-bg/80  pt-2">
+                {/* BEFUND 10.08.2026: Diese Leiste stand `absolute bottom-6`
+                    ueber der Liste, mit `bg-…/80` also durchscheinend, und die
+                    Liste hatte nur `pb-24` (96px) Platz gelassen. Die Leiste ist
+                    aber rund 175px hoch — die untersten Interessen lagen darunter
+                    und schimmerten durch die Bestaetigung hindurch.
+                    Jetzt ein normales Flex-Kind: Ueberlappung ist damit
+                    ausgeschlossen, ohne dass eine Hoehe geraten werden muss. */}
+                <div className="shrink-0 flex flex-col gap-4 pt-4">
                     <label className="flex items-center gap-3 p-3 bg-stone-100 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 cursor-pointer">
                         <input 
                             type="checkbox" 
@@ -107,7 +114,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     <p className="text-stone-600 dark:text-stone-400">Ehrlichkeit ist bei Klar am wichtigsten. Sag uns, worauf du Lust hast.</p>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto hide-scrollbar pb-24 space-y-4">
+                <div className="flex-1 overflow-y-auto hide-scrollbar pb-4 space-y-4">
                     {GOALS.map(goal => {
                         const isSelected = selectedGoal === goal.id;
                         return (
@@ -132,7 +139,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     })}
                 </div>
                 
-                <div className="absolute bottom-6 left-6 right-6 flex gap-3">
+                {/* Gleicher Befund wie in Schritt 1: absolut positioniert, ohne
+                    Hintergrund — die Ziel-Karten liefen sichtbar dahinter durch. */}
+                <div className="shrink-0 flex gap-3 pt-4">
                     <button 
                         onClick={() => setStep(1)}
                         className="px-6 py-4 bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-2xl font-medium transition-colors hover:bg-stone-300 dark:hover:bg-stone-700"

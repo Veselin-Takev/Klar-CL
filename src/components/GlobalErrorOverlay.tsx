@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertOctagon, WifiOff } from 'lucide-react';
-// db, getDoc und doc entfallen mit der Umstellung auf /api/health.
-// Unter noUnusedLocals braechen sie sonst den Build.
+// `db`, `getDoc` und `doc` entfallen mit der Umstellung auf /api/health.
+// Unter `noUnusedLocals` brächen sie sonst den Build.
 
 export function GlobalErrorOverlay() {
   const [hasError, setHasError] = useState(false);
@@ -15,23 +15,23 @@ export function GlobalErrorOverlay() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // BEFUND 10.08.2026: Hier stand
-    // await getDoc(doc(db, 'system', 'health_check')), mit dem Kommentar
-    // "Simulate Firebase connection check". Die Pruefung war nie echt und
-    // konnte gar nicht gelingen: Fuer die Sammlung system gibt es in
-    // firestore.rules keine Regel, und bei Deny-by-default heisst das
-    // "No matching allow statements" -- bei jedem Durchlauf, alle 30
+    // ── BEFUND 10.08.2026 ──────────────────────────────────────────────
+    // Hier stand `await getDoc(doc(db, 'system', 'health_check'))`, mit dem
+    // Kommentar „Simulate Firebase connection check". Die Prüfung war nie
+    // echt und konnte gar nicht gelingen: Für die Sammlung `system` gibt es
+    // in firestore.rules keine Regel, und bei Deny-by-default heisst das
+    // „No matching allow statements" — bei jedem Durchlauf, alle 30
     // Sekunden.
     //
     // Die Folge war schwerer als der Fehler selbst: Diese Komponente legt
-    // sich bildschirmfuellend ueber die App. Wer Klar oeffnete, sah
-    // "Verbindung zum Server fehlgeschlagen" und kam nicht weiter -- bei
+    // sich bildschirmfüllend über die App. Wer Klar öffnete, sah
+    // „Verbindung zum Server fehlgeschlagen" und kam nicht weiter — bei
     // einwandfreier Verbindung.
     //
-    // Jetzt gegen /api/health, eine Route ohne Anmeldung und ohne Daten.
+    // Jetzt gegen `/api/health`, eine Route ohne Anmeldung und ohne Daten.
     // ZWEI Fehlversuche in Folge, bevor die Meldung erscheint: Ein
-    // einzelner Aussetzer -- Neustart des Servers, kurze Funkluecke --
-    // darf die Oberflaeche nicht sperren.
+    // einzelner Aussetzer — Neustart des Servers, kurze Funklücke — darf
+    // die Oberfläche nicht sperren.
     let fehlversuche = 0;
     const checkConnection = async () => {
       if (isOffline) return;
@@ -42,7 +42,7 @@ export function GlobalErrorOverlay() {
         setHasError(false);
       } catch (err) {
         fehlversuche += 1;
-        console.warn(`Verbindungspruefung fehlgeschlagen (${fehlversuche}/2):`, err);
+        console.warn(`Verbindungsprüfung fehlgeschlagen (${fehlversuche}/2):`, err);
         if (fehlversuche >= 2) {
           setHasError(true);
           setErrorMessage("Verbindung zum Server fehlgeschlagen. Bitte versuche es später erneut.");

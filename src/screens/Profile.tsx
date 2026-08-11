@@ -5,11 +5,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { Heart, Settings, Download, Edit, BellRing,  Moon, Sun, Monitor, LogOut, ShieldCheck, FileText, Trash2, Sparkles, Zap, Share2, Wand2, RefreshCw, ArrowRight, History, EyeOff, Eye, MessageCircle, Check, X, Smartphone, ChevronRight } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { askAICoach, parseProfileImport, optimizeProfileApi } from "../lib/api";
-// BEFUND 10.08.2026: downloadRadarImage war am Knopf "Als Bild exportieren"
-// angebunden, aber nirgends definiert -- Absturz beim Rendern des Profils.
-// Der Behaelter traegt bereits id="werte-radar-container"; die Funktion war
-// also vorgesehen und nur nie geschrieben. toPng ist dieselbe Bibliothek,
-// die WeeklyConsistencyTracker.tsx schon benutzt.
+// BEFUND 10.08.2026: `downloadRadarImage` war am Knopf „Als Bild exportieren"
+// angebunden, aber nirgends definiert — Absturz beim Rendern des Profils.
+// Der Behälter trägt bereits `id="werte-radar-container"`; die Funktion war
+// also vorgesehen und nur nie geschrieben. `toPng` ist dieselbe Bibliothek,
+// die `WeeklyConsistencyTracker.tsx` schon benutzt.
 import { toPng } from 'html-to-image';
 
 const VALUE_EXPLANATIONS: Record<string, string> = {
@@ -141,29 +141,30 @@ export default function Profile() {
   const { logOut, updateProfileData } = useAuth();
   const [activeRadarValue, setActiveRadarValue] = useState<string | null>(null);
   // BEFUND 10.08.2026, gefunden beim Suchen nach der Ursache von
-  // showFilterSheet: Beide Zustaende fehlten hier ganz.
+  // `showFilterSheet`: Beide Zustaende fehlten hier ganz.
   //
-  // showPhotoVerification wird in Zeile 578 gelesen -- ohne Deklaration
+  // `showPhotoVerification` wird in Zeile 578 gelesen — ohne Deklaration
   // stuerzt das Profil beim Rendern ab, genau wie das Dashboard.
   //
-  // OFFEN, NICHT HIER BEHOBEN: Nichts setzt showPhotoVerification je auf
-  // true. Das Modal ist damit nicht erreichbar. Das ist ein eigener Befund
-  // (fehlender Einstieg in die Verifizierung), keine Frage der Deklaration
-  // -- ich baue keinen Knopf, den die Spezifikation hier nicht vorsieht.
+  // OFFEN, NICHT HIER BEHOBEN: Nichts setzt `showPhotoVerification` je auf
+  // `true`. Das Modal ist damit nicht erreichbar. Das ist ein eigener
+  // Befund (fehlender Einstieg in die Verifizierung), keine Frage der
+  // Deklaration — ich baue keinen Knopf, den die Spezifikation hier nicht
+  // vorsieht.
   const [showPhotoVerification, setShowPhotoVerification] = useState(false);
 
-  /** Werte-Radar als PNG sichern. Rein im Browser -- das Bild verlaesst das
-   *  Geraet nicht und wird nirgends hochgeladen. */
+  /** Werte-Radar als PNG sichern. Rein im Browser — das Bild verlässt das
+   *  Gerät nicht und wird nirgends hochgeladen. */
   const downloadRadarImage = async () => {
     const behaelter = document.getElementById('werte-radar-container');
     if (!behaelter) {
-      console.warn('Werte-Radar nicht gefunden -- nichts zu exportieren.');
+      console.warn('Werte-Radar nicht gefunden — nichts zu exportieren.');
       return;
     }
     try {
       const datenUrl = await toPng(behaelter, {
-        // Ohne Hintergrund waere das PNG durchsichtig und im Dunkelmodus
-        // unlesbar. cacheBust verhindert veraltete Schriftschnitte.
+        // Ohne Hintergrund wäre das PNG durchsichtig und im Dunkelmodus
+        // unlesbar. `cacheBust` verhindert veraltete Schriftschnitte.
         backgroundColor: document.documentElement.classList.contains('dark')
           ? '#1c1917'
           : '#ffffff',
@@ -178,7 +179,7 @@ export default function Profile() {
       console.error('Export des Werte-Radars fehlgeschlagen:', e);
     }
   };
-  // radarAnimated wird nur geschrieben, nie gelesen. Deklaration ohne
+  // `radarAnimated` wird nur geschrieben, nie gelesen. Deklaration ohne
   // Lesenamen haelt das Verhalten unveraendert und stoppt den Absturz.
   const [, setRadarAnimated] = useState(false);
   const [userInterests, setUserInterests] = useState<string[]>([]);

@@ -121,18 +121,18 @@ export function DateCalendar() {
                   </p>
                 </div>
                 
-                {/* BEFUND 10.08.2026, zwei Fehler an einer Stelle:
-                    1. Der Teilen-Knopf stand INNERHALB des Loeschen-Knopfes.
-                       HTML verbietet das; der Browser meldete "<button> cannot
+                {/* ── BEFUND 10.08.2026, zwei Fehler an einer Stelle ──────────
+                    1. Der Teilen-Knopf stand INNERHALB des Löschen-Knopfes.
+                       HTML verbietet das; der Browser meldete „<button> cannot
                        be a descendant of <button>". Folge im Betrieb: Ein Tipp
-                       auf "Teilen" loeste beide Handler aus -- der Termin wurde
-                       geteilt UND geloescht.
-                    2. Zwischen den Knoepfen stand ein woertliches \n im JSX.
+                       auf „Teilen" löste beide Handler aus — der Termin wurde
+                       geteilt UND gelöscht.
+                    2. Zwischen den Knöpfen stand ein wörtliches `\n` im JSX.
                        JSX gibt das als Text aus; im Screenshot vom 10.08. steht
-                       genau dieses "\n" neben dem Kalendersymbol.
-                    Jetzt zwei gleichrangige Knoepfe nebeneinander. */}
+                       genau dieses „\n" neben dem Kalendersymbol.
+                    Jetzt zwei gleichrangige Knöpfe nebeneinander. */}
                 <div className="flex items-center gap-1">
-                  <button 
+                  <button
                     onClick={() => {
                       const text = `Date mit ${d.matchName} am ${dateStr} um ${timeStr} Uhr. Ort: ${d.idea}`;
                       if (navigator.share) {
@@ -153,7 +153,7 @@ export function DateCalendar() {
                   <button
                     onClick={() => handleDelete(d.id)}
                     className="p-2 text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full transition-colors"
-                    title="Termin loeschen"
+                    title="Termin löschen"
                   >
                     <Trash2 size={18} />
                   </button>
