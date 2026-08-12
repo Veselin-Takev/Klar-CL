@@ -40,6 +40,12 @@ import { lies as liesSpeicher, schreibe as schreibeSpeicher } from "./src/server
 import {
   COACH_IMPULS, DATING_BEREITSCHAFT,
   DATE_CHECKLISTE, DATE_IDEEN, ICEBREAKER_VORSCHLAEGE, VERBINDUNG_KONZEPTE,
+  // 12.08.2026 ergaenzt: zehn weitere kuratierte Ersatztexte. Jeder von Hand
+  // geschrieben, keiner behauptet etwas ueber die lesende Person, und keiner
+  // nennt einen Ort, den es geben muss.
+  DAILY_ICEBREAKER, ICEBREAKER_EINZELN, GEFUEHLSFRAGE, REFLEXIONSFRAGEN,
+  SMART_DATE_VORSCHLAEGE, DATE_PLAN, DATE_ORTE, DATE_IDEEN_ORT,
+  NOGO_VORSCHLAEGE, BIO_WERTE_HINWEISE,
 } from "./src/server/kuratiert";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { initializeApp, getApps } from 'firebase-admin/app';
@@ -934,11 +940,16 @@ Regeln:
   // API Route for Daily Icebreaker Widget
   
   // API Route for Dating Journal
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
   app.post("/api/dating-journal", async (req, res) => {
-    try {
-      const { journalEntry, userInterests } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const { journalEntry, userInterests } = req.body;
+    
+    const antwort = await beantworte(
+      "/api/dating-journal",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere meinen folgenden Dating-Journal-Eintrag und gib mir konstruktive Rückmeldung.
 Meine Interessen: ${userInterests?.join(", ") || "Keine"}
@@ -973,20 +984,22 @@ Mein Eintrag:
             required: ["insights", "tips", "summary", "mood"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"insights":[], "tips":[], "summary": "Konnte nicht analysiert werden."}'));
-    } catch (e: unknown) {
-      console.error("Error generating journal insights:", e);
-      res.status(500).json({ error: "Failed to generate journal insights" });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026. Vorher stand als Vorgabe bei leerer Antwort eine
+  // Liste erfundener Fragen direkt im Code — sie sah aus wie ein Ergebnis.
+  // Jetzt: Strategie `kuratiert` mit Kennzeichnung der Herkunft.
   app.post("/api/daily-icebreakers", async (req, res) => {
-    try {
-      const { userInterests, verbindungenInterests } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const { userInterests, verbindungenInterests } = req.body;
+    
+    const antwort = await beantworte(
+      "/api/daily-icebreakers",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Generiere 3 spezifische, kreative und unterschiedliche Icebreaker-Fragen, die ich als Gesprächseinstieg für meine Dating-Verbindunges nutzen kann. 
 Meine Interessen: ${userInterests?.join(", ") || "Keine"}.
@@ -1008,21 +1021,26 @@ Der Fokus liegt auf einem authentischen Gesprächsaufbau.`,
             required: ["icebreakers"]
           }
         }
-      });
-      
-      const data = JSON.parse(response.text || '{"icebreakers":["Was war das beste Erlebnis, das du letzte Woche hattest?", "Wenn du sofort an einen anderen Ort reisen könntest, wohin ginge es?", "Welches Thema bringt dich immer zum Lächeln?"]}');
-      res.json(data);
-    } catch (e: unknown) {
-      console.error("Error generating daily icebreakers:", e);
-      res.status(500).json({ error: "Failed to generate daily icebreakers" });
-    }
+      }),
+      { kuratiert: { ...DAILY_ICEBREAKER } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/klar-compass", async (req, res) => {
-    try {
-      const { userInterests, userBio } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { userInterests, userBio } = req.body;
+    
+    const antwort = await beantworte(
+      "/api/klar-compass",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Mein Profil - Interessen: ${userInterests?.join(", ") || "Keine"}.
 Meine Bio: ${userBio || "Keine"}.
@@ -1051,24 +1069,36 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["topTraits", "complementaryInterests", "focusAdvice"]
           }
         }
-      });
-      
-      const compassData = JSON.parse(response.text || '{"topTraits":["Offenheit","Tiefgründigkeit"],"complementaryInterests":["Kunst","Natur"],"focusAdvice":"Fokussiere dich auf tiefgründige Gespräche."}');
-      res.json(compassData);
-    } catch (e: unknown) {
-      console.error("Error generating Klar-Compass:", e);
-      res.status(500).json({ error: "Failed to generate compass" });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/klar-compass"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/klar-compass", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/smart-vibe-map", async (req, res) => {
-    try {
-      const { reflections } = req.body;
-      const historySummary = reflections.slice(0, 15).map((r: any) => 
-        `Date: ${r.date}, Positiv/Stimmung: ${r.positive}, Gelernt: ${r.learned}`
-      ).join("\n");
-      
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { reflections } = req.body;
+    const historySummary = reflections.slice(0, 15).map((r: any) => 
+      `Date: ${r.date}, Positiv/Stimmung: ${r.positive}, Gelernt: ${r.learned}`
+    ).join("\n");
+    
+    const antwort = await beantworte(
+      "/api/smart-vibe-map",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere diese vergangenen Dates:\n${historySummary}\nExtrahiere implizite Stimmungstags aus den Erfahrungen und schlage basierend darauf 3 konkrete Arten von Locations (z.B. "Gemütliches Café", "Botanischer Garten") vor, die zur bevorzugten Stimmung/Atmosphäre passen. Gib zu jeder Location einen Vibe-Tag und eine Begründung an.`,
         config: {
@@ -1092,30 +1122,34 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["locations"]
           }
         }
-      });
-
-      let jsonResp = JSON.parse(response.text || "{}");
-      res.json(jsonResp);
-    } catch (e: unknown) {
-      console.error("Smart Vibe Map Error:", e);
-      res.json({
-        locations: [
-          { name: "Verstecktes Nachbarschaftscafé", vibe: "Gemütlich", reason: "Ideal für tiefe, ruhige Gespräche, die dir gefallen." },
-          { name: "Botanischer Garten", vibe: "Natur & Entspannt", reason: "Spaziergänge wurden in der Vergangenheit positiv bewertet." },
-          { name: "Lokale Kunstgalerie", vibe: "Kreativ", reason: "Bietet einen lockeren Gesprächseinstieg ohne Druck." }
-        ]
-      });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/smart-vibe-map"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/smart-vibe-map", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
   
+  // UMGESTELLT 12.08.2026. Der Ausfallpfad behauptete „Perfekt fuer das
+  // aktuelle Wetter" — eine Aussage ueber Wetter und Ort, die im Ausfall
+  // niemand geprueft hat. Die kuratierten Texte nennen deshalb Arten von
+  // Orten, keine konkreten, und keine Wetterlage.
   app.post("/api/smart-date-planner", async (req, res) => {
-    try {
-      const { weather, time, location, userInterests } = req.body;
-      const interestsText = userInterests && userInterests.length > 0 ? userInterests.join(', ') : "Keine spezifischen Interessen angegeben";
-      
-      const response = await ai.models.generateContent({
+    const { weather, time, location, userInterests } = req.body;
+    const interestsText = userInterests && userInterests.length > 0 ? userInterests.join(', ') : "Keine spezifischen Interessen angegeben";
+    
+    const antwort = await beantworte(
+      "/api/smart-date-planner",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Plane ein Date basierend auf folgenden Präferenzen.
         Wetter: ${weather}
@@ -1144,18 +1178,10 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["suggestions"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch(e) {
-      if (!isQuotaExceeded(e)) console.error("AI Error Smart Date Planner:", e); else console.warn("AI Quota exceeded for Smart Date Planner");
-      res.json({
-        suggestions: [
-          { title: "Gemütliches Café", description: "Perfekt für das aktuelle Wetter, um entspannt bei einem Kaffee zu quatschen.", type: "Indoor" },
-          { title: "Museum oder Ausstellung", description: "Eine schöne wetterunabhängige Aktivität mit viel Gesprächsstoff.", type: "Indoor" },
-          { title: "Spaziergang im Park", description: "Ein entspannter Spaziergang in der Natur, um sich in Ruhe kennenzulernen.", type: "Outdoor" }
-        ]
-      });
-    }
+      }),
+      { kuratiert: { ...SMART_DATE_VORSCHLAEGE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -1204,10 +1230,18 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
     res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026. Der Ausfallpfad lieferte mit HTTP 200 „Hey! Ich
+  // sehe wir haben aehnliche Interessen. Hast du ein Lieblings-Cafe in der
+  // Stadt?" — eine Behauptung ueber eine Gemeinsamkeit, die niemand geprueft
+  // hat. Die Begruendung sagte immerhin „(simuliert wegen Fehler)"; angezeigt
+  // wurde in der App aber nur der Satz.
   app.post("/api/icebreaker", async (req, res) => {
-    try {
-      const { userInterests, verbindungContext } = req.body;
-      const response = await ai.models.generateContent({
+    const { userInterests, verbindungContext } = req.body;
+    const antwort = await beantworte(
+      "/api/icebreaker",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Generiere einen kreativen, situativen Icebreaker für ein Dating-Verbindung.
         Meine Interessen: ${userInterests.join(', ')}
@@ -1226,25 +1260,29 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["icebreaker", "reasoning"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error Icebreaker:", e); else console.warn("AI Quota exceeded for Icebreaker");
-      res.json({
-        icebreaker: "Hey! Ich sehe wir haben ähnliche Interessen. Hast du ein Lieblings-Café in der Stadt?",
-        reasoning: "Ein sicherer, freundlicher Einstieg (simuliert wegen Fehler)."
-      });
-    }
+      }),
+      { kuratiert: { ...ICEBREAKER_EINZELN } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/verbindung-context-analysis", async (req, res) => {
-    try {
-      const { reflections } = req.body;
-      const historySummary = reflections.slice(0, 15).map((r: any) => 
-        `Date: ${r.date}, Positiv: ${r.positive}, Gelernt: ${r.learned}`
-      ).join("\n");
-      
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { reflections } = req.body;
+    const historySummary = reflections.slice(0, 15).map((r: any) => 
+      `Date: ${r.date}, Positiv: ${r.positive}, Gelernt: ${r.learned}`
+    ).join("\n");
+    
+    const antwort = await beantworte(
+      "/api/verbindung-context-analysis",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere diese vergangenen Dates:\n${historySummary}\nIdentifiziere die 3 gemeinsamen Themen/Aktivitäten mit dem größten Potenzial für eine positive Bindung. Gib eine kurze Erklärung (reason) und einen Score (0-100) für jedes.`,
         config: {
@@ -1268,21 +1306,17 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["topics"]
           }
         }
-      });
-
-      let jsonResp = JSON.parse(response.text || "{}");
-      res.json(jsonResp);
-    } catch (e: unknown) {
-      console.error("Connection Context Analysis Error:", e);
-      // Fallback
-      res.json({
-        topics: [
-          { name: "Gemeinsamer Humor", reason: "Lachen war oft ein positiver Faktor in euren Dates.", score: 85 },
-          { name: "Tiefgründige Gespräche", reason: "Reflexionen zeigen, dass Offenheit gut ankam.", score: 75 },
-          { name: "Aktivitäten im Freien", reason: "Spaziergänge wurden positiv erwähnt.", score: 65 }
-        ]
-      });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/verbindung-context-analysis"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/verbindung-context-analysis", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   app.post("/api/date-archive-analysis", async (req, res) => {
@@ -1464,9 +1498,13 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
     }
   });
 
+  // UMGESTELLT 12.08.2026. Strategie: `kuratiert`.
   app.post("/api/feeling-question", async (_req, res) => {
-    try {
-      const response = await ai.models.generateContent({
+    const antwort = await beantworte(
+      "/api/feeling-question",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: "Stelle EINE kurze, tiefgründige Frage zur mentalen Verfassung des Nutzers beim Daten.",
         config: {
@@ -1480,12 +1518,10 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["question"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"question":"Wie fühlst du dich heute auf deiner Dating-Reise?"}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e);
-      res.json({ question: "Wie fühlst du dich heute beim Dating?" });
-    }
+      }),
+      { kuratiert: { ...GEFUEHLSFRAGE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Profile Summary
@@ -1522,15 +1558,21 @@ Keine Halluzinationen. Halte es prägnant, charmant und nachvollziehbar.`,
 
 
   // API Route for Date Location Suggestions
+  // UMGESTELLT 12.08.2026. Als Vorgabe bei leerer Antwort stand hier ein
+  // fertiger Plan mit „Samstag, 14:00 Uhr" und „Lokales Lieblingscafe am
+  // Park". Das klingt nach Absprache. Zeit und Ort stehen im kuratierten
+  // Ersatz jetzt als das da, was sie sind: offen.
   app.post("/api/generate-date-plan", async (req, res) => {
-    try {
-      const { targetName, targetInterests, userName, userInterests, chatHistory } = req.body;
-      
-      const historyText = chatHistory && chatHistory.length > 0 
-        ? `Bisheriger Chatverlauf:\n${chatHistory.map((m: any) => `${m.role === 'user' ? userName : targetName}: ${m.text}`).join('\n')}`
-        : "Noch kein Chatverlauf vorhanden.";
-
-      const response = await ai.models.generateContent({
+    const { targetName, targetInterests, userName, userInterests, chatHistory } = req.body;
+    
+    const historyText = chatHistory && chatHistory.length > 0 
+      ? `Bisheriger Chatverlauf:\n${chatHistory.map((m: any) => `${m.role === 'user' ? userName : targetName}: ${m.text}`).join('\n')}`
+      : "Noch kein Chatverlauf vorhanden.";
+    const antwort = await beantworte(
+      "/api/generate-date-plan",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Erstelle einen konkreten, personalisierten Plan für das erste Treffen mit ${targetName} (Interessen: ${targetInterests.join(", ")}).
 Mein Profil: ${userInterests.join(', ')}.
@@ -1551,24 +1593,24 @@ Basierend auf diesen Infos, schlage EIN konkretes, detailreiches Date vor, inklu
             required: ["title", "time", "location", "plan"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"title":"Kaffee & Spaziergang","time":"Samstag, 14:00 Uhr","location":"Lokales Lieblingscafé am Park","plan":"Wir treffen uns auf einen entspannten Kaffee und machen danach einen kleinen Spaziergang."}'));
-    } catch (e: unknown) {
-      console.error("Error generating date plan:", e);
-      res.status(500).json({ error: "Failed to generate plan" });
-    }
+      }),
+      { kuratiert: { ...DATE_PLAN } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026. Strategie: `kuratiert`, ohne Ortsnamen.
   app.post("/api/date-locations", async (req, res) => {
-    try {
-      const { targetName, targetBio, targetInterests, userName, userInterests, chatHistory } = req.body;
-      
-      const historyText = chatHistory && chatHistory.length > 0 
-        ? `Bisheriger Chatverlauf:\n${chatHistory.map((m: any) => `${m.sender === 'user' ? userName : targetName}: ${m.text}`).join('\n')}`
-        : "Noch kein Chatverlauf vorhanden.";
-
-      const response = await ai.models.generateContent({
+    const { targetName, targetBio, targetInterests, userName, userInterests, chatHistory } = req.body;
+    
+    const historyText = chatHistory && chatHistory.length > 0 
+      ? `Bisheriger Chatverlauf:\n${chatHistory.map((m: any) => `${m.sender === 'user' ? userName : targetName}: ${m.text}`).join('\n')}`
+      : "Noch kein Chatverlauf vorhanden.";
+    const antwort = await beantworte(
+      "/api/date-locations",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Schlage 3 geeignete Orte oder Aktivitäten für ein erstes Date mit ${targetName} vor.
 Profil von ${targetName}:
@@ -1601,21 +1643,23 @@ ${historyText}`,
             required: ["suggestions"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"suggestions":[]}'));
-    } catch (e: unknown) {
-      console.error("Error generating date locations:", e);
-      res.status(500).json({ error: "Failed to generate suggestions" });
-    }
+      }),
+      { kuratiert: { ...DATE_ORTE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for KI Verbindungs-Score (Passgenauigkeit)
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
   app.post("/api/ai-passgenauigkeit", async (req, res) => {
-    try {
-      const { userInterests, profiles } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const { userInterests, profiles } = req.body;
+    
+    const antwort = await beantworte(
+      "/api/ai-passgenauigkeit",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Mein Profil - Interessen: ${userInterests.join(", ")}.
 Bitte analysiere die folgende Liste von Profilen und bewerte die Passgenauigkeit (0-100) basierend auf tiefgründiger psychologischer und interessensbasierter Kompatibilität, nicht nur auf reinen Überschneidungen.
@@ -1638,28 +1682,33 @@ ${profiles.map((p: any) => `ID: ${p.id}, Name: ${p.name}, Bio: ${p.bio}, Interes
             }
           }
         }
-      });
-      
-      const analysis = JSON.parse(response.text || '[]');
-      res.json(analysis);
-    } catch (e: unknown) {
-      console.error("Error analyzing AI Passgenauigkeit:", e);
-      res.status(500).json({ error: "Failed to analyze connection score" });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Icebreaker Suggestions
   
   // API Route for Conversation Tuning
+  // UMGESTELLT 12.08.2026 — BEWUSST OHNE kuratierten Ersatz.
+  // Die Strategie in kiPolitik.ts lautet `kuratiert`. Dieser Endpunkt
+  // liefert aber DEN TEXT einer vorgeschlagenen Antwort auf eine bestimmte
+  // Nachricht. Ein vorgeschriebener Satz waere hier keine allgemeine Hilfe,
+  // sondern eine erfundene Antwort im Namen der lesenden Person. Ohne
+  // kuratierten Inhalt scheitert `beantworte` ehrlich — das ist an dieser
+  // Stelle richtig. Ob die Strategie auf `kein_ersatz` gehoert, ist eine
+  // Entscheidung, die nicht ich treffe.
   app.post("/api/conversation-tuning", async (req, res) => {
-    try {
-      const { targetName, targetBio, targetInterests, userName, userInterests, chatHistory } = req.body;
-      
-      const historyText = chatHistory && chatHistory.length > 0 
-        ? "Bisheriger Chatverlauf:\n" + chatHistory.map((m: any) => `${m.sender === 'user' ? userName : targetName}: ${m.text}`).join("\n")
-        : "Noch kein Chatverlauf vorhanden.";
-
-      const response = await ai.models.generateContent({
+    const { targetName, targetBio, targetInterests, userName, userInterests, chatHistory } = req.body;
+    
+    const historyText = chatHistory && chatHistory.length > 0 
+      ? "Bisheriger Chatverlauf:\n" + chatHistory.map((m: any) => `${m.sender === 'user' ? userName : targetName}: ${m.text}`).join("\n")
+      : "Noch kein Chatverlauf vorhanden.";
+    const antwort = await beantworte(
+      "/api/conversation-tuning",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Erstelle 3 verschiedene Antwort-Optionen für ${targetName}, um das Gespräch authentisch weiterzuführen.
 Profil von ${targetName}:
@@ -1696,13 +1745,9 @@ Achte darauf, dass die Antworten natürlich, nicht generisch und authentisch kli
             required: ["suggestions"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"suggestions":[]}'));
-    } catch (e: unknown) {
-      console.error("Error generating conversation tuning:", e);
-      res.status(500).json({ error: "Failed to generate tuning suggestions" });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -2005,19 +2050,23 @@ Gib das Ergebnis im vorgegebenen JSON-Format zurück.`,
   });
 
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
   app.post("/api/profile-check", async (req, res) => {
-    try {
-      const { bio, interests, name, aiFocus, tonality } = req.body;
-      
-      const focusText = aiFocus !== undefined 
-        ? `\nGewünschter Fokus für die Optimierung: ${aiFocus < 50 ? 'Mehr Authentizität und Ehrlichkeit (Fokus: ' + (100 - aiFocus*2) + '%)' : aiFocus > 50 ? 'Mehr Attraktivität und Überzeugungskraft (Fokus: ' + ((aiFocus-50)*2) + '%)' : 'Ausgewogen zwischen Authentizität und Attraktivität'}.` 
-        : '';
+    const { bio, interests, name, aiFocus, tonality } = req.body;
+    
+    const focusText = aiFocus !== undefined 
+      ? `\nGewünschter Fokus für die Optimierung: ${aiFocus < 50 ? 'Mehr Authentizität und Ehrlichkeit (Fokus: ' + (100 - aiFocus*2) + '%)' : aiFocus > 50 ? 'Mehr Attraktivität und Überzeugungskraft (Fokus: ' + ((aiFocus-50)*2) + '%)' : 'Ausgewogen zwischen Authentizität und Attraktivität'}.` 
+      : '';
 
-      const tonalityText = tonality
-        ? `\nGewünschter Tonalitäts-Stil der optimierten Bio: ${tonality}.`
-        : '';
-
-      const response = await ai.models.generateContent({
+    const tonalityText = tonality
+      ? `\nGewünschter Tonalitäts-Stil der optimierten Bio: ${tonality}.`
+      : '';
+    const antwort = await beantworte(
+      "/api/profile-check",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere folgendes Dating-Profil:
 Name: ${name || 'Nicht angegeben'}
@@ -2058,27 +2107,9 @@ Du beurteilst:
             required: ["authenticityScore", "expressivenessScore", "compatibilityScore", "impression", "suggestions", "factors", "optimizedBio", "optimizationCategory"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"authenticityScore":0,"expressivenessScore":0,"compatibilityScore":0,"impression":"","suggestions":[],"factors":[],"optimizedBio":"","optimizationCategory":"Sprachstil"}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // BEFUND 10.08.2026: Hier stand bei erschoepftem Kontingent eine
-      // erfundene Auswertung -- 80/75/85, "Dein Profil wirkt sympathisch.",
-      // Eigenschaften "Ehrlich, Direkt, Humorvoll" -- angezeigt als Analyse
-      // DES EIGENEN PROFILS. Niemand konnte das von einer echten
-      // Auswertung unterscheiden.
-      //
-      // Das ist die Kategorie, die es nie geben darf: eine erfundene
-      // personenbezogene Aussage. Eine ehrliche Fehlermeldung ist die
-      // einzige zulaessige Antwort.
-      res.status(isQuotaExceeded(e) ? 503 : 500).json({
-        error: isQuotaExceeded(e)
-          ? "Die Profilanalyse ist gerade ausgelastet. Bitte später erneut."
-          : "Die Profilanalyse ist fehlgeschlagen.",
-        code: isQuotaExceeded(e) ? "ki_kontingent" : "ki_fehler",
-      });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // UMGESTELLT 11.08.2026 auf kiAufruf.beantworte(), Strategie `leer`.
@@ -2501,10 +2532,14 @@ Gib die Antwort als JSON zurück.`,
   });
 
   
+  // UMGESTELLT 12.08.2026. Strategie: `kuratiert`.
   app.post("/api/reflection-questions", async (req, res) => {
-    try {
-      const { rating, verbindungName } = req.body;
-      const response = await ai.models.generateContent({
+    const { rating, verbindungName } = req.body;
+    const antwort = await beantworte(
+      "/api/reflection-questions",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Generiere 3 gezielte, tiefgründige Reflexionsfragen für eine Person, die gerade von einem Date mit ${verbindungName || "einer Verbindung"} zurückgekommen ist. Die Bewertung des Dates war ${rating} von 5 Sternen. Die Fragen sollen helfen, tiefergehende Lerneffekte über das eigene Dating-Verhalten und die eigenen Werte zu erzielen.`,
         config: {
@@ -2521,18 +2556,25 @@ Gib die Antwort als JSON zurück.`,
             required: ["questions"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error(error); else console.warn("AI Quota exceeded for reflection-questions");
-      res.status(500).json({ error: "Fehler bei der Fragengenerierung." });
-    }
+      }),
+      { kuratiert: { ...REFLEXIONSFRAGEN } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/mood-insight", async (req, res) => {
-    try {
-      const { dates } = req.body;
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { dates } = req.body;
+    const antwort = await beantworte(
+      "/api/mood-insight",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere diese Date-Einträge:\n${JSON.stringify(dates)}\nExtrahiere den generellen Stimmungstrend und formuliere einen kurzen, motivierenden Tipp (1-2 Sätze) für das nächste Date.`,
         config: {
@@ -2546,20 +2588,34 @@ Gib die Antwort als JSON zurück.`,
             required: ["summary", "tip"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error("AI Error Mood Insight:", error); else console.warn("AI Quota exceeded for mood-insight");
-      res.json({ summary: "Deine Stimmung war in letzter Zeit positiv und fokussiert.", tip: "Geh entspannt in deine nächsten Dates und sei du selbst." });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/mood-insight"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/mood-insight", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
   
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/reflection-insight", async (req, res) => {
-    try {
-      const { dates } = req.body;
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { dates } = req.body;
+    const antwort = await beantworte(
+      "/api/reflection-insight",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere diese Date-Einträge der letzten Woche:\n${JSON.stringify(dates)}\nGeneriere 3 konkrete, personalisierte Verbesserungsvorschläge für die Kommunikation beim nächsten Date.`,
         config: {
@@ -2583,18 +2639,32 @@ Gib die Antwort als JSON zurück.`,
             required: ["insights"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error("AI Error Reflection Insight:", error); else console.warn("AI Quota exceeded for reflection-insight");
-      res.json({ insights: [{ title: "Aktives Zuhören", description: "Fokus auf den Partner", action: "Stelle mehr Rückfragen" }] });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/reflection-insight"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/reflection-insight", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/competence-radar", async (req, res) => {
-    try {
-      const { dates } = req.body;
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { dates } = req.body;
+    const antwort = await beantworte(
+      "/api/competence-radar",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Bewerte basierend auf diesen Date-Einträgen die folgenden Dating-Kompetenzen auf einer Skala von 0 bis 100: Authentizität, Kommunikation, Grenzsetzung, Emotionale Offenheit.\nEinträge: ${JSON.stringify(dates)}`,
         config: {
@@ -2617,25 +2687,17 @@ Gib die Antwort als JSON zurück.`,
             required: ["competencies"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error("AI Error Competence Radar:", error); else console.warn("AI Quota exceeded for competence-radar");
-      // BEFUND 10.08.2026: Hier standen erfundene Werte -- Authentizitaet
-      // 80, Kommunikation 65, Grenzsetzung 70, Emotionale Offenheit 60 --
-      // angezeigt als Auswertung der eigenen Beziehungskompetenz.
-      // Dieselbe verbotene Kategorie wie bei /api/profile-check.
-      //
-      // Besonders heikel hier: "Grenzsetzung 70" liest sich wie ein Befund
-      // ueber die eigene Person. Eine erfundene Zahl an dieser Stelle kann
-      // Verhalten beeinflussen.
-      res.status(isQuotaExceeded(error) ? 503 : 500).json({
-        error: isQuotaExceeded(error)
-          ? "Die Auswertung ist gerade ausgelastet. Bitte später erneut."
-          : "Die Auswertung ist fehlgeschlagen.",
-        code: isQuotaExceeded(error) ? "ki_kontingent" : "ki_fehler",
-      });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/competence-radar"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/competence-radar", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte().
@@ -2667,10 +2729,19 @@ Gib die Antwort als JSON zurück.`,
     );
     res.status(antwort.status).json(antwort.koerper);
   });
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // Strategie `zwischenspeicher`: Faellt die KI aus, wird der letzte gueltige
+  // Stand ausgeliefert — mit ausgewiesenem Alter und dem Hinweis, dass er
+  // gespeichert ist. Geschrieben wird nur ein echtes KI-Ergebnis.
   app.post("/api/timeline-summary", async (req, res) => {
-    try {
-      const { dates } = req.body;
-      const response = await ai.models.generateContent({
+    const meineUid = (req as any).user?.uid as string;
+    const { dates } = req.body;
+    const antwort = await beantworte(
+      "/api/timeline-summary",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere diese Liste von vergangenen Dates (inkl. Stimmung und Lerneffekt):\n${JSON.stringify(dates)}\nErstelle eine kurze, motivierende Zusammenfassung (ca. 3 Sätze) der Stimmungstrends und Dating-Erfahrungen der letzten Woche/Zeit. Welche Muster oder Entwicklungen sind erkennbar?`,
         config: {
@@ -2684,19 +2755,27 @@ Gib die Antwort als JSON zurück.`,
             required: ["summary", "trend"]
           }
         }
-      });
-      const data = JSON.parse(response.text || "{}");
-      res.json(data);
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error("AI Error Timeline Summary:", error); else console.warn("AI Quota exceeded for Timeline Summary");
-      res.status(500).json({ error: "Fehler bei der KI-Analyse." });
+      }),
+      {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/timeline-summary"),
+      },
+    );
+    // Nur ein echtes KI-Ergebnis wird abgelegt. Ein kuratierter oder
+    // bereits gespeicherter Stand wuerde sich sonst selbst verlaengern.
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/timeline-summary", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026. Strategie: `kuratiert`, ohne Ortsnamen.
   app.post("/api/date-planner", async (req, res) => {
-    try {
-      const { location, time, weather } = req.body;
-      const response = await ai.models.generateContent({
+    const { location, time, weather } = req.body;
+    const antwort = await beantworte(
+      "/api/date-planner",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Mache 3 konkrete, kreative Vorschläge für ein Date in ${location} am Zeitpunkt: ${time}. Das Wetter wird voraussichtlich so: ${weather}. Berücksichtige das Wetter (z.B. bei Regen eher drinnen, bei Sonne eher draußen) und die Tageszeit für passende Aktivitäten.`,
         config: {
@@ -2720,12 +2799,10 @@ Gib die Antwort als JSON zurück.`,
             required: ["ideas"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error(error); else console.warn("AI Quota exceeded for reflection-questions");
-      res.status(500).json({ error: "Fehler bei der Date-Planung." });
-    }
+      }),
+      { kuratiert: { ...DATE_IDEEN_ORT } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -2790,11 +2867,16 @@ Schreibe basierend darauf 2-3 kurze Sätze als ersten Entwurf für sein Tagebuch
     res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
   app.post("/api/dating-journal-analysis", async (req, res) => {
-    try {
-      const { notes, vibes } = req.body;
-      const vibeStr = (vibes && vibes.length > 0) ? vibes.join(", ") : "keine Angabe";
-      const response = await ai.models.generateContent({
+    const { notes, vibes } = req.body;
+    const vibeStr = (vibes && vibes.length > 0) ? vibes.join(", ") : "keine Angabe";
+    const antwort = await beantworte(
+      "/api/dating-journal-analysis",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere dieses Date basierend auf den Notizen: "${notes}". Die Stimmungstags waren: ${vibeStr}.
 Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik und erkenne mögliche Muster im Beziehungsverhalten des Nutzers.`,
@@ -2810,20 +2892,24 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             required: ["dynamicAnalysis", "behaviorPatterns", "advice"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error(error); else console.warn("AI Quota exceeded for reflection-questions");
-      res.status(500).json({ error: "Fehler bei der Journal-Analyse." });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
+  // HINWEIS: Dieser Endpunkt laeuft bei jeder neuen Nachricht, sein Ergebnis
+  // wird aber nirgends angezeigt (siehe klar/23, Abschnitt 4 B2).
   app.post("/api/conversation-dynamics", async (req, res) => {
-    try {
-      const { chatHistory } = req.body;
-      const historyText = chatHistory.map((m: any) => `${m.role || m.sender}: ${m.text}`).join('\n');
-      const response = await ai.models.generateContent({
+    const { chatHistory } = req.body;
+    const historyText = chatHistory.map((m: any) => `${m.role || m.sender}: ${m.text}`).join('\n');
+    const antwort = await beantworte(
+      "/api/conversation-dynamics",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere diesen Chatverlauf und bestimme die Dynamik: \n${historyText}`,
         config: {
@@ -2838,12 +2924,9 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             required: ["dynamic", "explanation"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"dynamic":"neutral","explanation":""}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error(e);
-      res.json({ dynamic: "neutral", explanation: "Konnte nicht analysiert werden." });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   app.post("/api/date-check", async (req, res) => {
@@ -2923,11 +3006,18 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026. Der Ausfallpfad lieferte „Unehrlichkeit", „Zu
+  // spaet kommen", „Nur ueber sich reden" — an einer Stelle, die verspricht,
+  // aus den eigenen Tagebucheintraegen zu lesen. Jetzt gekennzeichnet als
+  // allgemeine Vorschlaege zum Auswaehlen.
   app.post("/api/nogo-suggestions", async (req, res) => {
-    try {
-      const { journals } = req.body;
-      const journalStr = journals && journals.length > 0 ? JSON.stringify(journals) : "Keine Einträge";
-      const response = await ai.models.generateContent({
+    const { journals } = req.body;
+    const journalStr = journals && journals.length > 0 ? JSON.stringify(journals) : "Keine Einträge";
+    const antwort = await beantworte(
+      "/api/nogo-suggestions",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Dating Journal Einträge: ${journalStr}\nWelche No-Gos könnte ich basierend auf meinen negativen Dating-Erfahrungen festlegen?`,
         config: {
@@ -2941,12 +3031,10 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             required: ["suggestions"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"suggestions":[]}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error(e);
-      res.json({ suggestions: ["Unehrlichkeit", "Zu spät kommen", "Nur über sich reden"] });
-    }
+      }),
+      { kuratiert: { ...NOGO_VORSCHLAEGE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -3020,17 +3108,23 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     }
   });
 
+  // UMGESTELLT 12.08.2026. Der kuratierte Ersatz sagt bewusst NICHTS ueber
+  // die vorliegende Bio — ohne die KI hat sie niemand gelesen. Was bleibt,
+  // sind Hinweise, die fuer jede Bio gelten.
   app.post("/api/optimize-bio-values", async (req, res) => {
-    try {
-      const { bio, values } = req.body;
-      const valuesText = values.map((v: any) => `${v.subject}: ${v.A}%`).join(', ');
-      
-      const prompt = `Du bist ein KI-Dating-Coach. Der Nutzer hat folgende Bio: "${bio}".
-      Sein/Ihr Werte-Radar (Persönlichkeit/Werte) sieht so aus: ${valuesText}.
-      Mache 2 konkrete, kurze Vorschläge, wie die Bio optimiert werden kann, um Gleichgesinnte basierend auf diesen Werten besser anzuziehen (z.B. indem hohe Werte betont werden).
-      Gib das Ergebnis als JSON-Objekt mit einem Array 'suggestions' von Strings zurück.`;
-      
-      const response = await ai.models.generateContent({
+    const { bio, values } = req.body;
+    const valuesText = values.map((v: any) => `${v.subject}: ${v.A}%`).join(', ');
+    
+    const prompt = `Du bist ein KI-Dating-Coach. Der Nutzer hat folgende Bio: "${bio}".
+    Sein/Ihr Werte-Radar (Persönlichkeit/Werte) sieht so aus: ${valuesText}.
+    Mache 2 konkrete, kurze Vorschläge, wie die Bio optimiert werden kann, um Gleichgesinnte basierend auf diesen Werten besser anzuziehen (z.B. indem hohe Werte betont werden).
+    Gib das Ergebnis als JSON-Objekt mit einem Array 'suggestions' von Strings zurück.`;
+    
+    const antwort = await beantworte(
+      "/api/optimize-bio-values",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: "gemini-3.5-flash-lite",
         contents: prompt,
         config: {
@@ -3045,22 +3139,23 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             }
           }
         }
-      });
-      
-      const data = JSON.parse(response.text || "{}");
-      res.json(data);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Fehler bei der Bio-Optimierung" });
-    }
+      }),
+      { kuratiert: { ...BIO_WERTE_HINWEISE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte(): Zeitgrenze, zweiter
+  // Versuch, JSON-Pruefung und die in kiPolitik.ts hinterlegte Strategie.
   app.post("/api/journal-audio-dump", async (req, res) => {
-    try {
-      const { audioBase64, mimeType } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const { audioBase64, mimeType } = req.body;
+    
+    const antwort = await beantworte(
+      "/api/journal-audio-dump",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: "gemini-3.5-flash-lite",
         contents: [
           "Transkribiere diese Audio-Notiz für mein Dating-Journal. Leite aus der Sprachmelodie und dem Inhalt meine emotionale Verfassung ab. Gib mir das Transkript und die gefühlte Stimmung (positive, neutral, negative).",
@@ -3077,13 +3172,9 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             }
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Audio-Verarbeitung fehlgeschlagen" });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   

@@ -119,3 +119,149 @@ export const VERBINDUNG_KONZEPTE = {
     { title: 'Etwas ansehen, ueber das man danach reden kann', description: 'Ausstellung, Konzert, Kino. Der Gespraechsstoff ist eingebaut.', tag: 'Kulturell' },
   ],
 } as const;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ERGÄNZT 12.08.2026 — für die zehn Endpunkte mit Strategie `kuratiert`,
+// die an diesem Tag von der Zwischenstufe auf den vollen Weg gehoben wurden.
+//
+// Jeder Text unten ist von Hand geschrieben und hält dieselbe Prüfung ein
+// wie die Texte darüber:
+//
+//   Er darf NICHTS über die lesende Person, ihr Gegenüber oder deren
+//   Gespräch behaupten — und er darf keinen Ort nennen, den es geben muss.
+//
+// Der zweite Teil ist neu und kam durch einen Befund an diesem Tag zustande:
+// `/api/city-trend-radar` lieferte bei einem Ausfall „Secret Garden Café"
+// und „Urban Art Walk" samt Beschreibung. Ein erfundener Ratschlag ist
+// ärgerlich; eine erfundene Adresse schickt jemanden los. Deshalb steht in
+// diesen Texten nie ein Ortsname, sondern immer eine Art von Ort — „ein Café
+// in eurer Nähe" statt eines Namens.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** `/api/daily-icebreakers` — drei Gesprächsanfänge ohne Profilbezug. */
+export const DAILY_ICEBREAKER = {
+  icebreakers: [
+    'Was hat dich in den letzten Tagen positiv überrascht?',
+    'Gibt es etwas, das du gerade lernst oder ausprobierst?',
+    'Woran merkst du, dass ein Tag gut gelaufen ist?',
+  ],
+} as const;
+
+/**
+ * `/api/icebreaker` — ein einzelner Gesprächsanfang.
+ *
+ * Die Begründung sagt bewusst, WARUM die Frage allgemein funktioniert, und
+ * behauptet nicht, sie sei auf ein bestimmtes Profil zugeschnitten.
+ */
+export const ICEBREAKER_EINZELN = {
+  icebreaker: 'Was hast du zuletzt gemacht, wovon du vorher dachtest, es wäre nichts für dich?',
+  reasoning:
+    'Die Frage lässt sich beantworten, ohne etwas preiszugeben, und führt fast immer zu einer Geschichte statt zu einem Wort.',
+} as const;
+
+/** `/api/feeling-question` — eine Frage an die eigene Verfassung. */
+export const GEFUEHLSFRAGE = {
+  question: 'Was würdest du im Moment eher brauchen: mehr Gespräche oder mehr Ruhe?',
+} as const;
+
+/** `/api/reflection-questions` — nach einem Date, ohne Bezug auf dessen Verlauf. */
+export const REFLEXIONSFRAGEN = {
+  questions: [
+    'Wann hast du dich während des Treffens am wohlsten gefühlt?',
+    'Gab es einen Moment, in dem du etwas nicht gesagt hast, das du sagen wolltest?',
+    'Was davon hat mit der anderen Person zu tun — und was mit dir?',
+  ],
+} as const;
+
+/** `/api/smart-date-planner` — drei Arten von Orten, keine konkreten. */
+export const SMART_DATE_VORSCHLAEGE = {
+  suggestions: [
+    {
+      title: 'Café am Vormittag',
+      description: 'Kurz, hell, jederzeit beendbar. Der unaufgeregteste erste Rahmen, den es gibt.',
+      type: 'Indoor',
+    },
+    {
+      title: 'Spaziergang mit Ziel',
+      description: 'Ein Weg mit einem Punkt am Ende. Reden fällt beim Gehen leichter als am Tisch.',
+      type: 'Outdoor',
+    },
+    {
+      title: 'Ausstellung oder Markt',
+      description: 'Etwas zu sehen heisst: wenig Stille auszuhalten und Gesprächsstoff eingebaut.',
+      type: 'Indoor / Outdoor',
+    },
+  ],
+} as const;
+
+/**
+ * `/api/generate-date-plan` — ein Plan ohne erfundene Angaben.
+ *
+ * BEFUND 12.08.2026: Hier stand als Vorgabe „Samstag, 14:00 Uhr" und
+ * „Lokales Lieblingscafé am Park". Beides klingt nach Absprache. Zeit und
+ * Ort stehen jetzt als das da, was sie sind: offen.
+ */
+export const DATE_PLAN = {
+  title: 'Kaffee und ein kurzer Spaziergang',
+  time: 'an einem Nachmittag, an dem ihr beide Zeit habt',
+  location: 'ein Café in eurer Nähe',
+  plan: 'Erst eine Stunde bei einem Getränk, danach ein Stück zu Fuss. Wer länger will, verlängert; wer nicht, verabschiedet sich am Ende des Wegs.',
+} as const;
+
+/** `/api/date-locations` — drei Arten von Orten für ein erstes Treffen. */
+export const DATE_ORTE = {
+  suggestions: [
+    { title: 'Café', description: 'Öffentlich, kurz, ohne Verpflichtung für den Rest des Tages.' },
+    { title: 'Wochenmarkt', description: 'Nebeneinander statt gegenüber — das nimmt Druck aus dem ersten Treffen.' },
+    { title: 'Ausstellung', description: 'Der Gesprächsstoff ist eingebaut, Stille fällt nicht ins Gewicht.' },
+  ],
+} as const;
+
+/** `/api/date-planner` — dieselbe Idee, anderes Feldschema. */
+export const DATE_IDEEN_ORT = {
+  ideas: [
+    {
+      title: 'Café am Nachmittag',
+      description: 'Kurz und unaufgeregt. Wetterunabhängig und jederzeit beendbar.',
+      locationType: 'Indoor / Café',
+    },
+    {
+      title: 'Spaziergang mit Ziel',
+      description: 'Ein Weg mit einem Punkt am Ende — Aussicht, Buchladen, Kiosk.',
+      locationType: 'Outdoor / Park',
+    },
+    {
+      title: 'Ausstellung oder Konzert',
+      description: 'Etwas ansehen, über das man danach reden kann.',
+      locationType: 'Indoor / Kultur',
+    },
+  ],
+} as const;
+
+/**
+ * `/api/nogo-suggestions` — Vorschläge zum Auswählen, keine Diagnose.
+ *
+ * Der Endpunkt heisst „Welche No-Gos könnte ich festlegen?". Die Antwort
+ * darf deshalb allgemeine Muster nennen — sie darf aber nicht behaupten,
+ * die lesende Person habe diese Muster erlebt.
+ */
+export const NOGO_VORSCHLAEGE = {
+  suggestions: [
+    'Absagen ohne Nachricht',
+    'Gespräche, die nur in eine Richtung laufen',
+    'Druck, schneller zu werden, als du möchtest',
+  ],
+} as const;
+
+/**
+ * `/api/optimize-bio-values` — allgemeine Hinweise zum Schreiben einer Bio.
+ *
+ * Bewusst KEINE Aussage über die vorliegende Bio: Ohne die KI hat niemand
+ * sie gelesen. Was bleibt, sind Hinweise, die für jede Bio gelten.
+ */
+export const BIO_WERTE_HINWEISE = {
+  suggestions: [
+    'Nenne eine konkrete Sache, die du regelmässig tust, statt eines Adjektivs über dich. „Ich koche jeden Sonntag" sagt mehr als „kreativ".',
+    'Schreib einen Satz darüber, was du suchst. Wer das ausspart, wird häufiger angeschrieben — aber seltener von den Passenden.',
+  ],
+} as const;
