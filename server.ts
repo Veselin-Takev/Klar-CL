@@ -2461,10 +2461,15 @@ Gib die Antwort als JSON zurück.`,
   // wirkungslos bleiben.
 
 
+  // UMGESTELLT 12.08.2026. Vorher: HTTP 500 mit { error: … } — richtig, aber
+  // ohne Zeitgrenze und ohne zweiten Versuch. Strategie: `leer`.
   app.post("/api/date-summary", async (req, res) => {
-    try {
-      const { reflection } = req.body;
-      const response = await ai.models.generateContent({
+    const { reflection } = req.body;
+    const antwort = await beantworte(
+      "/api/date-summary",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere dieses Date:\n${JSON.stringify(reflection)}\nErstelle eine Zusammenfassung basierend auf den Stimmungstags und Notizen. Hebe die wichtigsten Momente und Lerneffekte hervor.`,
         config: {
@@ -2486,12 +2491,9 @@ Gib die Antwort als JSON zurück.`,
             required: ["moments", "learnings"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error(error); else console.warn("AI Quota exceeded for reflection-questions");
-      res.status(500).json({ error: "Fehler bei der KI-Zusammenfassung." });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -2632,10 +2634,19 @@ Gib die Antwort als JSON zurück.`,
     }
   });
 
+  // UMGESTELLT 12.08.2026 auf kiAufruf.beantworte().
+  // Vorher lieferte der Ausfallpfad mit HTTP 200:
+  //     { summary: "Zusammenfassung konnte nicht generiert werden: " + text }
+  // Das ist keine Zusammenfassung, wird aber an derselben Stelle angezeigt
+  // wie eine — und HTTP 200 sagt dem Client, alles sei in Ordnung.
+  // Strategie in kiPolitik.ts: `leer`.
   app.post("/api/summarize-voice", async (req, res) => {
-    try {
-      const { text } = req.body;
-      const response = await ai.models.generateContent({
+    const { text } = req.body;
+    const antwort = await beantworte(
+      "/api/summarize-voice",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Fasse den folgenden transkribierten Sprachtext eines Dating-Tagebucheintrags kurz, prägnant und strukturiert zusammen (Fokus auf Highlights und Learnings):\n${text}`,
         config: {
@@ -2648,12 +2659,9 @@ Gib die Antwort als JSON zurück.`,
             required: ["summary"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error("AI Error Summarize Voice:", error); else console.warn("AI Quota exceeded for summarize-voice");
-      res.json({ summary: "Zusammenfassung konnte nicht generiert werden: " + req.body.text?.substring(0, 50) });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
   app.post("/api/timeline-summary", async (req, res) => {
     try {
@@ -2754,20 +2762,26 @@ Gib die Antwort als JSON zurück.`,
 
   
   
+  // UMGESTELLT 12.08.2026. Dieser Endpunkt liefert FREIEN TEXT, kein JSON —
+  // deshalb `json: false` und `feld: "notes"`: `beantworte` legt den Text
+  // dann unter dem Namen ab, den der Client erwartet.
+  // Strategie: `kein_ersatz`. Ein erfundener Tagebucheintrag in der
+  // Ich-Perspektive waere das Gegenteil dessen, wofuer dieser Endpunkt da ist.
   app.post("/api/generate-reflection-from-emojis", async (req, res) => {
-    try {
-      const { emojis } = req.body;
-      const emojiString = (emojis || []).join(" ");
-      const response = await ai.models.generateContent({
+    const { emojis } = req.body;
+    const emojiString = (emojis || []).join(" ");
+    const antwort = await beantworte(
+      "/api/generate-reflection-from-emojis",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Du bist ein Dating Coach. Der Nutzer hat gerade ein Date gehabt und diese Emojis als Quick-Log ausgewählt: ${emojiString}. 
 Schreibe basierend darauf 2-3 kurze Sätze als ersten Entwurf für sein Tagebuch. Sprich aus der Ich-Perspektive, als wäre es der Nutzer.`,
-      });
-      res.json({ notes: response.text });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Fehler." });
-    }
+      }),
+      { json: false, feld: "notes" },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   app.post("/api/dating-journal-analysis", async (req, res) => {
@@ -2871,10 +2885,20 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     }
   });
 
+  // UMGESTELLT 12.08.2026 — und dabei die VIERZEHNTE erfundene
+  // Ersatzantwort gefunden. Hier stand im Fehlerfall mit HTTP 200:
+  //     { explanation: "Hohe Übereinstimmung in grundlegenden Werten und
+  //       Interessen!" }
+  // Das ist eine Aussage ueber ZWEI konkrete Menschen, die niemand geprueft
+  // hat — ausgeliefert genau dann, wenn die Pruefung nicht stattfinden
+  // konnte. Strategie in kiPolitik.ts: `leer`.
   app.post("/api/deep-verbindung-info", async (req, res) => {
-    try {
-      const { userValues, userInterests, targetValues, targetInterests } = req.body;
-      const response = await ai.models.generateContent({
+    const { userValues, userInterests, targetValues, targetInterests } = req.body;
+    const antwort = await beantworte(
+      "/api/deep-verbindung-info",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Meine Werte: ${userValues.join(", ")}\nMeine Interessen: ${userInterests.join(", ")}\nZiel Werte: ${targetValues.join(", ")}\nZiel Interessen: ${targetInterests.join(", ")}\nWarum ist dies ein Deep-Verbindung?`,
         config: {
@@ -2888,12 +2912,9 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             required: ["explanation"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"explanation":""}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error(e);
-      res.json({ explanation: "Hohe Übereinstimmung in grundlegenden Werten und Interessen!" });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   app.post("/api/nogo-suggestions", async (req, res) => {
