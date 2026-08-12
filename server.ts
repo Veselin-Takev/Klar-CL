@@ -1375,10 +1375,18 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
   });
 
   // API Route for Date Checklist
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/date-checklist", async (req, res) => {
-    try {
-      const { interests } = req.body;
-      const response = await ai.models.generateContent({
+    const { interests } = req.body;
+    const antwort = await beantworte(
+      "/api/date-checklist",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Erstelle eine Date-Vorbereitungs-Checkliste (Verhaltensregeln zur Nervositätsreduktion) basierend auf diesen Interessen: ${interests.join(', ')}.`,
         config: {
@@ -1406,16 +1414,10 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["items"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"items":[]}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/date-checklist", e, { kuratiert: { ...DATE_CHECKLISTE } });
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+      { kuratiert: { ...DATE_CHECKLISTE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Date Ideas
@@ -1464,11 +1466,18 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
     }
   });
 
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/date-ideas", async (req, res) => {
-    try {
-      const { interests } = req.body;
-
-      const response = await ai.models.generateContent({
+    const { interests } = req.body;
+    const antwort = await beantworte(
+      "/api/date-ideas",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Erstelle 3 kreative, ehrliche und gut umsetzbare Date-Ideen basierend auf folgenden Interessen/Vorlieben: ${interests}.`,
         config: {
@@ -1486,16 +1495,10 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             }
           }
         }
-      });
-      res.json({ ideas: JSON.parse(response.text || "[]") });
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/date-ideas", e, { kuratiert: { ...DATE_IDEEN } });
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+      { kuratiert: { ...DATE_IDEEN } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // UMGESTELLT 12.08.2026. Strategie: `kuratiert`.
@@ -1525,16 +1528,23 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
   });
 
   // API Route for Profile Summary
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/profile-summary", async (req, res) => {
-    try {
-      const { userInterests, profileName, profileInterests, profileBio } = req.body;
-      
-      const contents = `Nutzer Interessen: ${userInterests.join(", ")}
+    const { userInterests, profileName, profileInterests, profileBio } = req.body;
+    
+    const contents = `Nutzer Interessen: ${userInterests.join(", ")}
 Profil Name: ${profileName}
 Profil Interessen: ${profileInterests.join(", ")}
 Profil Bio: ${profileBio}`;
-
-      const response = await ai.models.generateContent({
+    const antwort = await beantworte(
+      "/api/profile-summary",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents,
         config: {
@@ -1544,16 +1554,9 @@ Erstelle einen individuellen 'Verbindungs-Tipp' (max 3 Sätze), der erklärt, wa
 Sprich den Nutzer direkt an (Du-Form). Beziehe dich explizit auf gemeinsame Interessen oder interessante Aspekte der Bio.
 Keine Halluzinationen. Halte es prägnant, charmant und nachvollziehbar.`,
         }
-      });
-      res.json({ summary: response.text });
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/profile-summary", e);
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
 
@@ -1835,15 +1838,22 @@ Achte darauf, dass die Antworten natürlich, nicht generisch und authentisch kli
   });
 
 
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/icebreakers", async (req, res) => {
-    try {
-      const { targetName, targetBio, targetInterests, userName, userInterests, chatHistory } = req.body;
-      
-      const historyText = chatHistory && chatHistory.length > 0 
-        ? `Bisheriger Chatverlauf:\n${chatHistory.map((m: any) => `${m.sender === 'user' ? userName : targetName}: ${m.text}`).join('\n')}`
-        : "Noch kein Chatverlauf vorhanden.";
-
-      const response = await ai.models.generateContent({
+    const { targetName, targetBio, targetInterests, userName, userInterests, chatHistory } = req.body;
+    
+    const historyText = chatHistory && chatHistory.length > 0 
+      ? `Bisheriger Chatverlauf:\n${chatHistory.map((m: any) => `${m.sender === 'user' ? userName : targetName}: ${m.text}`).join('\n')}`
+      : "Noch kein Chatverlauf vorhanden.";
+    const antwort = await beantworte(
+      "/api/icebreakers",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Erstelle 3 Icebreaker-Vorschläge für ${targetName}.
 Profil von ${targetName}:
@@ -1872,24 +1882,25 @@ Gib genau 3 verschiedene Vorschläge zurück. Jeder Vorschlag sollte natürlich 
             required: ["suggestions"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"suggestions":[]}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/icebreakers", e, { kuratiert: { ...ICEBREAKER_VORSCHLAEGE } });
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+      { kuratiert: { ...ICEBREAKER_VORSCHLAEGE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/verbindung-optimizer", async (req, res) => {
-    try {
-      const { userInterests, targetProfile, pastInteractions } = req.body;
-      
-      const response = await ai.models.generateContent({
+    const { userInterests, targetProfile, pastInteractions } = req.body;
+    
+    const antwort = await beantworte(
+      "/api/verbindung-optimizer",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Meine Interessen: ${userInterests.join(', ')}
 Zielprofil: Name: ${targetProfile?.name}, Bio: ${targetProfile?.bio}, Interessen: ${targetProfile?.interests?.join(', ')}
@@ -1918,17 +1929,10 @@ Basierend auf diesen Daten, erstelle 3 alternative, kreative Date-Konzepte oder 
             required: ["concepts"]
           }
         }
-      });
-      
-      res.json(JSON.parse(response.text || '{"concepts":[]}'));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/verbindung-optimizer", e, { kuratiert: { ...VERBINDUNG_KONZEPTE } });
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+      { kuratiert: { ...VERBINDUNG_KONZEPTE } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   app.post("/api/analyze-relationship", async (req, res) => {
@@ -2161,11 +2165,18 @@ Gib das Ergebnis im JSON-Format zurück.`,
   });
 
   // API Route for Profile Import
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/parse-profile-import", async (req, res) => {
-    try {
-      const { textData } = req.body;
-
-      const response = await ai.models.generateContent({
+    const { textData } = req.body;
+    const antwort = await beantworte(
+      "/api/parse-profile-import",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Extrahiere aus folgendem Text ein ansprechendes Dating-Profil.
         
@@ -2192,24 +2203,24 @@ Erstelle daraus:
             required: ["bio", "interests"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/parse-profile-import", e);
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Profile Optimization
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/optimize-profile", async (req, res) => {
-    try {
-      const { bio, interests } = req.body;
-
-      const response = await ai.models.generateContent({
+    const { bio, interests } = req.body;
+    const antwort = await beantworte(
+      "/api/optimize-profile",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Optimiere das folgende Dating-Profil, um die Verbindungswahrscheinlichkeit zu erhöhen.
         
@@ -2240,16 +2251,9 @@ Gib die Antwort als JSON zurück.`,
             required: ["optimizedBio", "suggestedInterests"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/optimize-profile", e);
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // --- Automated Legal & GDPR Scanner ---
