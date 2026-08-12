@@ -33,6 +33,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 // Befund: src/server/kiPolitik.ts hatte bis heute null Aufrufer im
 // Produktionscode. Siehe src/server/kiAufruf.ts und klar/20-enterprise-reife.md.
 import { beantworte, ausfall } from "./src/server/kiAufruf";
+// 11.08.2026: Zwischenspeicher fuer die elf Endpunkte mit Strategie
+// `zwischenspeicher`. Siehe src/server/zwischenspeicher.ts — dort steht auch,
+// welche vier Pflichten mit dieser neuen Ablage entstanden sind.
+import { lies as liesSpeicher, schreibe as schreibeSpeicher } from "./src/server/zwischenspeicher";
 import {
   COACH_IMPULS, DATING_BEREITSCHAFT,
   DATE_CHECKLISTE, DATE_IDEEN, ICEBREAKER_VORSCHLAEGE, VERBINDUNG_KONZEPTE,
@@ -701,6 +705,7 @@ Regeln:
   
   // API Route for Compatibility Radar
   app.post("/api/compatibility-radar", async (req, res) => {
+    const meineUid = (req as any).user?.uid as string;
     try {
       const { userInterests, verbindungen } = req.body;
       const response = await ai.models.generateContent({
@@ -731,13 +736,31 @@ Regeln:
           }
         }
       });
-      res.json(JSON.parse(response.text || '{"data":[]}'));
+      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
+      //
+      // Der Vorgabewert `{"data":[]}` entfaellt: Eine leere
+      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
+      // das in der Oberflaeche wie eine Auswertung aussah.
+      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
+      if (ergebnis === null || typeof ergebnis !== 'object') {
+        const leer = ausfall("/api/compatibility-radar", new Error('leere Antwort'), {
+          zwischenspeicher: await liesSpeicher(meineUid, "/api/compatibility-radar"),
+        });
+        return res.status(leer.status).json(leer.koerper);
+      }
+      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
+      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
+      // `schreibe` faengt seine Fehler selbst ab.
+      await schreibeSpeicher(meineUid, "/api/compatibility-radar", ergebnis as Record<string, unknown>);
+      return res.json({ ...ergebnis, herkunft: 'ki' });
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
       // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
       // HTTP 200. `ausfall` entscheidet stattdessen nach der in
       // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/compatibility-radar", e);
+      const antwort = ausfall("/api/compatibility-radar", e, {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/compatibility-radar"),
+      });
       res.status(antwort.status).json(antwort.koerper);
     }
   });
@@ -829,6 +852,7 @@ Regeln:
 
   // API Route for Dating Success Score
   app.post("/api/dating-success-score", async (req, res) => {
+    const meineUid = (req as any).user?.uid as string;
     try {
       const { reflections } = req.body;
       const response = await ai.models.generateContent({
@@ -872,13 +896,31 @@ Regeln:
           }
         }
       });
-      res.json(JSON.parse(response.text || '{"scores":[],"insight":""}'));
+      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
+      //
+      // Der Vorgabewert `{"scores":[],"insight":""}` entfaellt: Eine leere
+      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
+      // das in der Oberflaeche wie eine Auswertung aussah.
+      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
+      if (ergebnis === null || typeof ergebnis !== 'object') {
+        const leer = ausfall("/api/dating-success-score", new Error('leere Antwort'), {
+          zwischenspeicher: await liesSpeicher(meineUid, "/api/dating-success-score"),
+        });
+        return res.status(leer.status).json(leer.koerper);
+      }
+      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
+      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
+      // `schreibe` faengt seine Fehler selbst ab.
+      await schreibeSpeicher(meineUid, "/api/dating-success-score", ergebnis as Record<string, unknown>);
+      return res.json({ ...ergebnis, herkunft: 'ki' });
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
       // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
       // HTTP 200. `ausfall` entscheidet stattdessen nach der in
       // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/dating-success-score", e);
+      const antwort = ausfall("/api/dating-success-score", e, {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/dating-success-score"),
+      });
       res.status(antwort.status).json(antwort.koerper);
     }
   });
@@ -1240,6 +1282,7 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
   });
 
   app.post("/api/date-archive-analysis", async (req, res) => {
+    const meineUid = (req as any).user?.uid as string;
     try {
       const { reflections } = req.body;
       const response = await ai.models.generateContent({
@@ -1264,13 +1307,31 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
           }
         }
       });
-      res.json(JSON.parse(response.text || '{"patterns":[],"learning":""}'));
+      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
+      //
+      // Der Vorgabewert `{"patterns":[],"learning":""}` entfaellt: Eine leere
+      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
+      // das in der Oberflaeche wie eine Auswertung aussah.
+      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
+      if (ergebnis === null || typeof ergebnis !== 'object') {
+        const leer = ausfall("/api/date-archive-analysis", new Error('leere Antwort'), {
+          zwischenspeicher: await liesSpeicher(meineUid, "/api/date-archive-analysis"),
+        });
+        return res.status(leer.status).json(leer.koerper);
+      }
+      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
+      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
+      // `schreibe` faengt seine Fehler selbst ab.
+      await schreibeSpeicher(meineUid, "/api/date-archive-analysis", ergebnis as Record<string, unknown>);
+      return res.json({ ...ergebnis, herkunft: 'ki' });
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
       // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
       // HTTP 200. `ausfall` entscheidet stattdessen nach der in
       // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/date-archive-analysis", e);
+      const antwort = ausfall("/api/date-archive-analysis", e, {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/date-archive-analysis"),
+      });
       res.status(antwort.status).json(antwort.koerper);
     }
   });
@@ -1822,6 +1883,7 @@ Basierend auf diesen Daten, erstelle 3 alternative, kreative Date-Konzepte oder 
   });
 
   app.post("/api/analyze-relationship", async (req, res) => {
+    const meineUid = (req as any).user?.uid as string;
     try {
       const { chatHistory, userName, targetName } = req.body;
       
@@ -1871,13 +1933,31 @@ Gib das Ergebnis im vorgegebenen JSON-Format zurück.`,
         }
       });
       
-      res.json(JSON.parse(response.text || '{"tonalityOverTime":[],"topics":[]}'));
+      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
+      //
+      // Der Vorgabewert `{"tonalityOverTime":[],"topics":[]}` entfaellt: Eine leere
+      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
+      // das in der Oberflaeche wie eine Auswertung aussah.
+      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
+      if (ergebnis === null || typeof ergebnis !== 'object') {
+        const leer = ausfall("/api/analyze-relationship", new Error('leere Antwort'), {
+          zwischenspeicher: await liesSpeicher(meineUid, "/api/analyze-relationship"),
+        });
+        return res.status(leer.status).json(leer.koerper);
+      }
+      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
+      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
+      // `schreibe` faengt seine Fehler selbst ab.
+      await schreibeSpeicher(meineUid, "/api/analyze-relationship", ergebnis as Record<string, unknown>);
+      return res.json({ ...ergebnis, herkunft: 'ki' });
     } catch (e: unknown) {
       if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
       // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
       // HTTP 200. `ausfall` entscheidet stattdessen nach der in
       // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/analyze-relationship", e);
+      const antwort = ausfall("/api/analyze-relationship", e, {
+        zwischenspeicher: await liesSpeicher(meineUid, "/api/analyze-relationship"),
+      });
       res.status(antwort.status).json(antwort.koerper);
     }
   });

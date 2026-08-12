@@ -269,6 +269,27 @@ service cloud.firestore {
     match /users/{userId}/einwilligungen/{id} {
       allow read, write: if false;
     }
+
+    // ── Zwischenspeicher fuer KI-Auswertungen (11.08.2026) ───────────────
+    // Faellt die KI aus, liefern elf Endpunkte die letzte gueltige
+    // Auswertung MIT ausgewiesenem Alter (kiPolitik.ts, Strategie
+    // `zwischenspeicher`). Hier liegt sie.
+    //
+    // Nur der Server. Ausdruecklich gesperrt, obwohl schon die Vorgabe
+    // „alles gesperrt" gelten wuerde: Der Eintrag zeigt, dass die Sperre
+    // eine Entscheidung ist und kein Vergessen. Ein Regeltest bewacht sie.
+    //
+    // Warum nicht clientseitig lesbar: Der Inhalt ist eine Auswertung UEBER
+    // die Person. Waere er direkt lesbar, umginge man damit die Regel, dass
+    // solche Auswertungen nur mit ausgewiesener Herkunft und ausgewiesenem
+    // Alter ausgeliefert werden — genau das setzt der Server beim Antworten.
+    //
+    // Speicherfrist 36 Stunden, Aufraeumen beim Lesen: zwischenspeicher.ts
+    // Auskunft nach Art. 15: datenschutz.ts
+    // Loeschung nach Art. 17: trustAndSafety.ts
+    match /users/{userId}/ki_zwischenspeicher/{id} {
+      allow read, write: if false;
+    }
     // Fehlversuche bei der Altersangabe. Fuer die Moderation, nicht fuer
     // die betroffene Person sichtbar — sonst waere ablesbar, welche Eingabe
     // durchgeht.

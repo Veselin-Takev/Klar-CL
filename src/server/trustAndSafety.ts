@@ -165,6 +165,10 @@ export async function handleDeleteAccount(req: Request, res: Response): Promise<
     //     Eine neue Sammlung, die nicht in dieser Liste steht, überlebt die
     //     Löschung — deshalb gehört jede hier eingetragen.
     await loescheAbfrage(db.collection('users').doc(meineUid).collection('einwilligungen'));
+    // 11.08.2026: Zwischenspeicher fuer KI-Auswertungen. Er haelt Aussagen
+    // ueber diese Person hoechstens 36 Stunden — ohne diesen Eintrag aber
+    // ueber die Kontoloeschung hinaus.
+    await loescheAbfrage(db.collection('users').doc(meineUid).collection('ki_zwischenspeicher'));
     await loescheAbfrage(db.collection('age_attempts').where('uid', '==', meineUid));
 
     // 4. Blockierungen in beide Richtungen.

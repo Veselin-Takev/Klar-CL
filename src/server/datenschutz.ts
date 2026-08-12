@@ -303,7 +303,7 @@ export async function handleExport(req: Request, res: Response): Promise<void> {
       (await db.collection(pfad).where(feld, '==', meineUid).get()).docs.map((d) => ({ id: d.id, ...d.data() }));
 
     const [kontakteVon, kontakteAn, blockiert, meldungen, einwilligungen, quota,
-           abo, verifizierung, altersversuche] = await Promise.all([
+           abo, verifizierung, altersversuche, kiZwischenspeicher] = await Promise.all([
       sammeln('contacts', 'fromUid'),
       sammeln('contacts', 'toUid'),
       sammeln('blocks', 'blockerUid'),
@@ -315,6 +315,11 @@ export async function handleExport(req: Request, res: Response): Promise<void> {
       db.collection('subscriptions').doc(meineUid).get(),
       db.collection('verification_events').where('uid', '==', meineUid).get(),
       db.collection('age_attempts').where('uid', '==', meineUid).get(),
+      // 11.08.2026: Der Zwischenspeicher fuer KI-Auswertungen. Er enthaelt
+      // Aussagen UEBER diese Person und ist damit auskunftspflichtig. Neu
+      // angelegte Ablagen gehoeren hier eingetragen — sonst entsteht eine
+      // Luecke, die niemandem auffaellt.
+      db.collection('users').doc(meineUid).collection('ki_zwischenspeicher').get(),
     ]);
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -336,6 +341,7 @@ export async function handleExport(req: Request, res: Response): Promise<void> {
       eigeneMeldungen: meldungen,
       einwilligungen: einwilligungen.docs.map((d) => ({ id: d.id, ...d.data() })),
       kontingent: quota.docs.map((d) => ({ id: d.id, ...d.data() })),
+      kiZwischenspeicher: kiZwischenspeicher.docs.map((d) => ({ id: d.id, ...d.data() })),
       nichtEnthalten: [
         'Nachrichten anderer Personen — deren Daten.',
         'Die Vorschauzeile eines Gesprächs (lastMessage) — sie kann von der anderen Person stammen.',

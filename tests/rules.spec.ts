@@ -37,6 +37,17 @@ before(async () => {
   // spricht garantiert nie mit echten Daten. Dieselbe ID steht in
   // `test:rules` hinter `--project`; weichen beide voneinander ab, lehnt
   // der Emulator wegen `singleProjectMode` jede Anfrage ab.
+  // BEFUND 11.08.2026: Hier standen Wirt und Port fest verdrahtet auf
+  // 127.0.0.1:8080 — derselbe Port, den `npm run dev:lokal` benutzt. Lief
+  // der Entwicklungsserver, brach `npm run verify` an dieser Stelle ab
+  // („Port 8080 is not open… could not start Firestore Emulator"). Das ist
+  // an einem Tag fuenfmal passiert und hat jedes Mal Zeit gekostet, ohne
+  // dass am Code etwas falsch war.
+  //
+  // `firebase emulators:exec` setzt FIRESTORE_EMULATOR_HOST auf den
+  // tatsaechlich verwendeten Wirt und Port. Wird der gelesen statt geraten,
+  // koennen Regeltests und Entwicklungsserver nebeneinander laufen — die
+  // Regeltests benutzen ueber `firebase.pruefung.json` den Port 8085.
   const [wirt, hafen] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
   env = await initializeTestEnvironment({
     projectId: 'demo-klar',
@@ -405,6 +416,23 @@ describe('Was nur dem Server gehört', () => {
     await assertSucceeds(getDoc(doc(als(ANNA), 'contacts/anna_bea')));
     await assertSucceeds(getDoc(doc(als(BEA), 'contacts/anna_bea')));
     await assertFails(getDoc(doc(als(CARL), 'contacts/anna_bea')));
+  });
+
+  it('KI-Zwischenspeicher: weder lesen noch schreiben — auch nicht der eigene', async () => {
+    // ENTSCHEIDUNG 11.08.2026: Der Zwischenspeicher enthaelt KI-Auswertungen
+    // ueber die Person. Waere er direkt lesbar, umginge man die Regel, dass
+    // solche Auswertungen nur MIT ausgewiesener Herkunft und ausgewiesenem
+    // Alter ausgeliefert werden — beides setzt der Server beim Antworten.
+    // Auskunft gibt es ueber /api/account/export, nicht ueber die Datenbank.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `users/${ANNA}/ki_zwischenspeicher/api_mood-monitor`), {
+        daten: { moodCategory: 'harmonisch' },
+        zeit: '2026-08-12T10:00:00.000Z',
+      });
+    });
+    await assertFails(getDoc(doc(als(ANNA), `users/${ANNA}/ki_zwischenspeicher/api_mood-monitor`)));
+    await assertFails(setDoc(doc(als(ANNA), `users/${ANNA}/ki_zwischenspeicher/api_mood-monitor`), { daten: {}, zeit: 'x' }));
+    await assertFails(getDoc(doc(als(BEA), `users/${ANNA}/ki_zwischenspeicher/api_mood-monitor`)));
   });
 
   it('Verifizierungsanträge sind für Clients unsichtbar', async () => {
