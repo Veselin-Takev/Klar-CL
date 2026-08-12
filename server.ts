@@ -645,6 +645,18 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
     }
   });
 
+  // UMGESTELLT 12.08.2026 VON HAND. Das Umbauskript hat diesen Endpunkt
+  // abgelehnt — zu Recht: Nach dem KI-Aufruf wird hier ein VERSCHLUESSELTES
+  // AUDIT-PROTOKOLL nach Firestore geschrieben (`audit_logs`). Ein
+  // automatischer Umbau haette diesen Schreibvorgang stillschweigend
+  // verworfen, und `verify` waere gruen geblieben.
+  //
+  // Der Endpunkt liefert FREIEN TEXT, kein JSON — deshalb `json: false` mit
+  // `feld: "text"`.
+  //
+  // Das Protokoll wird jetzt NACH `beantworte` geschrieben, und nur bei
+  // `herkunft === "ki"`: Ein kuratierter oder gescheiterter Ausgang ist
+  // keine KI-Interaktion und gehoert nicht als solche ins Protokoll.
   app.post("/api/chat", async (req, res) => {
     try {
       const { prompt, context } = req.body;
@@ -662,7 +674,11 @@ Kontext:
 ${safeContext}
 """`;
 
-      const response = await ai.models.generateContent({
+      const antwort = await beantworte(
+        "/api/chat",
+        // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+        // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+        (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents,
         config: {
@@ -677,29 +693,33 @@ Regeln:
 4. Sicherheit: Lehne explizite Inhalte, Belästigung oder PUA-Taktiken ab. Fordere nie sensible Daten.
 5. Antworte präzise, strukturiert (unter 150 Wörtern, Aufzählungen für Optionen).`,
         }
-      });
-      
-      // Audit log to Firestore securely
-      try {
-        const userId = (req as any).user.uid;
-        const db = getFirestore();
-        await db.collection('audit_logs').add({
-          type: 'ki_coach_interaction',
-          userId: userId,
-          timestamp: FieldValue.serverTimestamp(),
-          encryptedInput: encryptLog(prompt),
-          encryptedOutput: encryptLog(response.text || ""),
-        });
-      } catch (err) {
-        console.error("Failed to write audit log:", err);
+      }),
+        { json: false, feld: "text" },
+      );
+
+      // Audit-Protokoll: unveraendert in Inhalt und Verschluesselung, nur
+      // an anderer Stelle. `try` bleibt drum herum — ein misslungener
+      // Protokolleintrag darf eine geglueckte Antwort nicht verderben.
+      if (antwort.koerper["herkunft"] === "ki") {
+        try {
+          const userId = (req as any).user.uid;
+          const db = getFirestore();
+          await db.collection('audit_logs').add({
+            type: 'ki_coach_interaction',
+            userId: userId,
+            timestamp: FieldValue.serverTimestamp(),
+            encryptedInput: encryptLog(prompt),
+            encryptedOutput: encryptLog(String(antwort.koerper["text"] ?? "")),
+          });
+        } catch (err) {
+          console.error("Failed to write audit log:", err);
+        }
       }
-      res.json({ text: response.text });
-  
+
+      res.status(antwort.status).json(antwort.koerper);
     } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
+      // Dieser Zweig faengt jetzt nur noch, was VOR oder NEBEN dem KI-Aufruf
+      // schiefgeht — der Aufruf selbst wird von `beantworte` behandelt.
       const antwort = ausfall("/api/chat", e);
       res.status(antwort.status).json(antwort.koerper);
     }
@@ -1422,10 +1442,28 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
 
   // API Route for Date Ideas
   
+  // UMGESTELLT 12.08.2026 VON HAND. Das Umbauskript hat diesen Endpunkt
+  // abgelehnt, weil zwischen dem KI-Aufruf und `res.json` mehr stand als
+  // eine Zeile:
+  //     let t = response.text || '{"ideas":[]}';
+  //     res.json(JSON.parse(t.trim()));
+  // Beide Schritte sind in `beantworte` bereits enthalten: `schaeleJson`
+  // entfernt Leerraum und Markdown-Zaeune, und eine leere Antwort gilt dort
+  // NICHT als Erfolg — sie fuehrt zur Strategie aus kiPolitik.ts. Die alte
+  // Vorgabe `{"ideas":[]}` war genau der Fall, den wir nicht wollen: eine
+  // leere Liste, die aussieht wie ein Ergebnis.
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
+  // Der Ausfallpfad war bereits richtig (`ausfall` nach kiPolitik); es
+  // fehlten Zeitgrenze und zweiter Versuch. Beides kommt mit
+  // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
+  // uebernommen.
   app.post("/api/gemini/date-inspiration", async (req, res) => {
-    try {
-      const { weather, interests } = req.body;
-      const response = await ai.models.generateContent({
+    const { weather, interests } = req.body;
+    const antwort = await beantworte(
+      "/api/gemini/date-inspiration",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Erstelle 3 sehr konkrete, einzigartige und entspannte Date-Ideen ohne typischen Dating-Stress (non-stressful). Fokus auf authentisches Kennenlernen in der Umgebung. Wetter: ${weather}. Interessen: ${interests}`,
         config: {
@@ -1451,19 +1489,10 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["ideas"]
           }
         }
-      });
-      let t = response.text || '{"ideas":[]}';
-      
-      
-      res.json(JSON.parse(t.trim()));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/gemini/date-inspiration", e, { kuratiert: { ...DATE_IDEEN } });
-      res.status(antwort.status).json(antwort.koerper);
-    }
+      }),
+      { kuratiert: { ...DATE_IDEEN } },
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg.
