@@ -1159,10 +1159,22 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
   });
 
   
+  // UMGESTELLT 12.08.2026 — und dabei die 15. erfundene Ersatzantwort
+  // gefunden, die schwerste bisher. Hier stand im Fehlerfall mit HTTP 200:
+  //     { trends: [
+  //         { name: "Secret Garden Café", description: "Versteckter Innenhof
+  //           mit exzellentem Matcha …", vibe: "Cozy & Quiet" },
+  //         { name: "Urban Art Walk", … } ] }
+  // Das sind ERFUNDENE ORTE. Anders als ein erfundener Ratschlag schickt
+  // eine erfundene Adresse jemanden los — zu einem Cafe, das es nicht gibt,
+  // womoeglich zu einem ersten Date. Strategie in kiPolitik.ts: `leer`.
   app.post("/api/city-trend-radar", async (req, res) => {
-    try {
-      const { location } = req.body;
-      const response = await ai.models.generateContent({
+    const { location } = req.body;
+    const antwort = await beantworte(
+      "/api/city-trend-radar",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Generiere angesagte, noch nicht überlaufene Orte für Dates in: ${location || "einer typischen Großstadt"}`,
         config: {
@@ -1187,17 +1199,9 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["trends"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch(e) {
-      if (!isQuotaExceeded(e)) console.error("AI Error City Trend Radar:", e); else console.warn("AI Quota exceeded for City Trend Radar");
-      res.json({
-        trends: [
-          { name: "Secret Garden Café", description: "Versteckter Innenhof mit exzellentem Matcha und entspannter Atmosphäre.", vibe: "Cozy & Quiet" },
-          { name: "Urban Art Walk", description: "Abseits der Touristenpfade gelegene Straßenkunst mit kleinen Pop-up Galerien.", vibe: "Kreativ" }
-        ]
-      });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   app.post("/api/icebreaker", async (req, res) => {
@@ -2725,10 +2729,15 @@ Gib die Antwort als JSON zurück.`,
   });
 
   
+  // UMGESTELLT 12.08.2026. Vorher HTTP 500 mit { error: … } — richtig, aber
+  // ohne Zeitgrenze und ohne zweiten Versuch. Strategie: `leer`.
   app.post("/api/city-insider", async (req, res) => {
-    try {
-      const { location, weather } = req.body;
-      const response = await ai.models.generateContent({
+    const { location, weather } = req.body;
+    const antwort = await beantworte(
+      "/api/city-insider",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Mache 3 Vorschläge für ruhige, versteckte Date-Locations (z.B. Geheimtipps, kleine Buchläden, versteckte Parks, ruhige Cafés) in ${location || "einer Stadt"}. Das Wetter ist voraussichtlich ${weather || "unbekannt"}. Berücksichtige das Wetter bei der Wahl der Orte.`,
         config: {
@@ -2752,12 +2761,9 @@ Gib die Antwort als JSON zurück.`,
             required: ["locations"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || "{}"));
-    } catch (error) {
-      if (!isQuotaExceeded(error)) console.error(error); else console.warn("AI Quota exceeded for reflection-questions");
-      res.status(500).json({ error: "Fehler beim Laden der Insider-Tipps." });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -2944,11 +2950,28 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
   });
 
   
+  // UMGESTELLT 12.08.2026 — mit ZWEI erfundenen Ersatzantworten (16. und
+  // 17.), beide mit HTTP 200:
+  //   · als Vorgabe bei leerer Antwort: „Diese Woche war ruhig, aber das ist
+  //     völlig okay! …"
+  //   · im catch: „Diese Woche hast du tolle Fortschritte gemacht! Bleib
+  //     offen und authentisch."
+  // Beides sind Aussagen ueber die Woche einer bestimmten Person — an einer
+  // Stelle, die einen Rueckblick auf ihre Tagebucheintraege verspricht.
+  // Strategie: `leer`.
+  //
+  // HINWEIS: Dieser Endpunkt hat seit dem 12.08.2026 keinen Aufrufer mehr
+  // (`fetchWeeklyReview` in Dashboard.tsx war tot und ist entfernt). Die
+  // Umstellung passiert trotzdem — erfundene Texte gehoeren auch dann raus,
+  // wenn gerade niemand sie abruft.
   app.post("/api/weekly-review", async (req, res) => {
-    try {
-      const { journals } = req.body;
-      const journalStr = journals && journals.length > 0 ? JSON.stringify(journals) : "Keine Einträge in den letzten 7 Tagen.";
-      const response = await ai.models.generateContent({
+    const { journals } = req.body;
+    const journalStr = journals && journals.length > 0 ? JSON.stringify(journals) : "Keine Einträge in den letzten 7 Tagen.";
+    const antwort = await beantworte(
+      "/api/weekly-review",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Dating Journal Einträge der letzten 7 Tage: ${journalStr}\nErstelle einen motivierenden Wochenrückblick.`,
         config: {
@@ -2962,12 +2985,9 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             required: ["review"]
           }
         }
-      });
-      res.json(JSON.parse(response.text || '{"review":"Diese Woche war ruhig, aber das ist völlig okay! Nimm dir Zeit für dich selbst und starte mit frischer Energie in die nächste Woche."}'));
-    } catch (e: unknown) {
-      console.error(e);
-      res.json({ review: "Diese Woche hast du tolle Fortschritte gemacht! Bleib offen und authentisch." });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
