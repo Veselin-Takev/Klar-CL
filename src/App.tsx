@@ -141,7 +141,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <h4 className="font-medium text-stone-900 dark:text-stone-100 text-sm mb-1">{inAppNotification.title}</h4>
               {inAppNotification.body && <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">{inAppNotification.body}</p>}
             </div>
-            <button onClick={() => setInAppNotification(null)} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
+            <button aria-label="Benachrichtigung schließen" onClick={() => setInAppNotification(null)} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
               <X size={16} />
             </button>
           </motion.div>

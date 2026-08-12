@@ -237,7 +237,7 @@ export function DatingWheelWidget() {
                     Dein Date-Vorschlag
                   </h3>
                   {!spinning && !loading && (
-                    <button
+                    <button aria-label="Fenster schließen"
                       onClick={() => setIsModalOpen(false)}
                       className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                     >

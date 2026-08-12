@@ -270,7 +270,7 @@ export function DatePlannerWidget({ userInterests }: DatePlannerWidgetProps) {
                         </p>
                       </div>
                     </div>
-                    <button 
+                    <button aria-label="Zeitfenster entfernen" 
                       onClick={() => handleRemoveAvailability(avail.id)}
                       className="p-2 text-stone-400 hover:text-rose-500 transition-colors"
                     >

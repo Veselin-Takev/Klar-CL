@@ -251,7 +251,7 @@ export function DatingVibeCheckQuiz() {
               <div key={entry.id} className="p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-xl relative group transition-all">
                 <div className="flex justify-between items-start mb-3">
                   <span className="text-xs font-medium text-stone-500 bg-stone-100 dark:bg-stone-800 px-2 py-1 rounded-md">{entry.date}</span>
-                  <button onClick={() => deleteHistoryEntry(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-400 hover:text-rose-500">
+                  <button aria-label="Eintrag löschen" onClick={() => deleteHistoryEntry(entry.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-stone-400 hover:text-rose-500">
                     <Trash2 size={16} />
                   </button>
                 </div>

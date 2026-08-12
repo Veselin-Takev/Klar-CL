@@ -492,7 +492,7 @@ export function ProfileCheckWidget() {
                   </button>
                 </div>
                 {!isLoading && (
-                  <button
+                  <button aria-label="Fenster schließen"
                     onClick={() => setIsModalOpen(false)}
                     className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                   >
@@ -1053,7 +1053,7 @@ export function ProfileCheckWidget() {
                    }} className="flex items-center gap-2 bg-brand text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand/90 shadow-sm transition-all">
                      Jetzt herunterladen
                    </button>
-                   <button onClick={() => setShowPdfPreview(false)} className="p-2 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 bg-stone-200 dark:bg-stone-800 rounded-lg transition-colors">
+                   <button aria-label="PDF-Vorschau schließen" onClick={() => setShowPdfPreview(false)} className="p-2 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 bg-stone-200 dark:bg-stone-800 rounded-lg transition-colors">
                      <X size={18} />
                    </button>
                 </div>

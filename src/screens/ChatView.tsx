@@ -682,7 +682,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-stone-800 bg-white/90 dark:bg-black/90  sticky top-0 z-20">
         <div className="flex items-center">
-          <button onClick={() => {
+          <button aria-label="Zurück zu den Chats" onClick={() => {
             if (messages.length >= 2 && !localStorage.getItem(`klar_chat_sentiment_${id}`)) {
               setShowSentimentCheck(true);
             } else {
@@ -728,7 +728,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
               {suggestion}
             </button>
           ))}
-          <button onClick={() => setReplySuggestions([])} className="p-1.5 text-stone-400 hover:text-stone-600 bg-stone-100 dark:bg-stone-800 rounded-full shrink-0">
+          <button aria-label="Antwortvorschläge ausblenden" onClick={() => setReplySuggestions([])} className="p-1.5 text-stone-400 hover:text-stone-600 bg-stone-100 dark:bg-stone-800 rounded-full shrink-0">
             <X size={14} />
           </button>
         </div>
@@ -852,7 +852,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
               <CalendarDays className="text-brand dark:text-brand-light" size={18} />
               Personalisierter Date-Plan
             </h3>
-            <button onClick={() => setShowDatePlan(false)} className="p-1 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-500">
+            <button aria-label="Date-Planung schließen" onClick={() => setShowDatePlan(false)} className="p-1 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 text-stone-500">
               <X size={16} />
             </button>
           </div>
@@ -1045,7 +1045,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
               <button onClick={getConversationTuning} disabled={isLoadingAI} className="text-xs px-3 py-1 bg-stone-200 dark:bg-stone-800 rounded-full font-medium hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors">
                 {isLoadingAI ? "Analysiere..." : "Neu generieren"}
               </button>
-              <button onClick={() => setShowTuning(false)} className="text-xs p-1 bg-stone-200 dark:bg-stone-800 rounded-full font-medium hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors">
+              <button aria-label="Feinschliff schließen" onClick={() => setShowTuning(false)} className="text-xs p-1 bg-stone-200 dark:bg-stone-800 rounded-full font-medium hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors">
                 <X size={16} />
               </button>
             </div>
@@ -1130,7 +1130,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
                     {isLoadingAI ? "Denke nach..." : "Neu generieren"}
                   </button>
                   {messages.length > 0 && (
-                    <button onClick={() => setShowIcebreakers(false)} className="text-xs p-1 bg-stone-100 dark:bg-stone-800 rounded-full font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
+                    <button aria-label="Gesprächsanfänge schließen" onClick={() => setShowIcebreakers(false)} className="text-xs p-1 bg-stone-100 dark:bg-stone-800 rounded-full font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors">
                       <X size={16} />
                     </button>
                   )}
@@ -1370,7 +1370,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
     {showReportModal && (
       <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 w-full max-w-sm relative shadow-md">
-          <button 
+          <button aria-label="Meldung schließen" 
             onClick={() => {
               setShowReportModal(false);
               setReportSubmitted(false);

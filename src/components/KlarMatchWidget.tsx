@@ -276,7 +276,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                   <p className="text-xs text-stone-500">Chat-Vorschau</p>
                 </div>
               </div>
-              <button 
+              <button aria-label="Vorschau schließen" 
                 onClick={() => setPreviewIntro(null)}
                 className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 rounded-full"
               >

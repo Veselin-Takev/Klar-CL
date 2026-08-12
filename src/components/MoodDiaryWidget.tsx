@@ -197,19 +197,19 @@ export function MoodDiaryWidget() {
                 </p>
 
                 <div className="flex justify-center gap-4 mb-4">
-                  <button 
+                  <button aria-label="Stimmung: schlecht" 
                     onClick={() => setMood('sad')}
                     className={`p-3 rounded-full transition-all ${mood === 'sad' ? 'bg-rose-100 dark:bg-rose-900/30 ring-2 ring-rose-500 scale-110' : 'bg-stone-100 dark:bg-stone-800 text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'}`}
                   >
                     <Frown size={28} className={mood === 'sad' ? 'text-rose-500' : ''} />
                   </button>
-                  <button 
+                  <button aria-label="Stimmung: neutral" 
                     onClick={() => setMood('neutral')}
                     className={`p-3 rounded-full transition-all ${mood === 'neutral' ? 'bg-amber-100 dark:bg-amber-900/30 ring-2 ring-amber-500 scale-110' : 'bg-stone-100 dark:bg-stone-800 text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'}`}
                   >
                     <Meh size={28} className={mood === 'neutral' ? 'text-amber-500' : ''} />
                   </button>
-                  <button 
+                  <button aria-label="Stimmung: gut" 
                     onClick={() => setMood('happy')}
                     className={`p-3 rounded-full transition-all ${mood === 'happy' ? 'bg-emerald-100 dark:bg-emerald-900/30 ring-2 ring-emerald-500 scale-110' : 'bg-stone-100 dark:bg-stone-800 text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'}`}
                   >

@@ -78,7 +78,7 @@ export const QuickRepliesDrawer: React.FC<QuickRepliesDrawerProps> = ({ onSelect
                 >
                   {reply}
                 </button>
-                <button 
+                <button aria-label="Schnellantwort löschen" 
                   onClick={() => handleDelete(i)}
                   className="p-3 text-stone-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
                 >

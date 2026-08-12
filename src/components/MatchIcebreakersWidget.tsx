@@ -61,7 +61,7 @@ export function MatchIcebreakersWidget() {
                 >
                   <Send size={12} /> Senden
                 </Link>
-                <button 
+                <button aria-label="Neue Vorschläge erzeugen" 
                   onClick={() => generateNew(profile.id)}
                   disabled={isGenerating}
                   className="px-3 py-1.5 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 rounded-lg text-xs font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"

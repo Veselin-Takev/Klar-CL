@@ -54,7 +54,7 @@ export function DashboardDateBanner() {
         <Link to="/rituals" className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors">
           Jetzt reflektieren
         </Link>
-        <button onClick={() => setVisible(false)} className="p-1.5 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors">
+        <button aria-label="Hinweis schließen" onClick={() => setVisible(false)} className="p-1.5 text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors">
           <X size={16} />
         </button>
       </div>

@@ -429,7 +429,7 @@ Halte es ermutigend und hilfreich.`;
           
           <div className="px-4 pt-2 flex justify-between items-center">
             <div className="flex gap-2">
-              <button 
+              <button aria-label="Suche ein- oder ausblenden" 
                 onClick={() => setShowSearch(!showSearch)}
                 className={`p-1.5 rounded-full ${showSearch ? 'bg-brand/10 text-brand dark:bg-brand-light/10 dark:text-brand-light' : 'text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800'}`}
               >

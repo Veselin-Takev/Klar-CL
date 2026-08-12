@@ -200,7 +200,7 @@ export function UpcomingDateWidget() {
                   {toastMessage}
                 </p>
               </div>
-              <button 
+              <button aria-label="Hinweis schließen" 
                 onClick={() => setShowInAppToast(false)}
                 className="text-stone-400 hover:text-stone-600 self-start p-1"
               >

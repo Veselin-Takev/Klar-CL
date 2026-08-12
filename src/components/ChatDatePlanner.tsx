@@ -460,7 +460,7 @@ Keine Markdown-Block-Syntax.`;
                 <span className={`text-sm flex-1 ${item.done ? 'text-stone-400 line-through' : 'text-stone-700 dark:text-stone-200'}`}>
                   {item.text}
                 </span>
-                <button 
+                <button aria-label="Punkt entfernen" 
                   onClick={() => removeChecklistItem(item.id)}
                   className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-red-500 transition-opacity"
                 >
@@ -510,7 +510,7 @@ Keine Markdown-Block-Syntax.`;
                     <div key={q.id} className="flex items-center justify-between bg-stone-50 dark:bg-stone-800/50 p-2.5 rounded-lg border border-stone-100 dark:border-stone-800">
                       <span className="text-[10px] text-stone-700 dark:text-stone-300 flex-1 pr-2">{i+1}. {q.text}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button 
+                        <button aria-label="Mit Ja antworten" 
                           onClick={() => {
                             if (!answered) {
                               const newD = [...dateSurveyData, {id: q.id, answer: 1}];
@@ -522,7 +522,7 @@ Keine Markdown-Block-Syntax.`;
                         >
                           👍
                         </button>
-                        <button 
+                        <button aria-label="Mit Nein antworten" 
                           onClick={() => {
                             if (!answered) {
                               const newD = [...dateSurveyData, {id: q.id, answer: 0}];
@@ -737,7 +737,7 @@ Keine Markdown-Block-Syntax.`;
                           {entry.photo ? (
                             <div className="relative mt-2">
                               <img src={entry.photo} alt="Date Snapshot" className="w-full h-32 object-cover rounded-lg border border-stone-200 dark:border-stone-700" />
-                              <button onClick={() => removePhoto(entry.id)} className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70">
+                              <button aria-label="Foto entfernen" onClick={() => removePhoto(entry.id)} className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70">
                                 <Trash2 size={12} />
                               </button>
                             </div>
@@ -774,7 +774,7 @@ Keine Markdown-Block-Syntax.`;
                       {!entry.rating && !entry.note && entry.photo && (
                         <div className="relative mt-2">
                           <img src={entry.photo} alt="Date Snapshot" className="w-full h-32 object-cover rounded-lg border border-stone-200 dark:border-stone-700" />
-                          <button onClick={() => removePhoto(entry.id)} className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70">
+                          <button aria-label="Foto entfernen" onClick={() => removePhoto(entry.id)} className="absolute top-2 right-2 p-1 bg-black/50 text-white rounded-full hover:bg-black/70">
                             <Trash2 size={12} />
                           </button>
                         </div>

@@ -71,7 +71,7 @@ export function PhotoVerificationModal({ onClose, onSuccess }: Props) {
   return (
     <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
       <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden">
-        <button onClick={() => { stopCamera(); onClose(); }} className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200">
+        <button aria-label="Verifizierung schließen" onClick={() => { stopCamera(); onClose(); }} className="absolute top-4 right-4 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200">
           <X size={24} />
         </button>
         

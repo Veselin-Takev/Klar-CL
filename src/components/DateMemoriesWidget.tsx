@@ -76,7 +76,7 @@ export function DateMemoriesWidget() {
           </p>
         </div>
         {!isAdding && (
-          <button
+          <button aria-label="Erinnerung hinzufügen"
             onClick={() => setIsAdding(true)}
             className="w-8 h-8 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors shrink-0"
           >
@@ -97,7 +97,7 @@ export function DateMemoriesWidget() {
             >
               <div className="flex justify-between items-center mb-3">
                 <h4 className="text-sm font-medium text-stone-700 dark:text-stone-300">Neue Erinnerung</h4>
-                <button onClick={() => setIsAdding(false)} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
+                <button aria-label="Eingabe abbrechen" onClick={() => setIsAdding(false)} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
                   <X size={16} />
                 </button>
               </div>
@@ -196,7 +196,7 @@ export function DateMemoriesWidget() {
                     </p>
                   )}
                   
-                  <button 
+                  <button aria-label="Erinnerung löschen" 
                     onClick={() => {
                       const updated = memories.filter(m => m.id !== memory.id);
                       setMemories(updated);

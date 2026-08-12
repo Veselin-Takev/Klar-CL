@@ -591,8 +591,8 @@ export default function Tips() {
               {journalEntries.map(entry => (
                 <div key={entry.id} className="p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-xl relative group">
                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 flex gap-2">
-                    <button onClick={() => startEditing(entry)}><PenLine size={16} className="text-stone-400" /></button>
-                    <button onClick={() => deleteEntry(entry.id)}><Trash2 size={16} className="text-rose-500" /></button>
+                    <button aria-label="Eintrag bearbeiten" onClick={() => startEditing(entry)}><PenLine size={16} className="text-stone-400" /></button>
+                    <button aria-label="Eintrag löschen" onClick={() => deleteEntry(entry.id)}><Trash2 size={16} className="text-rose-500" /></button>
                   </div>
                   {editingEntryId === entry.id ? (
                     <div className="space-y-3">

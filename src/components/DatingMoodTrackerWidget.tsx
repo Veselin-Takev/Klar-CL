@@ -83,7 +83,7 @@ export function DatingMoodTrackerWidget() {
           >
             <div className="flex justify-between items-center mb-2">
               <h4 className="text-sm font-medium text-stone-800 dark:text-stone-200">Wie fühlst du dich heute?</h4>
-              <button onClick={() => setIsLogging(false)} className="text-stone-400 hover:text-stone-600 bg-stone-100 dark:bg-stone-800 p-1.5 rounded-full">
+              <button aria-label="Eingabe schließen" onClick={() => setIsLogging(false)} className="text-stone-400 hover:text-stone-600 bg-stone-100 dark:bg-stone-800 p-1.5 rounded-full">
                 <X size={14} />
               </button>
             </div>

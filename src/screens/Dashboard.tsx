@@ -1087,7 +1087,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           >
             <div className="p-4 border-b border-stone-100 dark:border-stone-800 flex justify-between items-center sticky top-0 bg-white/80 dark:bg-stone-900/80 backdrop-blur-md z-10">
               <h2 className="font-serif text-xl text-stone-900 dark:text-stone-100">Filter</h2>
-              <button onClick={() => setShowFilterSheet(false)} className="p-2 text-stone-500 hover:text-stone-900 dark:hover:text-white rounded-full bg-stone-100 dark:bg-stone-800">
+              <button aria-label="Filter schließen" onClick={() => setShowFilterSheet(false)} className="p-2 text-stone-500 hover:text-stone-900 dark:hover:text-white rounded-full bg-stone-100 dark:bg-stone-800">
                 <X size={20} />
               </button>
             </div>
@@ -1743,7 +1743,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                     </motion.div>
                   </div>
                 )}
-                <button 
+                <button aria-label="Profil schließen" 
                   onClick={() => setModalProfile(null)}
                   className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/40  rounded-full flex items-center justify-center text-white transition-colors"
                 >
@@ -1932,7 +1932,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
               className="fixed z-[70] bg-white dark:bg-stone-900 rounded-3xl overflow-hidden shadow-md max-w-sm w-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 border border-stone-200 dark:border-stone-700"
             >
               <div className=" from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30 p-5 relative overflow-hidden">
-                <button 
+                <button aria-label="Details schließen" 
                   onClick={() => setSmartMatchDetailProfile(null)}
                   className="absolute top-4 right-4 text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition-colors"
                 >

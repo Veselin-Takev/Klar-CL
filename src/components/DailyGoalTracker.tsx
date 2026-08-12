@@ -65,11 +65,11 @@ export function DailyGoalTracker() {
         <div className="flex items-center justify-between bg-stone-50 dark:bg-stone-950 p-2 rounded-xl mb-3">
           <span className="text-xs text-stone-600 dark:text-stone-400">Sinnvolle Gespräche:</span>
           <div className="flex items-center gap-3">
-            <button onClick={() => setGoal(Math.max(1, goal - 1))} className="p-1 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-sm">
+            <button aria-label="Tagesziel verringern" onClick={() => setGoal(Math.max(1, goal - 1))} className="p-1 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-sm">
               <Minus size={14} />
             </button>
             <span className="font-semibold w-4 text-center text-stone-900 dark:text-stone-100">{goal}</span>
-            <button onClick={() => setGoal(goal + 1)} className="p-1 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-sm">
+            <button aria-label="Tagesziel erhöhen" onClick={() => setGoal(goal + 1)} className="p-1 rounded-full bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 shadow-sm">
               <Plus size={14} />
             </button>
           </div>

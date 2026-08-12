@@ -89,7 +89,7 @@ export function TodayFeelingTrackerWidget() {
                   <Smile className="text-orange-500" size={20} />
                   Kurzer Check-in
                 </h3>
-                <button
+                <button aria-label="Eingabe schließen"
                   onClick={() => setIsOpen(false)}
                   className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-full hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors"
                 >

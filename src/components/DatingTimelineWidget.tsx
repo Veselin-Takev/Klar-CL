@@ -515,7 +515,7 @@ export function DatingTimelineWidget() {
           >
             <div className="flex items-center justify-between mb-4 shrink-0">
               <h3 className="font-semibold text-stone-900 dark:text-stone-100">Neuer Tagebucheintrag</h3>
-              <button 
+              <button aria-label="Formular schließen" 
                 onClick={() => setShowAddForm(false)}
                 className="p-2 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 rounded-full bg-stone-100 dark:bg-stone-800 transition-colors"
               >

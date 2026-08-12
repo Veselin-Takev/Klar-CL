@@ -120,7 +120,7 @@ export function QuickPreparationCountdownWidget() {
                   {t.done && <CheckCircle2 size={14} />}
                 </button>
                 <span className={`text-sm flex-1 ${t.done ? 'text-stone-400 line-through' : 'text-stone-700 dark:text-stone-300'}`}>{t.text}</span>
-                <button onClick={() => removeTask(t.id)} className="text-stone-400 hover:text-rose-500 opacity-50 hover:opacity-100"><X size={14}/></button>
+                <button aria-label="Aufgabe entfernen" onClick={() => removeTask(t.id)} className="text-stone-400 hover:text-rose-500 opacity-50 hover:opacity-100"><X size={14}/></button>
               </div>
             ))}
             {customTasks.length === 0 && <p className="text-xs text-stone-500">Z.B. Reservierung bestätigen, Outfit bügeln...</p>}

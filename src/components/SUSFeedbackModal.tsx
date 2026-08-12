@@ -65,7 +65,7 @@ export function SUSFeedbackModal() {
           <>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100">Dein Feedback hilft uns!</h3>
-              <button onClick={() => setShow(false)} className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-full bg-stone-100 dark:bg-stone-800">
+              <button aria-label="Umfrage schließen" onClick={() => setShow(false)} className="p-2 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-full bg-stone-100 dark:bg-stone-800">
                 <X size={16} />
               </button>
             </div>

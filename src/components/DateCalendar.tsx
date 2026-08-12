@@ -82,7 +82,7 @@ export function DateCalendar() {
           <CalendarIcon className="text-brand dark:text-brand-light" size={24} />
           Date Calendar
         </h3>
-        <button 
+        <button aria-label="Date hinzufügen" 
           onClick={() => setShowAddModal(true)}
           className="p-2 bg-brand/10 dark:bg-brand-light/10 text-brand dark:text-brand-light rounded-full hover:bg-brand/20 transition-colors"
         >

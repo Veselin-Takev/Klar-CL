@@ -264,7 +264,7 @@ export function DatingMilestones() {
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="bg-white dark:bg-stone-900 w-full max-w-sm rounded-3xl overflow-hidden shadow-md relative z-10 p-6 text-center"
             >
-              <button 
+              <button aria-label="Auszeichnung schließen" 
                 onClick={() => setSelectedBadge(null)}
                 className="absolute top-4 right-4 p-2 bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-full transition-colors"
               >

@@ -52,7 +52,7 @@ export const MindfulDatingExercisesWidget: React.FC = () => {
             }`}
           >
             <div className="flex gap-4">
-              <button 
+              <button aria-label="Übung als erledigt markieren" 
                 onClick={() => toggleCompletion(exercise.day)}
                 className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                   isDone 

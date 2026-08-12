@@ -102,7 +102,7 @@ export function PastDatesArchiveWidget() {
         </div>
         
         {!isAdding && (
-          <button 
+          <button aria-label="Date hinzufügen" 
             onClick={() => setIsAdding(true)}
             className="p-2 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
           >
@@ -253,7 +253,7 @@ export function PastDatesArchiveWidget() {
                 
                 return (
                   <div key={dateObj.id} className="p-4 bg-stone-50 dark:bg-stone-800/50 rounded-xl border border-stone-100 dark:border-stone-800 group relative">
-                    <button 
+                    <button aria-label="Date löschen" 
                       onClick={() => {
                         const newDates = pastDates.filter(d => d.id !== dateObj.id);
                         setPastDates(newDates);

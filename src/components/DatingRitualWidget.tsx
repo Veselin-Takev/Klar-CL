@@ -106,7 +106,7 @@ export const DatingRitualWidget: React.FC = () => {
 
   return (
     <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/50 rounded-2xl p-6 mb-6 text-center relative overflow-hidden transition-colors duration-1000">
-      <button 
+      <button aria-label="Ritual schließen" 
         onClick={() => setIsActive(false)}
         className="absolute top-4 right-4 p-1 text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-full transition-colors z-10"
       >

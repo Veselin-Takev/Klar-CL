@@ -74,7 +74,7 @@ export function DatingVibeAnalyzerWidget() {
                   <Activity size={18} className="text-brand" /> 
                   Vibe-Analyse
                 </h4>
-                <button onClick={() => setIsOpen(false)} className="text-stone-400 hover:text-stone-600 bg-stone-200/50 dark:bg-stone-800 p-2 rounded-full transition-colors">
+                <button aria-label="Auswertung schließen" onClick={() => setIsOpen(false)} className="text-stone-400 hover:text-stone-600 bg-stone-200/50 dark:bg-stone-800 p-2 rounded-full transition-colors">
                   <X size={16} />
                 </button>
               </div>

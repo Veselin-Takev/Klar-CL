@@ -138,7 +138,7 @@ export const DatingRituals: React.FC = () => {
     <div className="min-h-[100dvh] bg-light-bg dark:bg-dark-bg flex flex-col">
       <header className="px-6 py-4 flex items-center justify-between sticky top-0 bg-light-bg/80 dark:bg-dark-bg/80 backdrop-blur-md z-10 border-b border-stone-200 dark:border-stone-800">
         <div className="flex items-center gap-3">
-          <button 
+          <button aria-label="Zurück" 
             onClick={() => navigate(-1)}
             className="p-2 -ml-2 rounded-full hover:bg-stone-200 dark:hover:bg-stone-800 transition-colors"
           >
@@ -223,7 +223,7 @@ export const DatingRituals: React.FC = () => {
                             <CalendarDays size={12} />
                             {new Date(entry.date).toLocaleDateString('de-DE')}
                           </span>
-                          <button onClick={() => deleteGratitude(entry.id)} className="text-stone-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button aria-label="Eintrag löschen" onClick={() => deleteGratitude(entry.id)} className="text-stone-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 size={14} />
                           </button>
                         </div>

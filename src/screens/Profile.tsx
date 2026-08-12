@@ -882,7 +882,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                   }
                 }}
               />
-              <button 
+              <button aria-label="Interesse hinzufügen" 
                 onClick={() => {
                   if (newInterest.trim()) {
                     const updated = [...userInterests, newInterest.trim()];
@@ -908,7 +908,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
             {userNoGos.map((nogo, idx) => (
               <div key={idx} className="px-3 py-1 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-full text-xs flex items-center gap-1">
                 {nogo}
-                <button onClick={() => {
+                <button aria-label="No-Go entfernen" onClick={() => {
                   const newArr = userNoGos.filter((_, i) => i !== idx);
                   setUserNoGos(newArr);
                   localStorage.setItem("userNoGos", JSON.stringify(newArr));
@@ -934,7 +934,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                 }
               }}
             />
-            <button 
+            <button aria-label="No-Go hinzufügen" 
               onClick={() => {
                 if (newNoGo.trim()) {
                   const newArr = [...userNoGos, newNoGo.trim()];
@@ -1118,7 +1118,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                   <h4 className="text-sm font-semibold text-brand dark:text-brand-light mb-1">KI-Coach Feedback</h4>
                   <p className="text-sm text-stone-700 dark:text-stone-300 leading-relaxed">{bioFeedback}</p>
                 </div>
-                <button onClick={() => setBioFeedback("")} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors">
+                <button aria-label="Rückmeldung schließen" onClick={() => setBioFeedback("")} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors">
                   <X size={16} />
                 </button>
               </div>
@@ -1378,7 +1378,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
             {/* Compare Toggle */}
             <div className="flex justify-between items-center mt-4 p-3 bg-stone-50 dark:bg-stone-800/50 rounded-xl">
               <span className="text-sm font-medium text-stone-700 dark:text-stone-300">Mit Verbindung vergleichen</span>
-              <button
+              <button role="switch" aria-checked={showCompareRadar} aria-label="Mit Verbindung vergleichen"
                 onClick={() => setShowCompareRadar(!showCompareRadar)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${showCompareRadar ? 'bg-amber-500' : 'bg-stone-200 dark:bg-stone-700'}`}
               >
@@ -1684,7 +1684,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
               </div>
             </div>
             
-            <button
+            <button role="switch" aria-checked={smartMatchAlerts} aria-label="Smart-Match-Hinweise"
               onClick={() => {
                 const newValue = !smartMatchAlerts;
                 setSmartMatchAlerts(newValue);
