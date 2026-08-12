@@ -730,11 +730,31 @@ Regeln:
   
   
   // API Route for Compatibility Radar
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg — und
+  // dabei eine Doppelung entfernt.
+  //
+  // Hier stand eine EIGENE Behandlung der leeren Antwort: parsen, pruefen,
+  // bei `null` oder Nicht-Objekt `ausfall(... 'leere Antwort')`. Genau das
+  // macht `beantworte` bereits (`ki_ungueltig` -> Strategie aus
+  // kiPolitik.ts). Zwei Stellen mit derselben Regel sind eine zu viel:
+  // Sobald eine geaendert wird, weichen sie ab.
+  //
+  // Neu hinzu kommen Zeitgrenze und zweiter Versuch, die auf der
+  // Zwischenstufe fehlten.
+  //
+  // Der Schreibvorgang in den Zwischenspeicher bleibt, nur an anderer
+  // Stelle. Er laeuft weiterhin NUR bei einem echten KI-Ergebnis — sonst
+  // wuerde ein gespeicherter Stand sich selbst verlaengern und nie
+  // veralten. `schreibe()` entfernt `herkunft`, `hinweis` und `standVom`
+  // selbst, deshalb darf `antwort.koerper` unveraendert hinein.
   app.post("/api/compatibility-radar", async (req, res) => {
     const meineUid = (req as any).user?.uid as string;
-    try {
-      const { userInterests, verbindungen } = req.body;
-      const response = await ai.models.generateContent({
+    const { userInterests, verbindungen } = req.body;
+    const antwort = await beantworte(
+      "/api/compatibility-radar",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere die Kompatibilität des Nutzers (Interessen: ${userInterests.join(', ')}) mit den aktuellen Verbindungen:\n${JSON.stringify(verbindungen)}\n\nBewerte die durchschnittliche Kompatibilität in den Kategorien: Hobbies, Werte, Lifestyle, Humor, Aktivität auf einer Skala von 0 bis 100.`,
         config: {
@@ -761,34 +781,15 @@ Regeln:
             required: ["data"]
           }
         }
-      });
-      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
-      //
-      // Der Vorgabewert `{"data":[]}` entfaellt: Eine leere
-      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
-      // das in der Oberflaeche wie eine Auswertung aussah.
-      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
-      if (ergebnis === null || typeof ergebnis !== 'object') {
-        const leer = ausfall("/api/compatibility-radar", new Error('leere Antwort'), {
-          zwischenspeicher: await liesSpeicher(meineUid, "/api/compatibility-radar"),
-        });
-        return res.status(leer.status).json(leer.koerper);
-      }
-      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
-      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
-      // `schreibe` faengt seine Fehler selbst ab.
-      await schreibeSpeicher(meineUid, "/api/compatibility-radar", ergebnis as Record<string, unknown>);
-      return res.json({ ...ergebnis, herkunft: 'ki' });
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/compatibility-radar", e, {
+      }),
+      {
         zwischenspeicher: await liesSpeicher(meineUid, "/api/compatibility-radar"),
-      });
-      res.status(antwort.status).json(antwort.koerper);
+      },
+    );
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/compatibility-radar", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   
@@ -877,11 +878,31 @@ Regeln:
   // Kein toter Code stehen gelassen: Der Pfad ist weg, nicht auskommentiert.
 
   // API Route for Dating Success Score
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg — und
+  // dabei eine Doppelung entfernt.
+  //
+  // Hier stand eine EIGENE Behandlung der leeren Antwort: parsen, pruefen,
+  // bei `null` oder Nicht-Objekt `ausfall(... 'leere Antwort')`. Genau das
+  // macht `beantworte` bereits (`ki_ungueltig` -> Strategie aus
+  // kiPolitik.ts). Zwei Stellen mit derselben Regel sind eine zu viel:
+  // Sobald eine geaendert wird, weichen sie ab.
+  //
+  // Neu hinzu kommen Zeitgrenze und zweiter Versuch, die auf der
+  // Zwischenstufe fehlten.
+  //
+  // Der Schreibvorgang in den Zwischenspeicher bleibt, nur an anderer
+  // Stelle. Er laeuft weiterhin NUR bei einem echten KI-Ergebnis — sonst
+  // wuerde ein gespeicherter Stand sich selbst verlaengern und nie
+  // veralten. `schreibe()` entfernt `herkunft`, `hinweis` und `standVom`
+  // selbst, deshalb darf `antwort.koerper` unveraendert hinein.
   app.post("/api/dating-success-score", async (req, res) => {
     const meineUid = (req as any).user?.uid as string;
-    try {
-      const { reflections } = req.body;
-      const response = await ai.models.generateContent({
+    const { reflections } = req.body;
+    const antwort = await beantworte(
+      "/api/dating-success-score",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere die folgenden Journal-Einträge von vergangenen Dates und bewerte die Dating-Dynamik in verschiedenen Kategorien (0-100).\n\nEinträge:\n${JSON.stringify(reflections)}`,
         config: {
@@ -921,34 +942,15 @@ Regeln:
             required: ["scores", "trend", "insight"]
           }
         }
-      });
-      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
-      //
-      // Der Vorgabewert `{"scores":[],"insight":""}` entfaellt: Eine leere
-      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
-      // das in der Oberflaeche wie eine Auswertung aussah.
-      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
-      if (ergebnis === null || typeof ergebnis !== 'object') {
-        const leer = ausfall("/api/dating-success-score", new Error('leere Antwort'), {
-          zwischenspeicher: await liesSpeicher(meineUid, "/api/dating-success-score"),
-        });
-        return res.status(leer.status).json(leer.koerper);
-      }
-      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
-      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
-      // `schreibe` faengt seine Fehler selbst ab.
-      await schreibeSpeicher(meineUid, "/api/dating-success-score", ergebnis as Record<string, unknown>);
-      return res.json({ ...ergebnis, herkunft: 'ki' });
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/dating-success-score", e, {
+      }),
+      {
         zwischenspeicher: await liesSpeicher(meineUid, "/api/dating-success-score"),
-      });
-      res.status(antwort.status).json(antwort.koerper);
+      },
+    );
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/dating-success-score", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Date Archive Analysis
@@ -1339,11 +1341,31 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
     res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg — und
+  // dabei eine Doppelung entfernt.
+  //
+  // Hier stand eine EIGENE Behandlung der leeren Antwort: parsen, pruefen,
+  // bei `null` oder Nicht-Objekt `ausfall(... 'leere Antwort')`. Genau das
+  // macht `beantworte` bereits (`ki_ungueltig` -> Strategie aus
+  // kiPolitik.ts). Zwei Stellen mit derselben Regel sind eine zu viel:
+  // Sobald eine geaendert wird, weichen sie ab.
+  //
+  // Neu hinzu kommen Zeitgrenze und zweiter Versuch, die auf der
+  // Zwischenstufe fehlten.
+  //
+  // Der Schreibvorgang in den Zwischenspeicher bleibt, nur an anderer
+  // Stelle. Er laeuft weiterhin NUR bei einem echten KI-Ergebnis — sonst
+  // wuerde ein gespeicherter Stand sich selbst verlaengern und nie
+  // veralten. `schreibe()` entfernt `herkunft`, `hinweis` und `standVom`
+  // selbst, deshalb darf `antwort.koerper` unveraendert hinein.
   app.post("/api/date-archive-analysis", async (req, res) => {
     const meineUid = (req as any).user?.uid as string;
-    try {
-      const { reflections } = req.body;
-      const response = await ai.models.generateContent({
+    const { reflections } = req.body;
+    const antwort = await beantworte(
+      "/api/date-archive-analysis",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere die folgenden Journal-Einträge von vergangenen Dates und identifiziere Erfolgsmuster für zukünftige Dates.\n\nEinträge:\n${JSON.stringify(reflections)}`,
         config: {
@@ -1364,34 +1386,15 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
             required: ["patterns", "learning"]
           }
         }
-      });
-      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
-      //
-      // Der Vorgabewert `{"patterns":[],"learning":""}` entfaellt: Eine leere
-      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
-      // das in der Oberflaeche wie eine Auswertung aussah.
-      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
-      if (ergebnis === null || typeof ergebnis !== 'object') {
-        const leer = ausfall("/api/date-archive-analysis", new Error('leere Antwort'), {
-          zwischenspeicher: await liesSpeicher(meineUid, "/api/date-archive-analysis"),
-        });
-        return res.status(leer.status).json(leer.koerper);
-      }
-      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
-      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
-      // `schreibe` faengt seine Fehler selbst ab.
-      await schreibeSpeicher(meineUid, "/api/date-archive-analysis", ergebnis as Record<string, unknown>);
-      return res.json({ ...ergebnis, herkunft: 'ki' });
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/date-archive-analysis", e, {
+      }),
+      {
         zwischenspeicher: await liesSpeicher(meineUid, "/api/date-archive-analysis"),
-      });
-      res.status(antwort.status).json(antwort.koerper);
+      },
+    );
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/date-archive-analysis", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // API Route for Date Checklist
@@ -1964,14 +1967,33 @@ Basierend auf diesen Daten, erstelle 3 alternative, kreative Date-Konzepte oder 
     res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026 von der Zwischenstufe auf den vollen Weg — und
+  // dabei eine Doppelung entfernt.
+  //
+  // Hier stand eine EIGENE Behandlung der leeren Antwort: parsen, pruefen,
+  // bei `null` oder Nicht-Objekt `ausfall(... 'leere Antwort')`. Genau das
+  // macht `beantworte` bereits (`ki_ungueltig` -> Strategie aus
+  // kiPolitik.ts). Zwei Stellen mit derselben Regel sind eine zu viel:
+  // Sobald eine geaendert wird, weichen sie ab.
+  //
+  // Neu hinzu kommen Zeitgrenze und zweiter Versuch, die auf der
+  // Zwischenstufe fehlten.
+  //
+  // Der Schreibvorgang in den Zwischenspeicher bleibt, nur an anderer
+  // Stelle. Er laeuft weiterhin NUR bei einem echten KI-Ergebnis — sonst
+  // wuerde ein gespeicherter Stand sich selbst verlaengern und nie
+  // veralten. `schreibe()` entfernt `herkunft`, `hinweis` und `standVom`
+  // selbst, deshalb darf `antwort.koerper` unveraendert hinein.
   app.post("/api/analyze-relationship", async (req, res) => {
     const meineUid = (req as any).user?.uid as string;
-    try {
-      const { chatHistory, userName, targetName } = req.body;
-      
-      const historyText = chatHistory.map((m: any, i: number) => `[Nachricht ${i + 1}] ${m.role === 'user' ? userName : targetName}: ${m.text}`).join('\n');
-
-      const response = await ai.models.generateContent({
+    const { chatHistory, userName, targetName } = req.body;
+    
+    const historyText = chatHistory.map((m: any, i: number) => `[Nachricht ${i + 1}] ${m.role === 'user' ? userName : targetName}: ${m.text}`).join('\n');
+    const antwort = await beantworte(
+      "/api/analyze-relationship",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Analysiere den Chatverlauf und extrahiere den Beziehungsfortschritt (Themen und Tonalität über die Zeit).
 Chatverlauf:
@@ -2013,35 +2035,15 @@ Gib das Ergebnis im vorgegebenen JSON-Format zurück.`,
             required: ["tonalityOverTime", "topics"]
           }
         }
-      });
-      
-      // UMGESTELLT 11.08.2026, Strategie `zwischenspeicher`.
-      //
-      // Der Vorgabewert `{"tonalityOverTime":[],"topics":[]}` entfaellt: Eine leere
-      // Modellantwort wurde dadurch zu einem Ergebnis mit leeren Feldern,
-      // das in der Oberflaeche wie eine Auswertung aussah.
-      const ergebnis = JSON.parse(String(response.text ?? '').trim() || 'null');
-      if (ergebnis === null || typeof ergebnis !== 'object') {
-        const leer = ausfall("/api/analyze-relationship", new Error('leere Antwort'), {
-          zwischenspeicher: await liesSpeicher(meineUid, "/api/analyze-relationship"),
-        });
-        return res.status(leer.status).json(leer.koerper);
-      }
-      // Ablegen ist beste Absicht, keine Zusage: Ein misslungener
-      // Schreibvorgang darf die geglueckte Antwort nicht verderben.
-      // `schreibe` faengt seine Fehler selbst ab.
-      await schreibeSpeicher(meineUid, "/api/analyze-relationship", ergebnis as Record<string, unknown>);
-      return res.json({ ...ergebnis, herkunft: 'ki' });
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error("AI Error:", (e instanceof Error ? e.message : String(e)) || e); else console.warn("AI Quota exceeded");
-      // UMGESTELLT 11.08.2026: Hier stand eine erfundene Antwort mit
-      // HTTP 200. `ausfall` entscheidet stattdessen nach der in
-      // kiPolitik.ts fuer diesen Endpunkt hinterlegten Strategie.
-      const antwort = ausfall("/api/analyze-relationship", e, {
+      }),
+      {
         zwischenspeicher: await liesSpeicher(meineUid, "/api/analyze-relationship"),
-      });
-      res.status(antwort.status).json(antwort.koerper);
+      },
+    );
+    if (antwort.koerper["herkunft"] === "ki") {
+      await schreibeSpeicher(meineUid, "/api/analyze-relationship", antwort.koerper);
     }
+    res.status(antwort.status).json(antwort.koerper);
   });
   // UMGESTELLT 11.08.2026 auf kiAufruf.beantworte(), Strategie `leer`.
   //
