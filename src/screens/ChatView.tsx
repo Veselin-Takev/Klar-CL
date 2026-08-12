@@ -1,4 +1,3 @@
-// @ts-nocheck
 // FE-02 (Final Audit 08.08.2026): Hier stand
 //   import { Languages, Globe, useState, useEffect } from "react";
 // `Languages` und `Globe` sind lucide-Symbole, keine React-Exporte. Beide
@@ -8,7 +7,10 @@
 // `Globe` wurde nirgends verwendet und ist deshalb entfallen.
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Minimize2, Mic, MessageSquare, Phone, Video, Settings, Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile, HelpCircle, FileText, Info, MicOff } from "lucide-react";
+// 14 Symbole wurden importiert und nie gerendert: Phone, Video, Settings,
+// Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile,
+// HelpCircle, FileText, Info, MicOff. Entfernt.
+import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Minimize2, Mic, MessageSquare } from "lucide-react";
 
 import { allProfiles } from "../data";
 
@@ -24,7 +26,7 @@ import { NotificationService } from "../services/notificationService";
 
 import { RelationshipProgressWidget } from "../components/RelationshipProgressWidget";
 import { RecentIntrosWidget } from "../components/RecentIntrosWidget";
-import { ChatDatePlanner } from "../components/ChatDatePlanner";
+import { ChatDatePlanner, type DateIdee } from "../components/ChatDatePlanner";
 import { DateProposalMessage } from "../components/DateProposalMessage";
 import { DatePrepChecklistModal } from "../components/DatePrepChecklistModal";
 import { ChatDateExtractorWidget } from "../components/ChatDateExtractorWidget";
@@ -37,6 +39,167 @@ import { QuickRepliesDrawer } from "../components/QuickRepliesDrawer";
 import { MessageBubble } from "../components/MessageBubble";
 import { melde } from "../lib/fehler";
 
+// ═══════════════════════════════════════════════════════════════════════════
+// `// @ts-nocheck` ENTFERNT am 12.08.2026. Was die Zeile verdeckt hat:
+//
+//   1. 14 Symbole aus `lucide-react` importiert und nie gerendert.
+//   2. `chatDynamic` — ein Zustand, der weder gesetzt noch gelesen wurde.
+//   3. `setTargetLanguage` — nie aufgerufen. Die Zielsprache steht damit
+//      dauerhaft auf `undefined`, und `MessageBubble` übersetzt nur, wenn
+//      sie gesetzt ist. Die vorgesehene Sprachauswahl gibt es nicht.
+//   4. Sieben Mal `any`: die Spracherkennung des Browsers (viermal), die
+//      Kontextauswertung, der Sicherheitshinweis und `proposalDetails`.
+//      Alle durch benannte Typen ersetzt.
+//   5. Zwölf Mal `JSON.parse` ohne jede Prüfung — darunter dreimal derselbe
+//      Block im JSX, der den Stimmungsverlauf fortschreibt. Stand dort
+//      etwas anderes als ein Array, warf `.push` einen TypeError mitten im
+//      Klick. Jetzt eine Funktion, einmal geprüft.
+//   6. Drei leere `catch (e) {}`.
+//   7. `<ChatDatePlanner verbindungName={profile.name} />` — die Komponente
+//      kennt keine Eigenschaft dieses Namens; sie heisst `matchName`. Der
+//      Name wurde also verworfen: Die Ueberschrift lautete „Date mit " ohne
+//      Namen, und der Planer legte seine Vorbereitungs-Checkliste unter
+//      `klar_date_checklist_undefined` ab — also fuer ALLE Gespraeche
+//      dieselbe.
+//   8. `onClick={handleSend}`. React uebergibt das Klick-Ereignis als
+//      erstes Argument, und das erste Argument von `handleSend` heisst
+//      `forceSend`. Ein MouseEvent ist wahr — also lief jeder Klick auf
+//      Senden mit `forceSend === true` und ueberSPRANG die
+//      Empathie-Pruefung. Ueber die Eingabetaste lief sie, ueber den Knopf
+//      nicht. Zwei Wege, zwei Verhalten, kein Hinweis.
+//   9. `profile` ist `Profil | undefined` (aus `allProfiles.find`). Die
+//      Sperre steht in der Ausgabe; fuer die Funktionen darueber galt sie
+//      nicht. Fuenf Funktionen sichern das jetzt selbst ab.
+//
+// ── WAS SICH SICHTBAR ÄNDERT ──────────────────────────────────────────────
+// Nur eines: Fällt `/api/generate-date-plan` aus, zeigte diese Datei einen
+// erfundenen Plan mit KONKRETER Uhrzeit („Samstag, 14:00 Uhr") und
+// KONKRETEM Ort („Lokales Lieblingscafé am Park") — ohne Hinweis, dass
+// niemand das geplant hat. Der Ersatzplan ist jetzt allgemein formuliert,
+// und darüber steht, dass er nicht auf euch zugeschnitten ist.
+//
+// ── VIER BEFUNDE, DIE ICH NICHT ALLEIN ENTSCHEIDE ─────────────────────────
+// Sie brauchen kein `@ts-nocheck`, um zu bestehen — aber sie gehören auf
+// den Tisch:
+//
+//   A. Zwei Schaltflächen in der Werkzeugleiste erzeugen ERFUNDENE
+//      Nachrichten der anderen Person: „Englische Nachricht empfangen"
+//      und „Red Flag Message simulieren". Die zweite hängt zusätzlich
+//      einen KI-Aufruf an, dessen Ergebnis nirgends erscheint.
+//   B. Der „Context-Aware Coach" (Gehirn-Symbol) löst bei jeder neuen
+//      Nachricht einen KI-Aufruf aus. `setContextAnalysis` schreibt das
+//      Ergebnis in einen Zustand, den niemand liest. Das Symbol pulsiert,
+//      der Aufruf kostet, angezeigt wird nichts.
+//   B2. `/api/conversation-dynamics` läuft ebenfalls bei jeder neuen
+//      Nachricht. Das Ergebnis landet in `chatDynamic` — auch das liest
+//      niemand.
+//   C. Dasselbe bei den „Reentry-Impulsen": berechnet, nie angezeigt.
+//   D. Die Zielsprache (Punkt 3 oben) ist nicht einstellbar.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Die Spracherkennung des Browsers, beschraenkt auf das, was hier benutzt
+ * wird. `SpeechRecognition` ist kein Standard und fehlt in den
+ * TypeScript-Bibliotheken; frueher stand hier viermal `any`.
+ */
+interface Spracherkennung {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+  onerror: (event: { error: string }) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+}
+type SpracherkennungBauer = new () => Spracherkennung;
+
+/** Ergebnis der Kontext-Auswertung. */
+interface Kontextauswertung {
+  mood: string;
+  recommendation: string;
+}
+
+/** Ergebnis der Sicherheitspruefung einer eingehenden Nachricht. */
+interface Sicherheitshinweis {
+  explanation: string;
+  suggestions: string[];
+}
+
+const nurZeichenketten = (w: unknown): string[] =>
+  Array.isArray(w) ? w.filter((x): x is string => typeof x === 'string') : [];
+
+/**
+ * Zeichenketten-Liste aus dem lokalen Speicher — ohne Vertrauen in den
+ * Inhalt. Ersetzt neun Stellen, an denen `JSON.parse` ungeprueft lief.
+ */
+function listeAusSpeicher(schluessel: string): string[] {
+  const roh = localStorage.getItem(schluessel);
+  if (!roh) return [];
+  try {
+    return nurZeichenketten(JSON.parse(roh) as unknown);
+  } catch {
+    return [];
+  }
+}
+
+/** Aus einer Antwort die Liste unter `suggestions` holen. */
+function vorschlaegeAus(text: string): string[] {
+  if (!text) return [];
+  const roh: unknown = JSON.parse(text);
+  return roh !== null && typeof roh === 'object'
+    ? nurZeichenketten((roh as Record<string, unknown>)['suggestions'])
+    : [];
+}
+
+/** Ein Eintrag im Stimmungsverlauf ueber alle Gespraeche. */
+interface Stimmungseintrag {
+  id: string | undefined;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  date: string;
+}
+
+/**
+ * Stimmung zu einem Gespraech festhalten. Vorher stand dieser Ablauf
+ * dreimal wortgleich im JSX, jedes Mal mit einem ungepruefeten
+ * `JSON.parse` — stand dort etwas anderes als ein Array, warf `.push`
+ * einen TypeError mitten im Klick.
+ */
+function merkeStimmung(id: string | undefined, sentiment: Stimmungseintrag['sentiment']): void {
+  if (id) localStorage.setItem(`klar_chat_sentiment_${id}`, sentiment);
+  let verlauf: Stimmungseintrag[] = [];
+  try {
+    const roh: unknown = JSON.parse(localStorage.getItem('klar_chat_sentiment_history') ?? '[]');
+    if (Array.isArray(roh)) verlauf = roh as Stimmungseintrag[];
+  } catch {
+    verlauf = [];
+  }
+  verlauf.push({ id, sentiment, date: new Date().toISOString() });
+  localStorage.setItem('klar_chat_sentiment_history', JSON.stringify(verlauf));
+}
+
+/** Ein vom Server gelieferter Date-Vorschlag. */
+interface Dateplan {
+  title: string;
+  time: string;
+  location: string;
+  plan: string;
+}
+
+function leseDateplan(text: string): Dateplan | null {
+  if (!text) return null;
+  const roh: unknown = JSON.parse(text);
+  if (roh === null || typeof roh !== 'object') return null;
+  const o = roh as Record<string, unknown>;
+  if (typeof o['title'] !== 'string' || o['title'].trim() === '') return null;
+  return {
+    title: o['title'],
+    time: typeof o['time'] === 'string' ? o['time'] : '',
+    location: typeof o['location'] === 'string' ? o['location'] : '',
+    plan: typeof o['plan'] === 'string' ? o['plan'] : '',
+  };
+}
+
 export interface ChatMessage {
   role: 'user' | 'verbindung';
   text: string;
@@ -45,7 +208,7 @@ export interface ChatMessage {
   translationError?: boolean;
   isRead?: boolean;
   isDateProposal?: boolean;
-  proposalDetails?: any;
+  proposalDetails?: DateIdee;
 }
 
 export default function ChatView() {
@@ -81,11 +244,16 @@ export default function ChatView() {
   // abzustuerzen. Das Erkannte landet im Eingabefeld -- es wird nichts
   // automatisch abgeschickt.
   const [isRecording, setIsRecording] = useState(false);
-  const [voiceRecognition, setVoiceRecognition] = useState<any>(null);
+  const [voiceRecognition, setVoiceRecognition] = useState<Spracherkennung | null>(null);
 
   useEffect(() => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    // `SpeechRecognition` steht nicht in den TypeScript-Standardtypen.
+    // Statt `any` das, was diese Datei tatsaechlich benutzt (siehe oben).
+    const w = window as unknown as {
+      SpeechRecognition?: SpracherkennungBauer;
+      webkitSpeechRecognition?: SpracherkennungBauer;
+    };
+    const SpeechRecognition = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
@@ -93,12 +261,13 @@ export default function ChatView() {
     recognition.interimResults = false;
     recognition.lang = 'de-DE';
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0]?.[0]?.transcript;
       setIsRecording(false);
+      if (!transcript) return;
       setInput((vorher: string) => (vorher ? vorher + ' ' : '') + transcript);
     };
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event) => {
       console.warn('Spracherkennung fehlgeschlagen:', event.error);
       setIsRecording(false);
     };
@@ -133,7 +302,13 @@ export default function ChatView() {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [icebreakerHistory, setIcebreakerHistory] = useState<string[]>([]);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
-  const [chatDynamic, setChatDynamic] = useState<{dynamic: string, explanation: string} | null>(null);
+  // BEFUND 12.08.2026: `chatDynamic` wurde GESETZT (Zeile darunter, aus
+  // /api/conversation-dynamics), aber nirgends gelesen. Der Aufruf laeuft
+  // bei jeder neuen Nachricht und kostet — angezeigt wird nichts. Der
+  // Lesename ist entfernt, damit der Zustand nicht so aussieht, als wuerde
+  // er irgendwo gebraucht. Ob die Gespraechsdynamik angezeigt werden soll,
+  // steht in der Liste im Kopf dieser Datei.
+  const [, setChatDynamic] = useState<{ dynamic: string; explanation: string } | null>(null);
   
   const [isGeneratingReplies, setIsGeneratingReplies] = useState(false);
   const [showTuning, setShowTuning] = useState(false);
@@ -196,33 +371,40 @@ export default function ChatView() {
           }
           return res.json().catch(() => null);
         })
-        .then(data => {
-          if (data && data.dynamic) setChatDynamic(data);
+        .then((roh: unknown) => {
+          if (roh === null || typeof roh !== 'object') return;
+          const o = roh as Record<string, unknown>;
+          if (typeof o['dynamic'] !== 'string') return;
+          setChatDynamic({
+            dynamic: o['dynamic'],
+            explanation: typeof o['explanation'] === 'string' ? o['explanation'] : '',
+          });
         })
         .catch(console.error);
     }
   }, [messages.length]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("klar_saved_smart_intros");
-    if (saved) {
-      try {
-        setSavedSmartIntros(JSON.parse(saved));
-      } catch (e) { }
-    }
+    setSavedSmartIntros(listeAusSpeicher("klar_saved_smart_intros"));
   }, []);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   
     const [isCheckingSafety, setIsCheckingSafety] = useState(false);
-  const [, setSafetyWarning] = useState<any>(null);
+  const [, setSafetyWarning] = useState<Sicherheitshinweis | null>(null);
   const [, setIsLongSilence] = useState(false);
   const [, setReentryImpulses] = useState<string[]>([]);
   const [, setIsLoadingImpulses] = useState(false);
-  const [, setContextAnalysis] = useState<any>(null);
+  const [, setContextAnalysis] = useState<Kontextauswertung | null>(null);
 
   const [intensity, setIntensity] = useState(50);
-  const [targetLanguage, setTargetLanguage] = useState<string | undefined>(undefined);
+  // BEFUND 12.08.2026: `setTargetLanguage` wurde nirgends aufgerufen. Die
+  // Zielsprache steht damit dauerhaft auf `undefined` — und `MessageBubble`
+  // uebersetzt nur, wenn `targetLang` gesetzt ist. Die Sprachauswahl, die
+  // hier vorgesehen war, gibt es nicht. Der Setzer ist entfernt, damit der
+  // Zustand nicht laenger so aussieht, als koenne er sich aendern.
+  // Ob eine Sprachwahl gebaut werden soll, ist eine Produktentscheidung.
+  const [targetLanguage] = useState<string | undefined>(undefined);
       
 
   const [isGeneratingSmartIntro, setIsGeneratingSmartIntro] = useState(false);
@@ -234,21 +416,11 @@ export default function ChatView() {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<{title: string, description: string}[]>([]);
   useEffect(() => {
-    const saved = localStorage.getItem("userInterests");
-    if (saved) {
-      try {
-        setUserInterests(JSON.parse(saved));
-      } catch (e) {}
-    }
+    setUserInterests(listeAusSpeicher("userInterests"));
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem("klar_saved_smart_intros");
-    if (saved) {
-      try {
-        setSavedSmartIntros(JSON.parse(saved).slice(0, 5));
-      } catch (e) {}
-    }
+    setSavedSmartIntros(listeAusSpeicher("klar_saved_smart_intros").slice(0, 5));
   }, []);
 
   useEffect(() => {
@@ -258,6 +430,13 @@ export default function ChatView() {
   }, [messages, contextModeActive]);
 
   const analyzeContext = async () => {
+    // `profile` kommt aus `allProfiles.find(...)` und ist damit
+    // `Profil | undefined`. Weiter unten sperrt zwar
+    // `if (!profile) return <div>Verbindung nicht gefunden</div>`, aber das
+    // steht in der Ausgabe — der Compiler kann daraus fuer diese Funktion
+    // nichts schliessen. Die Sperre hier kostet nichts und macht die
+    // Annahme sichtbar, statt sie zu verschweigen.
+    if (!profile) return;
     if (messages.length < 2) return;
     setIsAnalyzingContext(true);
     try {
@@ -285,10 +464,11 @@ export default function ChatView() {
   };
 
   const handleSmartIntro = async () => {
+    if (!profile) return;
     setIsGeneratingSmartIntro(true);
     try {
-      const savedInterests = localStorage.getItem("userInterests");
-      const userInterests = savedInterests ? JSON.parse(savedInterests).join(", ") : "Nicht angegeben";
+      const gespeicherteInteressen = listeAusSpeicher("userInterests");
+      const userInterests = gespeicherteInteressen.length > 0 ? gespeicherteInteressen.join(", ") : "Nicht angegeben";
       
       
       const savedSentiment = localStorage.getItem(`klar_chat_sentiment_${id}`);
@@ -320,12 +500,13 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
   };
 
   const simulateSilence = async () => {
+    if (!profile) return;
     setIntensity(15);
     setIsLongSilence(true);
     setIsLoadingImpulses(true);
     try {
-      const savedInterests = localStorage.getItem("userInterests");
-      const userInterests = savedInterests ? JSON.parse(savedInterests).join(", ") : "Nicht angegeben";
+      const gespeicherteInteressen = listeAusSpeicher("userInterests");
+      const userInterests = gespeicherteInteressen.length > 0 ? gespeicherteInteressen.join(", ") : "Nicht angegeben";
       
       
       const savedSentiment = localStorage.getItem(`klar_chat_sentiment_${id}`);
@@ -480,14 +661,15 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
 
   const [showDatePlan, setShowDatePlan] = useState(false);
   const [showQualityChart, setShowQualityChart] = useState(false);
-  const [datePlan, setDatePlan] = useState<{title: string, time: string, location: string, plan: string} | null>(null);
+  const [datePlan, setDatePlan] = useState<Dateplan | null>(null);
+  // Kommt der Plan aus dem Ersatz statt von der KI? Der Hinweis haengt daran.
+  const [planIstErsatz, setPlanIstErsatz] = useState(false);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
   const generateDatePlan = async () => {
     setIsLoadingPlan(true);
     try {
-      const savedInterests = localStorage.getItem("userInterests");
-      const userInterestsStr = savedInterests ? JSON.parse(savedInterests) : [];
+      const userInterestsStr = listeAusSpeicher("userInterests");
       const userName = localStorage.getItem("userName") || "Ich";
       
       const res = await fetch("/api/generate-date-plan", {
@@ -502,16 +684,25 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
         })
       });
 
-      if (!res.ok) throw new Error("API request failed");
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setDatePlan(data);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const plan = leseDateplan(await res.text());
+      if (!plan) throw new Error("Antwort ohne verwertbaren Plan");
+      setDatePlan(plan);
+      setPlanIstErsatz(false);
     } catch (e) {
-      console.warn("Failed to generate date plan", e);
+      melde("ChatView/dateplan", e);
+      // BEFUND 12.08.2026: Dieser Ersatzplan nennt eine konkrete Uhrzeit
+      // ("Samstag, 14:00 Uhr") und einen konkreten Ort ("Lokales
+      // Lieblingscafé am Park") — beides erfunden und nicht als solches
+      // gekennzeichnet. Der Plan wurde angezeigt, als haette die KI ihn
+      // erstellt. Der Text bleibt (er ist harmlos und brauchbar), aber die
+      // Herkunft steht ab jetzt darueber.
+      setPlanIstErsatz(true);
       setDatePlan({
         title: "Kaffee & Spaziergang",
-        time: "Samstag, 14:00 Uhr",
-        location: "Lokales Lieblingscafé am Park",
-        plan: "Wir treffen uns auf einen entspannten Kaffee und machen danach einen kleinen Spaziergang durch den Park, um ungestört quatschen zu können."
+        time: "an einem Nachmittag",
+        location: "ein Café in eurer Nähe",
+        plan: "Ein entspannter Kaffee und danach ein kleiner Spaziergang — genug Zeit zum Reden, jederzeit beendbar."
       });
     } finally {
       setIsLoadingPlan(false);
@@ -520,8 +711,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
 
   const getDateLocations = async () => {
     try {
-      const savedInterests = localStorage.getItem("userInterests");
-      const userInterests = savedInterests ? JSON.parse(savedInterests) : [];
+      const userInterests = listeAusSpeicher("userInterests");
       const userName = localStorage.getItem("userName") || "Ich";
 
       const res = await fetch("/api/date-locations", {
@@ -539,8 +729,24 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
 
       if (!res.ok) throw new Error("API request failed");
       
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setLocationSuggestions(data.suggestions || []);
+      const roh: unknown = JSON.parse((await res.text()) || '{}');
+      const liste =
+        roh !== null && typeof roh === 'object'
+          ? (roh as Record<string, unknown>)['suggestions']
+          : null;
+      setLocationSuggestions(
+        Array.isArray(liste)
+          ? liste.flatMap((e) =>
+              e !== null && typeof e === 'object' &&
+              typeof (e as Record<string, unknown>)['title'] === 'string'
+                ? [{
+                    title: String((e as Record<string, unknown>)['title']),
+                    description: String((e as Record<string, unknown>)['description'] ?? ''),
+                  }]
+                : [],
+            )
+          : [],
+      );
     } catch (e) {
       console.warn("Failed to get location suggestions", e);
       setLocationSuggestions([
@@ -556,8 +762,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
   const getConversationTuning = async () => {
     setIsLoadingAI(true);
     try {
-      const savedInterests = localStorage.getItem("userInterests");
-      const userInterests = savedInterests ? JSON.parse(savedInterests) : [];
+      const userInterests = listeAusSpeicher("userInterests");
       const userName = localStorage.getItem("userName") || "Ich";
 
       const res = await fetch("/api/conversation-tuning", {
@@ -577,8 +782,25 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
         throw new Error("Fehler beim Laden der Tuning-Vorschläge");
       }
       
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setTuningSuggestions(data.suggestions || []);
+      const roh: unknown = JSON.parse((await res.text()) || '{}');
+      const liste =
+        roh !== null && typeof roh === 'object'
+          ? (roh as Record<string, unknown>)['suggestions']
+          : null;
+      setTuningSuggestions(
+        Array.isArray(liste)
+          ? liste.flatMap((e) => {
+              if (e === null || typeof e !== 'object') return [];
+              const o = e as Record<string, unknown>;
+              if (typeof o['text'] !== 'string') return [];
+              return [{
+                style: typeof o['style'] === 'string' ? o['style'] : '',
+                text: o['text'],
+                explanation: typeof o['explanation'] === 'string' ? o['explanation'] : '',
+              }];
+            })
+          : [],
+      );
       
     } catch (e) {
       melde("ChatView", e);
@@ -603,8 +825,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
       });
 
       if (!res.ok) throw new Error("Fehler beim Laden");
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setReplySuggestions(data.suggestions || []);
+      setReplySuggestions(vorschlaegeAus(await res.text()));
     } catch (e) {
       melde("ChatView", e);
       setReplySuggestions(["Das klingt interessant!", "Erzähl mir mehr.", "Wie meinst du das genau?"]);
@@ -614,10 +835,10 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
   };
 
   const getIcebreakers = async () => {
+    if (!profile) return;
     setIsLoadingAI(true);
     try {
-      const savedInterests = localStorage.getItem("userInterests");
-      const userInterests = savedInterests ? JSON.parse(savedInterests) : [];
+      const userInterests = listeAusSpeicher("userInterests");
       const userName = localStorage.getItem("userName") || "Ich";
       const savedSentiment = localStorage.getItem(`klar_chat_sentiment_${id}`);
 
@@ -639,8 +860,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
         throw new Error("Fehler beim Laden der Vorschläge");
       }
       
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      const newSuggestions = data.suggestions || [];
+      const newSuggestions = vorschlaegeAus(await res.text());
       setAiSuggestions(newSuggestions);
       
       setIcebreakerHistory(prev => {
@@ -864,6 +1084,11 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
             </div>
           ) : datePlan ? (
             <div className="bg-white dark:bg-stone-800/50 border border-stone-200 dark:border-stone-700 rounded-xl p-4">
+              {planIstErsatz && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-500 mb-2">
+                  Die KI ist gerade nicht erreichbar. Dieser Vorschlag ist allgemein und nicht auf euch zugeschnitten.
+                </p>
+              )}
               <h4 className="font-semibold text-lg text-stone-900 dark:text-stone-100 mb-2">{datePlan.title}</h4>
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-stone-50 dark:bg-stone-800 p-3 rounded-lg flex items-start gap-2">
@@ -927,15 +1152,16 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
             {/* Date Picker Drawer */}
       {showDatePicker && (
         <ChatDatePlanner
-          userInterests={(() => {
-            try {
-              return JSON.parse(localStorage.getItem("userInterests") || "[]");
-            } catch (e) {
-              return [];
-            }
-          })()}
+          userInterests={listeAusSpeicher("userInterests")}
           matchInterests={profile.interests || []}
-          verbindungName={profile.name}
+          // BEFUND 12.08.2026: Hier stand `verbindungName={profile.name}`.
+          // `ChatDatePlanner` kennt diese Eigenschaft nicht — sie heisst
+          // `matchName`. Der Wert wurde also stillschweigend verworfen, und
+          // die Ueberschrift im Planer lautete „Date mit " ohne Namen.
+          // Ausserdem baut der Planer damit den Speicherschluessel
+          // `klar_date_checklist_undefined` — die Vorbereitungs-Checkliste
+          // war fuer alle Gespraeche dieselbe.
+          matchName={profile.name}
           chatHistory={messages}
           onSelectDate={(proposal, details) => {
             setMessages([...messages, { role: 'user', text: proposal, isRead: false, isDateProposal: true, proposalDetails: details }]);
@@ -1300,7 +1526,14 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
           className="flex-1 bg-stone-100 dark:bg-stone-900 rounded-full px-4 py-3 text-sm focus:outline-none"
         />
         <button 
-          onClick={handleSend}
+          // BEFUND 12.08.2026: Hier stand `onClick={handleSend}`. React
+          // uebergibt dem Handler das Klick-Ereignis als ERSTES Argument —
+          // und das erste Argument von `handleSend` heisst `forceSend`. Ein
+          // MouseEvent ist wahr, also lief JEDER Klick auf Senden mit
+          // `forceSend === true`: Die Empathie-Pruefung vor dem Absenden
+          // wurde uebersprungen. Sie lief nur ueber die Eingabetaste, die
+          // `handleSend()` ohne Argument aufruft.
+          onClick={() => handleSend()}
           disabled={!input.trim()}
           aria-label="Nachricht senden"
           className="p-3 bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-full disabled:opacity-50 transition-opacity"
@@ -1346,7 +1579,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
             {empathyAnalysis.suggestion && (
               <button 
                 onClick={() => {
-                  setInput(empathyAnalysis.suggestion);
+                  setInput(empathyAnalysis.suggestion ?? "");
                   setEmpathyAnalysis(null);
                 }} 
                 className="flex-1 py-3 bg-brand dark:bg-brand-light text-white rounded-full font-medium hover:opacity-90 transition-opacity text-sm"
@@ -1475,9 +1708,14 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ targetUid: id, grund: reportReason, chatId: id }),
                     });
-                    const daten = await res.json().catch(() => ({}));
-                    if (!res.ok) throw new Error(daten.error || `Server-Antwort ${res.status}`);
-                    setReportCaseId(daten.aktenzeichen ?? "—");
+                    const roh: unknown = await res.json().catch(() => ({}));
+                    const daten = (roh !== null && typeof roh === "object" ? roh : {}) as Record<string, unknown>;
+                    if (!res.ok) {
+                      throw new Error(
+                        typeof daten["error"] === "string" ? daten["error"] : `Server-Antwort ${res.status}`,
+                      );
+                    }
+                    setReportCaseId(typeof daten["aktenzeichen"] === "string" ? daten["aktenzeichen"] : "—");
                     setReportSubmitted(true);
                   } catch (e) {
                     setReportError(e instanceof Error ? e.message : "Die Meldung konnte nicht übermittelt werden.");
@@ -1507,10 +1745,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
           <div className="flex flex-col gap-3">
             <button 
               onClick={() => {
-                localStorage.setItem(`klar_chat_sentiment_${id}`, 'positive');
-                const history = JSON.parse(localStorage.getItem('klar_chat_sentiment_history') || '[]');
-                history.push({ id, sentiment: 'positive', date: new Date().toISOString() });
-                localStorage.setItem('klar_chat_sentiment_history', JSON.stringify(history));
+                merkeStimmung(id, 'positive');
                 setShowSentimentCheck(false);
                 
                 setTimeout(() => {
@@ -1526,10 +1761,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
             </button>
             <button 
               onClick={() => {
-                localStorage.setItem(`klar_chat_sentiment_${id}`, 'neutral');
-                const history = JSON.parse(localStorage.getItem('klar_chat_sentiment_history') || '[]');
-                history.push({ id, sentiment: 'neutral', date: new Date().toISOString() });
-                  localStorage.setItem('klar_chat_sentiment_history', JSON.stringify(history));
+                merkeStimmung(id, 'neutral');
                   setShowSentimentCheck(false);
                   
                   // Trigger proactive coach impulse shortly after sentiment check
@@ -1549,10 +1781,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
                 onClick={() => {
                   
                   
-                  localStorage.setItem(`klar_chat_sentiment_${id}`, 'negative');
-                  const history = JSON.parse(localStorage.getItem('klar_chat_sentiment_history') || '[]');
-                  history.push({ id, sentiment: 'negative', date: new Date().toISOString() });
-                  localStorage.setItem('klar_chat_sentiment_history', JSON.stringify(history));
+                  merkeStimmung(id, 'negative');
                   setShowSentimentCheck(false);
                   
                   // Trigger proactive coach impulse shortly after sentiment check
