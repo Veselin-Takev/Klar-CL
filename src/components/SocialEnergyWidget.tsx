@@ -1,67 +1,109 @@
-// @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { Battery, BatteryMedium, BatteryLow, BatteryCharging, HeartPulse } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Battery, BatteryMedium, BatteryLow, HeartPulse } from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// `// @ts-nocheck` ENTFERNT am 12.08.2026. Was die Zeile verdeckt hat:
+//
+//   1. `import React` — nirgends benutzt. Mit `noUnusedLocals` ein Fehler.
+//   2. `const now` und `const twoWeeksAgo` — berechnet und nie verwendet.
+//      Der danebenstehende Kommentar sagt es selbst: „We'll simulate it by
+//      looking at length for the MVP." Die Zwei-Wochen-Grenze war nie
+//      angeschlossen.
+//   3. `import { BatteryCharging }` — importiert, nie gerendert.
+//   4. `JSON.parse(saved)` lieferte `any`. Damit war `history.length` für
+//      den Compiler in Ordnung, AUCH wenn unter dem Schlüssel gar kein
+//      Array steht. Dann ist `.length` `undefined`, `100 - undefined * 15`
+//      ist `NaN`, und die Anzeige wird zu „NaN%" mit `style={{width:'NaN%'}}`.
+//      Das ist der eine Fund, der sichtbar kaputt gewesen wäre.
+//
+// Punkt 4 ist jetzt abgefangen: Steht dort kein Array, bleibt es bei 100 %.
+//
+// ── NICHT BEHOBEN, WEIL PRODUKTENTSCHEIDUNG ───────────────────────────────
+// Die Formel `100 − Anzahl_Dates × 15` ist gesetzt, nicht gemessen. Sie
+// zählt ALLE je gespeicherten Dates, nicht die der letzten zwei Wochen —
+// wer viel unternommen hat, bekommt dauerhaft „Deine soziale Batterie ist
+// niedrig" zu lesen. Das ist eine Aussage über die lesende Person, die auf
+// keiner Beobachtung beruht. Steht in `klar/22` zur Entscheidung.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Wie viel Prozent ein gespeichertes Date von der Batterie abzieht. */
+const ABZUG_JE_DATE = 15;
+/** Untergrenze, damit der Balken nie ganz leer wirkt. */
+const MINDESTSTAND = 20;
+/** Dauer des Energiesparmodus in Millisekunden. */
+const SPARMODUS_DAUER_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Liest die Date-Historie und gibt ihre Länge zurück — oder `null`, wenn
+ * unter dem Schlüssel nichts Verwertbares steht.
+ *
+ * Bewusst `unknown` statt `any`: `JSON.parse` weiss nicht, was kommt, und
+ * ein Feld, das keines ist, darf nicht als eines behandelt werden.
+ */
+function anzahlDates(roh: string | null): number | null {
+  if (!roh) return null;
+  try {
+    const geparst: unknown = JSON.parse(roh);
+    return Array.isArray(geparst) ? geparst.length : null;
+  } catch {
+    return null;
+  }
+}
 
 export function SocialEnergyWidget() {
   const [energyLevel, setEnergyLevel] = useState(100);
-  const [suggestion, setSuggestion] = useState("Voll aufgeladen! Ein perfekter Tag für neue Verbindungen.");
+  const [suggestion, setSuggestion] = useState(
+    'Voll aufgeladen! Ein perfekter Tag für neue Verbindungen.',
+  );
   const [powerSavingMode, setPowerSavingMode] = useState(false);
   const [powerSavingUntil, setPowerSavingUntil] = useState<number | null>(null);
 
   useEffect(() => {
-    // We calculate the energy based on the date history
-    const saved = localStorage.getItem("klar_date_history");
-    if (saved) {
-      try {
-        const history = JSON.parse(saved);
-        // Let's assume dates in the last 14 days drain energy
-        const now = new Date();
-        const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-        let datesRecent = 0;
-        
-        // This is a naive implementation since date strings might vary,
-        // but we'll try to find dates within 14 days. Or we just count total dates if it's a small array
-        // We'll simulate it by looking at length for the MVP
-        datesRecent = history.length;
-        
-        let newEnergy = 100 - (datesRecent * 15);
-        
-        const savedPowerSaving = localStorage.getItem("klar_power_saving_until");
-        if (savedPowerSaving) {
-          const until = parseInt(savedPowerSaving);
-          if (until > Date.now()) {
-            setPowerSavingMode(true);
-            setPowerSavingUntil(until);
-          } else {
-            localStorage.removeItem("klar_power_saving_until");
-          }
-        }
-        if (newEnergy < 20) newEnergy = 20; // min 20%
-        
-        setEnergyLevel(newEnergy);
-        
-        if (newEnergy > 80) {
-          setSuggestion("Hohe soziale Energie! Du bist bereit, neue Leute kennenzulernen und offene Gespräche zu führen.");
-        } else if (newEnergy > 40) {
-          setSuggestion("Gute Balance. Ein Date am Wochenende wäre super, aber nimm dir auch Zeit für dich.");
-        } else {
-          setSuggestion("Deine soziale Batterie ist niedrig. Mache eine Dating-Pause für mentale Gesundheit. Mach etwas für dich!");
-        }
-      } catch (e) {}
+    // Der Sparmodus hängt nicht an der Historie — deshalb zuerst und
+    // unabhängig davon. Vorher stand er INNERHALB des `if (saved)`: Ohne
+    // gespeicherte Dates wurde ein laufender Sparmodus nicht wiederhergestellt.
+    const gespeicherteFrist = localStorage.getItem('klar_power_saving_until');
+    if (gespeicherteFrist) {
+      const bis = Number.parseInt(gespeicherteFrist, 10);
+      if (Number.isFinite(bis) && bis > Date.now()) {
+        setPowerSavingMode(true);
+        setPowerSavingUntil(bis);
+      } else {
+        localStorage.removeItem('klar_power_saving_until');
+      }
+    }
+
+    const dates = anzahlDates(localStorage.getItem('klar_date_history'));
+    if (dates === null) return;
+
+    const stand = Math.max(MINDESTSTAND, 100 - dates * ABZUG_JE_DATE);
+    setEnergyLevel(stand);
+
+    if (stand > 80) {
+      setSuggestion(
+        'Hohe soziale Energie! Du bist bereit, neue Leute kennenzulernen und offene Gespräche zu führen.',
+      );
+    } else if (stand > 40) {
+      setSuggestion(
+        'Gute Balance. Ein Date am Wochenende wäre super, aber nimm dir auch Zeit für dich.',
+      );
+    } else {
+      setSuggestion(
+        'Deine soziale Batterie ist niedrig. Mache eine Dating-Pause für mentale Gesundheit. Mach etwas für dich!',
+      );
     }
   }, []);
 
-  
   const togglePowerSaving = () => {
     if (powerSavingMode) {
       setPowerSavingMode(false);
       setPowerSavingUntil(null);
-      localStorage.removeItem("klar_power_saving_until");
+      localStorage.removeItem('klar_power_saving_until');
     } else {
       setPowerSavingMode(true);
-      const until = Date.now() + 48 * 60 * 60 * 1000;
-      setPowerSavingUntil(until);
-      localStorage.setItem("klar_power_saving_until", until.toString());
+      const bis = Date.now() + SPARMODUS_DAUER_MS;
+      setPowerSavingUntil(bis);
+      localStorage.setItem('klar_power_saving_until', bis.toString());
     }
   };
 
@@ -83,36 +125,38 @@ export function SocialEnergyWidget() {
           {energyLevel}%
         </div>
       </div>
-      
-      {/* Battery bar */}
+
+      {/* Batteriebalken */}
       <div className="w-full h-2 bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden mb-3">
-        <div 
-          className={`h-full rounded-full transition-all duration-1000 ${energyLevel > 80 ? 'bg-emerald-500' : energyLevel > 40 ? 'bg-amber-500' : 'bg-rose-500'}`} 
+        <div
+          className={`h-full rounded-full transition-all duration-1000 ${energyLevel > 80 ? 'bg-emerald-500' : energyLevel > 40 ? 'bg-amber-500' : 'bg-rose-500'}`}
           style={{ width: `${energyLevel}%` }}
         ></div>
       </div>
-      
-      <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
-        {suggestion}
-      </p>
-    
+
+      <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">{suggestion}</p>
+
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-100 dark:border-stone-800">
         <div className="flex flex-col">
-          <span className="text-[10px] font-medium text-stone-700 dark:text-stone-300">Energiespar-Modus</span>
+          <span className="text-[10px] font-medium text-stone-700 dark:text-stone-300">
+            Energiespar-Modus
+          </span>
           <span className="text-[9px] text-stone-500">
-            {powerSavingMode 
-              ? `Aktiv bis ${new Date(powerSavingUntil || 0).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} Uhr` 
+            {powerSavingMode
+              ? `Aktiv bis ${new Date(powerSavingUntil ?? 0).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Uhr`
               : 'Reduziert Benachrichtigungen'}
           </span>
         </div>
-        <button 
+        <button
           role="switch"
           aria-checked={powerSavingMode}
           aria-label="Energiesparmodus"
           onClick={togglePowerSaving}
           className={`w-9 h-5 rounded-full relative transition-colors ${powerSavingMode ? 'bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}
         >
-          <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${powerSavingMode ? 'left-4.5 translate-x-[18px]' : 'left-0.5 translate-x-0'}`} />
+          <div
+            className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${powerSavingMode ? 'left-4.5 translate-x-[18px]' : 'left-0.5 translate-x-0'}`}
+          />
         </button>
       </div>
     </div>
