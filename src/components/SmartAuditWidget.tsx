@@ -43,12 +43,12 @@ import { melde } from '../lib/fehler';
 // Zahl, die keine war. Zwischengespeichert wird nur noch, was die Prüfung
 // besteht.
 //
-// ── OFFEN, NICHT HIER ZU LÖSEN ────────────────────────────────────────────
-// `/api/smart-audit` ist eine der 38 Aufrufstellen, die noch nicht über
-// `kiAufruf.ts` laufen: keine Zeitgrenze, keine Wiederholung. Die Strategie
-// in `kiPolitik.ts` lautet `kein_ersatz` — richtig, denn eine erfundene
-// Profilbewertung wäre schlimmer als keine. Der Umbau steht als eigener
-// Punkt an.
+// ── NACHTRAG 12.08.2026, abends ───────────────────────────────────────────
+// Hier stand: „/api/smart-audit ist eine der 38 Aufrufstellen, die noch
+// nicht über kiAufruf.ts laufen." Das ist erledigt — der Endpunkt war der
+// letzte der 53 und hat jetzt Zeitgrenze, zweiten Versuch und JSON-Prüfung.
+// Die Strategie bleibt `kein_ersatz`: Eine erfundene Profilbewertung wäre
+// schlimmer als keine.
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface SmartAuditWidgetProps {
