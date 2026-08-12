@@ -43,10 +43,11 @@ import { melde } from "../lib/fehler";
 // gerade nicht erreichbar. Diese Vorschläge sind allgemein und nicht auf
 // euch zugeschnitten."
 //
-// ── OFFEN, NICHT HIER BEHOBEN ─────────────────────────────────────────────
-// `runDateCheck` setzt drei Zustände, die niemand liest — die vorgesehene
-// Anzeige des Date-Checks fehlt vollständig. Das steht seit dem 10.08. im
-// Code vermerkt und ist eine Produktentscheidung, keine Typfrage.
+// ── 5. TOTER CODE, DEN ERST DER TYPECHECK BEWIESEN HAT ────────────────────
+// `runDateCheck` und `isExtracting` wurden von niemandem benutzt. Am 10.08.
+// hatte ich das vermutet und die Deklarationen stehen lassen; `tsc` hat es
+// jetzt bewiesen (TS6133). Beides ist entfernt — siehe die Begründung an
+// der Stelle im Code. Folge: `/api/date-check` hat keinen Aufrufer mehr.
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface ChatDatePlannerProps {
@@ -199,7 +200,6 @@ export function ChatDatePlanner({ userInterests, matchInterests, matchName, chat
   // Ersatzvorschlaege statt KI-Vorschlaege? Der Hinweistext haengt davon ab.
   const [ideenSindErsatz, setIdeenSindErsatz] = useState(false);
   const [successFactors, setSuccessFactors] = useState<string[]>([]);
-  const [isExtracting, setIsExtracting] = useState(false);
   const [dateSurveyData, setDateSurveyData] = useState<UmfrageAntwort[]>([]);
   
   useEffect(() => {
@@ -212,46 +212,27 @@ export function ChatDatePlanner({ userInterests, matchInterests, matchName, chat
   const [isSmartLoading, setIsSmartLoading] = useState(false);
   const [smartParsed, setSmartParsed] = useState(false);
   const [smartAdded, setSmartAdded] = useState(false);
-  
-  
-  
-  
-  
-  
 
-  
-  // BEFUND 10.08.2026: Diese drei Deklarationen fehlten -- der Block leerer
-  // Zeilen darueber ist die Stelle, an der sie einmal standen. runDateCheck
-  // stuerzte deshalb beim Antippen ab (ReferenceError), nicht schon beim
-  // Rendern; darum war der Fehler bisher nicht aufgefallen.
+  // ── ENTFERNT 12.08.2026: der Date-Check ─────────────────────────────────
+  // Hier stand `runDateCheck` samt drei Zustaenden. Der Typecheck hat beim
+  // Abschalten von `@ts-nocheck` bewiesen, was am 10.08. nur vermutet war:
   //
-  // OFFEN, NICHT HIER BEHOBEN: Keiner der drei Werte wird irgendwo gelesen.
-  // Die beabsichtigte Anzeige ("pruefe...", Ergebnis des Date-Checks) fehlt
-  // vollstaendig. Deklaration ohne Lesenamen haelt das Verhalten exakt so,
-  // wie es heute ist, statt eine Oberflaeche zu erfinden.
-  const [, setIsCheckingDate] = useState(false);
-  const [, setCheckingIdeaIndex] = useState<number | null>(null);
-  const [, setDateCheck] = useState<unknown>(null);
-
-  const runDateCheck = async (ideaIndex: number, dateIdea: string) => {
-    setIsCheckingDate(true);
-    setCheckingIdeaIndex(ideaIndex);
-    try {
-      const userNoGos = ausSpeicher("userNoGos", nurZeichenketten, []);
-      const res = await fetch("/api/date-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dateIdea, userNoGos })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      setDateCheck(text ? (JSON.parse(text) as unknown) : null);
-    } catch (e) {
-      melde("ChatDatePlanner", e);
-    } finally {
-      setIsCheckingDate(false);
-    }
-  };
+  //   · `runDateCheck` wurde von NIEMANDEM aufgerufen — kein Knopf, kein
+  //     Effekt, keine Zeile in dieser Datei oder anderswo in `src/`.
+  //   · Die drei Zustaende wurden gesetzt und nie gelesen.
+  //   · `isExtracting` war ebenfalls tot.
+  //
+  // Am 10.08. hatte ich die Deklarationen wieder eingesetzt, „um das
+  // Verhalten exakt so zu halten, wie es heute ist". Das Verhalten war:
+  // nichts. Code, der nichts tut, sieht aus wie eine gebaute Mechanik und
+  // ist keine — deshalb jetzt weg statt weiter mitgetragen.
+  //
+  // FOLGE, DIE SIE KENNEN SOLLTEN: `/api/date-check` hat damit KEINEN
+  // Aufrufer mehr in der App. Der Endpunkt existiert im Server, die
+  // Strategie steht in `kiPolitik.ts` auf `kein_ersatz` — aber niemand
+  // fragt ihn. Ob der Date-Check gebaut werden soll (Knopf an jeder
+  // Date-Idee, Anzeige des Ergebnisses), ist eine Produktentscheidung.
+  // ────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (activeTab === 'smart' && !smartParsed) {
