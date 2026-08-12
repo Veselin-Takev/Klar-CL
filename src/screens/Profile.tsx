@@ -1,8 +1,9 @@
-// @ts-nocheck
 import { useState, useEffect } from "react";
 import { useTheme } from '../components/ThemeProvider';
 import { motion, AnimatePresence } from "motion/react";
-import { Heart, Settings, Download, Edit, BellRing,  Moon, Sun, Monitor, LogOut, ShieldCheck, FileText, Trash2, Sparkles, Zap, Share2, Wand2, RefreshCw, ArrowRight, History, EyeOff, Eye, MessageCircle, Check, X, Smartphone, ChevronRight } from "lucide-react";
+// `Heart` und `FileText` wurden importiert und nie gerendert — entfernt.
+// `LogOut` bleibt: siehe die Abmelden-Schaltflaeche weiter unten.
+import { Settings, Download, Edit, BellRing, Moon, Sun, Monitor, LogOut, ShieldCheck, Trash2, Sparkles, Zap, Share2, Wand2, RefreshCw, ArrowRight, History, EyeOff, Eye, MessageCircle, Check, X, Smartphone, ChevronRight } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { askAICoach, parseProfileImport, optimizeProfileApi } from "../lib/api";
 // BEFUND 10.08.2026: downloadRadarImage war am Knopf "Als Bild exportieren"
@@ -40,8 +41,9 @@ import { DatingMilestones } from "../components/DatingMilestones";
 import { UserAchievementsWidget } from "../components/UserAchievementsWidget";
 import { DatingActivityDashboardWidget } from "../components/DatingActivityDashboardWidget";
 import { PDFResumeGenerator } from "../components/PDFResumeGenerator";
-import { ValuesQuizWidget } from "../components/ValuesQuizWidget";
-import { ProfileCompletionWidget } from "../components/ProfileCompletionWidget";
+// ENTFERNT 12.08.2026: `ValuesQuizWidget` und `ProfileCompletionWidget`
+// waren importiert, aber nirgends eingehaengt. Beides hat `@ts-nocheck`
+// verdeckt — `noUnusedLocals` haette es sofort gemeldet.
 import { ProfileCardThemeSelector } from "../components/ProfileCardThemeSelector";
 import { ConversationHealthWidget } from "../components/ConversationHealthWidget";
 import { FocusTimeSettingsWidget } from "../components/FocusTimeSettingsWidget";
@@ -60,8 +62,8 @@ import { AboVerwaltung } from "../components/AboVerwaltung";
 import { PhotoVerificationModal } from "../components/PhotoVerificationModal";
 import { verifizierungsStatus, type VerifizierungsStatus } from "../lib/klar";
 import { triggerHaptic } from "../lib/haptics";
-import { auth, db } from "../lib/firebase";
-import { CloudOff, Cloud, Database } from "lucide-react";
+// ENTFERNT: `auth` und `db` wurden hier nie benutzt.
+import { Cloud, Database } from "lucide-react";
 import { melde } from "../lib/fehler";
 
 function OfflineCacheStatus() {
@@ -82,12 +84,19 @@ function OfflineCacheStatus() {
       const syncLogs = localStorage.getItem('klar_sync_logs');
       if (syncLogs) {
         try {
-          const logs = JSON.parse(syncLogs);
-          const lastSuccess = logs.find((l: any) => l.status === 'success');
-          if (lastSuccess) {
-            setLastSync(new Date(lastSuccess.syncedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+          const roh: unknown = JSON.parse(syncLogs);
+          const eintraege = Array.isArray(roh) ? (roh as Record<string, unknown>[]) : [];
+          const letzter = eintraege.find(
+            (l) => l !== null && typeof l === 'object' && l['status'] === 'success',
+          );
+          const zeit = letzter ? new Date(String(letzter['syncedAt'])) : null;
+          // Eine unlesbare Zeitangabe ergaebe „Invalid Date" auf dem Schirm.
+          if (zeit && !Number.isNaN(zeit.getTime())) {
+            setLastSync(zeit.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
           }
-        } catch(e) {}
+        } catch (e) {
+          melde('Profile/sync-protokoll', e);
+        }
       }
     };
     
@@ -115,20 +124,112 @@ function OfflineCacheStatus() {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// `// @ts-nocheck` ENTFERNT am 12.08.2026. Was die Zeile verdeckt hat:
+//
+// ── 1. ES GAB KEIN ABMELDEN ───────────────────────────────────────────────
+// `logOut` aus dem AuthContext hatte keinen einzigen Aufrufer in der App.
+// Das Symbol `LogOut` war hier importiert und wurde nie gerendert. Wer das
+// Gerät aus der Hand gab, konnte seine Gespräche nicht schliessen — die
+// einzige Möglichkeit, das Konto zu verlassen, war „Konto löschen".
+// Die Schaltfläche steht jetzt in den Einstellungen über „Konto löschen".
+//
+// ── 2. ZWEI WIDGETS IMPORTIERT UND NIE EINGEHÄNGT ─────────────────────────
+// `ValuesQuizWidget` und `ProfileCompletionWidget`. Dazu `auth` und `db`
+// aus `../lib/firebase`, drei lucide-Symbole und `cycleTheme`.
+//
+// ── 3. DIE FOKUS-ZEIT KONNTE STILL AUSFALLEN ──────────────────────────────
+// `parseInt(startParts[0]) * 60 + parseInt(startParts[1])` ohne Prüfung.
+// Steht unter `klar_focus_time` etwas Unlesbares, ist das Ergebnis `NaN`,
+// jeder Vergleich damit `false` — die Fokus-Zeit galt dann als „nicht
+// aktiv", obwohl sie eingeschaltet war. Kein Fehler, keine Meldung.
+//
+// ── 4. NEUN MAL `JSON.parse` OHNE PRÜFUNG, SECHS LEERE `catch (e) {}` ─────
+// Darunter der Bio-Verlauf, der zwei Formate kennt (alte Zeichenketten,
+// neue Objekte) und beide ungeprüft weiterreichte.
+//
+// ── 5. ZWEI ANFRAGEN OHNE STATUSPRÜFUNG ───────────────────────────────────
+// `/api/nogo-suggestions` und `/api/optimize-bio-values`: Eine Fehlerantwort
+// `{ error: … }` wurde geparst, `suggestions` war leer, und der Ersatz im
+// `catch` lief nie. Es sah aus wie „keine Vorschläge", nicht wie ein Fehler.
+//
+// ── 6. `any` IM RADAR-TOOLTIP ─────────────────────────────────────────────
+// Ersetzt durch die Felder, die er tatsächlich liest.
+// ═══════════════════════════════════════════════════════════════════════════
+
 export type BioHistoryItem = {
   text: string;
   timestamp: string;
 };
 
+const nurZeichenketten = (w: unknown): string[] =>
+  Array.isArray(w) ? w.filter((x): x is string => typeof x === 'string') : [];
 
-const CustomRadarTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
+/** Zeichenketten-Liste aus dem lokalen Speicher, ohne Vertrauen in den Inhalt. */
+function listeAusSpeicher(schluessel: string): string[] {
+  const roh = localStorage.getItem(schluessel);
+  if (!roh) return [];
+  try {
+    return nurZeichenketten(JSON.parse(roh) as unknown);
+  } catch {
+    return [];
+  }
+}
+
+/** Die Fokus-Zeit, wie `FocusTimeSettingsWidget` sie ablegt. */
+interface Fokuszeit {
+  enabled: boolean;
+  startTime: string;
+  endTime: string;
+}
+
+function leseFokuszeit(): Fokuszeit | null {
+  const roh = localStorage.getItem('klar_focus_time');
+  if (!roh) return null;
+  try {
+    const w: unknown = JSON.parse(roh);
+    if (w === null || typeof w !== 'object') return null;
+    const o = w as Record<string, unknown>;
+    if (typeof o['startTime'] !== 'string' || typeof o['endTime'] !== 'string') return null;
+    return { enabled: o['enabled'] === true, startTime: o['startTime'], endTime: o['endTime'] };
+  } catch {
+    return null;
+  }
+}
+
+/** „HH:MM" in Minuten seit Mitternacht — oder `null`, wenn unlesbar. */
+function alsMinuten(uhrzeit: string): number | null {
+  const teile = uhrzeit.split(':');
+  const stunden = Number(teile[0]);
+  const minuten = Number(teile[1]);
+  if (!Number.isFinite(stunden) || !Number.isFinite(minuten)) return null;
+  return stunden * 60 + minuten;
+}
+
+/** Aus einer Antwort die Liste unter `suggestions` holen. */
+function vorschlaegeAus(text: string): string[] {
+  if (!text) return [];
+  const roh: unknown = JSON.parse(text);
+  return roh !== null && typeof roh === 'object'
+    ? nurZeichenketten((roh as Record<string, unknown>)['suggestions'])
+    : [];
+}
+
+
+/** Was recharts diesem Tooltip uebergibt — nur das, was hier benutzt wird. */
+interface RadarTooltipEigenschaften {
+  active?: boolean;
+  payload?: { payload?: { subject?: string } }[];
+}
+
+const CustomRadarTooltip = ({ active, payload }: RadarTooltipEigenschaften) => {
+  const data = active ? payload?.[0]?.payload : undefined;
+  if (data?.subject) {
     return (
       <div className="bg-white dark:bg-stone-800 p-3 rounded-xl shadow-lg border border-stone-100 dark:border-stone-700 max-w-[200px]">
         <p className="font-bold text-stone-800 dark:text-stone-200 text-sm mb-1">{data.subject}</p>
         <p className="text-xs text-stone-600 dark:text-stone-400">
-          {VALUE_EXPLANATIONS[data.subject] || ''}
+          {VALUE_EXPLANATIONS[data.subject] ?? ''}
         </p>
       </div>
     );
@@ -222,30 +323,28 @@ export default function Profile() {
 
   useEffect(() => {
     const checkFocusTime = () => {
-      const saved = localStorage.getItem('klar_focus_time');
-      if (saved) {
-        try {
-          const data = JSON.parse(saved);
-          if (data.enabled) {
-            const now = new Date();
-            const currentTotalMins = now.getHours() * 60 + now.getMinutes();
-            const startParts = data.startTime.split(':');
-            const endParts = data.endTime.split(':');
-            const startMins = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-            const endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-            
-            let isActive = false;
-            if (startMins < endMins) {
-              isActive = currentTotalMins >= startMins && currentTotalMins <= endMins;
-            } else {
-              isActive = currentTotalMins >= startMins || currentTotalMins <= endMins;
-            }
-            setIsFocusTimeActive(isActive);
-          } else {
-            setIsFocusTimeActive(false);
-          }
-        } catch(e) {}
+      const fokus = leseFokuszeit();
+      if (!fokus || !fokus.enabled) {
+        setIsFocusTimeActive(false);
+        return;
       }
+      const start = alsMinuten(fokus.startTime);
+      const ende = alsMinuten(fokus.endTime);
+      // BEFUND 12.08.2026: Vorher `parseInt(startParts[0]) * 60 + …` ohne
+      // Pruefung. Steht dort etwas Unlesbares, ist das Ergebnis `NaN`, jeder
+      // Vergleich damit `false` — die Fokus-Zeit galt dann stillschweigend
+      // als „nicht aktiv", obwohl sie eingeschaltet war.
+      if (start === null || ende === null) {
+        setIsFocusTimeActive(false);
+        return;
+      }
+      const jetzt = new Date();
+      const jetztMinuten = jetzt.getHours() * 60 + jetzt.getMinutes();
+      setIsFocusTimeActive(
+        start < ende
+          ? jetztMinuten >= start && jetztMinuten <= ende
+          : jetztMinuten >= start || jetztMinuten <= ende,
+      );
     };
     checkFocusTime();
     const interval = setInterval(checkFocusTime, 60000);
@@ -355,51 +454,42 @@ export default function Profile() {
   };
 
   
-  const cycleTheme = () => {
-    const nextTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
-    setTheme(nextTheme);
-  };
+  // ENTFERNT 12.08.2026: `cycleTheme` hatte keinen Aufrufer mehr, seit die
+  // vierfache Theme-Steuerung am 11.08. auf zwei Stellen reduziert wurde.
 
   useEffect(() => {
-    const saved = localStorage.getItem("userInterests");
-    if (saved) {
-      try {
-        setUserInterests(JSON.parse(saved));
-      } catch (e) {}
-    }
-    
-    const savedMustHaves = localStorage.getItem("mustHaveInterests");
-    if (savedMustHaves) {
-      try {
-        setMustHaveInterests(JSON.parse(savedMustHaves));
-      } catch (e) {}
-    }
-    
+    setUserInterests(listeAusSpeicher("userInterests"));
+    setMustHaveInterests(listeAusSpeicher("mustHaveInterests"));
+    setIcebreakers(listeAusSpeicher("profile_icebreakers"));
+
     const savedBio = localStorage.getItem("klar_user_bio");
-    if (savedBio) {
-      setUserBio(savedBio);
-    }
-    
-    const savedIcebreakers = localStorage.getItem("profile_icebreakers");
-    if (savedIcebreakers) {
-      try {
-        setIcebreakers(JSON.parse(savedIcebreakers));
-      } catch (e) {}
-    }
-    
+    if (savedBio) setUserBio(savedBio);
+
+    // Der Bio-Verlauf lag frueher als reine Zeichenketten-Liste vor. Die
+    // Umstellung auf { text, timestamp } bleibt erhalten — jetzt aber ohne
+    // die Annahme, dass alle Eintraege dieselbe Form haben.
     const savedBioHistory = localStorage.getItem("klar_bio_history");
     if (savedBioHistory) {
       try {
-        const parsed = JSON.parse(savedBioHistory);
-        if (Array.isArray(parsed)) {
-          if (parsed.length > 0 && typeof parsed[0] === 'string') {
-            const migrated = parsed.map(text => ({ text, timestamp: new Date().toISOString() }));
-            setBioHistory(migrated);
-          } else {
-            setBioHistory(parsed);
-          }
+        const roh: unknown = JSON.parse(savedBioHistory);
+        if (Array.isArray(roh)) {
+          const jetzt = new Date().toISOString();
+          setBioHistory(
+            roh.flatMap((e): BioHistoryItem[] => {
+              if (typeof e === 'string') return [{ text: e, timestamp: jetzt }];
+              if (e === null || typeof e !== 'object') return [];
+              const o = e as Record<string, unknown>;
+              if (typeof o['text'] !== 'string') return [];
+              return [{
+                text: o['text'],
+                timestamp: typeof o['timestamp'] === 'string' ? o['timestamp'] : jetzt,
+              }];
+            }),
+          );
         }
-      } catch (e) {}
+      } catch (e) {
+        melde('Profile/bio-verlauf', e);
+      }
     }
   }, []);
 
@@ -484,15 +574,21 @@ export default function Profile() {
   const fetchNogoSuggestions = async () => {
     setIsLoadingNogoSuggestions(true);
     try {
-      const savedJournals = localStorage.getItem("klar_dating_journals");
-      const journals = savedJournals ? JSON.parse(savedJournals) : [];
+      let journals: unknown = [];
+      try {
+        journals = JSON.parse(localStorage.getItem("klar_dating_journals") ?? "[]");
+      } catch {
+        journals = [];
+      }
       const res = await fetch("/api/nogo-suggestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ journals })
       });
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setNogoSuggestions(data.suggestions || []);
+      // NEU: Ohne diese Pruefung wurde eine Fehlerantwort `{ error: … }`
+      // geparst, `suggestions` war leer, und der Ersatz im `catch` lief nie.
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setNogoSuggestions(vorschlaegeAus(await res.text()));
     } catch(e) {
       melde("Profile", e);
       setNogoSuggestions(["Unehrlichkeit", "Zu spät kommen", "Ghosting"]);
@@ -516,10 +612,9 @@ export default function Profile() {
           values: userValuesRadar
         })
       });
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      if (data.suggestions) {
-        setValueBioSuggestions(data.suggestions);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const vorschlaege = vorschlaegeAus(await res.text());
+      if (vorschlaege.length > 0) setValueBioSuggestions(vorschlaege);
     } catch(e) {
       melde("Profile", e);
     } finally {
@@ -1771,6 +1866,28 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
               </span>
               <ChevronRight size={18} className="text-stone-400" />
             </Link>
+
+            {/* ── NEU 12.08.2026: Abmelden ───────────────────────────────
+                BEFUND: `logOut` aus dem AuthContext hatte KEINEN Aufrufer in
+                der gesamten App. Das Symbol `LogOut` war hier importiert und
+                wurde nie gerendert. Es gab also keinen Weg, sich abzumelden —
+                nur „Konto löschen".
+
+                Das ist mehr als eine fehlende Bequemlichkeit: Wer das Gerät
+                aus der Hand gibt, konnte seine Gespräche nicht schliessen.
+                `logOut` räumt beim Abmelden auch den lokalen Speicher auf
+                (siehe AuthContext, Befund FE-03/FE-04) — genau dafür war es
+                gebaut.
+
+                Falls Sie diese Schaltfläche nicht wollen: Sie steht allein
+                in diesem Block und ist in einem Zug wieder zu entfernen. */}
+            <button
+              onClick={() => { void logOut(); }}
+              className="w-full flex items-center justify-between p-3 hover:bg-stone-50 dark:hover:bg-stone-800/50 rounded-xl transition-colors mt-4"
+            >
+              <span className="text-sm text-stone-700 dark:text-stone-300">Abmelden</span>
+              <LogOut size={18} className="text-stone-400" />
+            </button>
 
             <button 
               onClick={handleDeleteAccount}
