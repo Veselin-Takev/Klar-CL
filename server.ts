@@ -15,7 +15,7 @@
 //
 // Es funktioniert trotzdem, und zwar aus einem anderen Grund: Kein
 // importiertes Modul liest `process.env` beim Laden. Die Gemini-Clients
-// entstehen erst in `startServer()` bzw. in den Endpunkten, also nach
+// entstehen erst in `baueApp()` bzw. in den Endpunkten, also nach
 // diesen beiden Zeilen. Geprueft, nicht angenommen.
 //
 // Sollte je ein Modul dazukommen, das beim Import Umgebungsvariablen
@@ -148,7 +148,39 @@ function isQuotaExceeded(e: unknown): boolean {
   return false;
 }
 
-async function startServer() {
+// ═══════════════════════════════════════════════════════════════════════════
+// GETEILT AM 12.08.2026: `baueApp()` und `startServer()`
+//
+// ── WARUM ─────────────────────────────────────────────────────────────────
+// Bis heute stand `const app = express()` INNERHALB von `startServer()`,
+// und ganz unten `app.listen(...)`. Die App war damit von aussen nicht
+// erreichbar: `supertest` braucht das App-Objekt, ohne dass es einen Port
+// belegt. Ohne diesen Schnitt ist kein einziger Endpunkttest moeglich —
+// 116 Routen ohne Test, und keine Moeglichkeit, daran etwas zu aendern.
+//
+// ── WAS SICH GEAENDERT HAT, UND WAS NICHT ─────────────────────────────────
+// `baueApp()` ist die alte `startServer()` mit einer einzigen Aenderung am
+// Ende: `return app` statt `app.listen`. Der gesamte Rumpf — jede Route,
+// jede Middleware, die Reihenfolge, die Einrueckung — ist unveraendert.
+// Das ist Absicht: Ein Commit mit 3.400 verschobenen Zeilen waere nicht
+// lesbar, und was nicht lesbar ist, wird nicht geprueft.
+//
+// `startServer()` darunter ruft `baueApp()` auf und hoert auf dem Port zu.
+// Diese fuenf Zeilen sind der einzige neue Code.
+//
+// ── WORAUF ZU ACHTEN IST ──────────────────────────────────────────────────
+// Die Reihenfolge bleibt entscheidend: Die Auslieferung der Oberflaeche
+// (Vite-Middleware bzw. `express.static` + `app.get('*')`) steht am ENDE
+// von `baueApp()`. Eine API-Route unterhalb dieser Stelle waere nicht
+// erreichbar — genau das war am 10.08.2026 bei 23 Endpunkten der Fall.
+// Wer hier etwas ergaenzt, ergaenzt es DAVOR.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Baut die fertig verdrahtete Express-App und gibt sie zurueck — ohne einen
+ * Port zu belegen. Fuer Tests (`supertest`) und fuer `startServer()`.
+ */
+export async function baueApp() {
   const app = express();
 
   // Security: Befund 1 - Helmet und CSP (P0)
@@ -186,7 +218,6 @@ async function startServer() {
         }
       : false,
   }));
-  const PORT = 3000;
 
   // System Health Monitoring Data (in-memory for demo purposes)
   const healthStats = {
@@ -3515,9 +3546,28 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     });
   }
 
+  return app;
+}
+
+// `PORT` stand bis zum 12.08.2026 INNERHALB der Funktion, zwischen der
+// Helmet-Einrichtung und der Latenzmessung. Nach dem Schnitt wurde es dort
+// nicht mehr gelesen — `app.listen` steht jetzt eine Ebene hoeher. Der
+// Typecheck hat das als TS6133 gemeldet, und die Meldung war richtig: Eine
+// Konstante am falschen Ort ist kein Schoenheitsfehler, sondern ein Hinweis,
+// dass der Schnitt an dieser Stelle noch nicht sauber war.
+const PORT = 3000;
+
+/** Startet den Server. Der einzige Ort, an dem ein Port belegt wird. */
+export async function startServer() {
+  const app = await baueApp();
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+// Nur starten, wenn diese Datei direkt ausgefuehrt wird. Beim Import aus
+// einem Test wuerde ein Aufruf hier den Port belegen und den Testlauf
+// haengen lassen.
+if (process.env.KLAR_NICHT_STARTEN !== "1") {
+  startServer();
+}
