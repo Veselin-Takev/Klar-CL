@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from "react";
 import { Sparkles, Brain, MapPin, CalendarDays, CheckCircle2, X, Clock, History, Star, Edit3, ListChecks, Plus, Trash2, Search, Download, Camera, Filter } from "lucide-react";
 import { motion } from "motion/react";
@@ -6,12 +5,56 @@ import { askAICoach } from "../lib/api";
 import { allProfiles } from "../data";
 import { melde } from "../lib/fehler";
 
+// ═══════════════════════════════════════════════════════════════════════════
+// `// @ts-nocheck` ENTFERNT am 12.08.2026. Was die Zeile verdeckt hat:
+//
+// ── 1. EIN KNOPF, DER BEI EINEM UNLESBAREN DATUM STILL NICHTS TAT ─────────
+// `addSmartDateToCalendar` baute den Zeitpunkt mit
+//     new Date(`${suggestion.date}T${suggestion.time}`).toISOString()
+// Die Werte kommen aus einer KI-Antwort. Passt das Format nicht, ist das
+// Datum ungültig, und `toISOString()` wirft einen RangeError — mitten im
+// Klick-Handler, ohne `try`. Der Knopf „In Date-Kalender eintragen" tat
+// dann gar nichts: keine Meldung, kein Eintrag. Jetzt wird der Zeitpunkt
+// vorher geprüft und ein unlesbarer Termin gemeldet.
+//
+// ── 2. SIEBEN MAL `JSON.parse` OHNE PRÜFUNG ───────────────────────────────
+// Erfolgsfaktoren, Umfrage, Checkliste, Date-Historie, No-Gos, geplante
+// Dates und zwei KI-Antworten wurden ungeprüft übernommen. Steht unter
+// einem Schlüssel etwas anderes als erwartet, wurde daraus gerendert.
+// Jetzt liest jede Stelle über eine benannte Prüffunktion; was nicht passt,
+// fällt weg statt Unsinn anzuzeigen.
+//
+// ── 3. FÜNF LEERE `catch (e) {}` ──────────────────────────────────────────
+// Fehler, die niemand sieht, wiederholen sich. Ersetzt durch `melde(…)`
+// oder durch eine Rückgabe, die den Fall benennt.
+//
+// ── 4. `details: any` IN DER SCHNITTSTELLE ────────────────────────────────
+// `onSelectDate(proposal, details)` reichte `any` an `ChatView` weiter, wo
+// es als `proposalDetails` an einer Nachricht hängen bleibt. Jetzt
+// `DateIdee` — der Typ ist exportiert, damit `ChatView` ihn übernehmen
+// kann, sobald dort `@ts-nocheck` fällt.
+//
+// ── WAS SICH SICHTBAR ÄNDERT ──────────────────────────────────────────────
+// Über der Ideenliste stand immer „Basierend auf euren gemeinsamen
+// Interessen schlägt die KI folgende Dates vor" — auch dann, wenn die KI
+// ausgefallen war und die drei fest eingebauten Ersatzvorschläge angezeigt
+// wurden. Das war eine Behauptung über die Herkunft der Vorschläge, die im
+// Ausfall nicht stimmte. Jetzt steht dort in diesem Fall: „Die KI ist
+// gerade nicht erreichbar. Diese Vorschläge sind allgemein und nicht auf
+// euch zugeschnitten."
+//
+// ── OFFEN, NICHT HIER BEHOBEN ─────────────────────────────────────────────
+// `runDateCheck` setzt drei Zustände, die niemand liest — die vorgesehene
+// Anzeige des Date-Checks fehlt vollständig. Das steht seit dem 10.08. im
+// Code vermerkt und ist eine Produktentscheidung, keine Typfrage.
+// ═══════════════════════════════════════════════════════════════════════════
+
 interface ChatDatePlannerProps {
   userInterests: string[];
   matchInterests: string[];
   matchName: string;
   chatHistory?: {role: string, text: string}[];
-  onSelectDate: (proposal: string, details: any) => void;
+  onSelectDate: (proposal: string, details: DateIdee) => void;
   onClose: () => void;
 }
 
@@ -26,28 +69,146 @@ interface DateHistoryEntry {
   photo?: string;
 }
 
+/** Ein Date-Vorschlag, wie ihn der Planer anzeigt und weitergibt. */
+export interface DateIdee {
+  title: string;
+  description: string;
+  time: string;
+}
+
+/** Ein aus dem Chatverlauf gelesener Terminvorschlag. */
+interface SmartDate {
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:MM */
+  time: string;
+  idea: string;
+  /** 0–100 */
+  confidence: number;
+}
+
+interface UmfrageAntwort {
+  id: string;
+  answer: number;
+}
+
+interface ChecklistenPunkt {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+const istObjekt = (w: unknown): w is Record<string, unknown> =>
+  w !== null && typeof w === "object";
+
+const nurZeichenketten = (w: unknown): string[] =>
+  Array.isArray(w) ? w.filter((x): x is string => typeof x === "string") : [];
+
+function leseDateIdeen(w: unknown): DateIdee[] {
+  if (!Array.isArray(w)) return [];
+  const raus: DateIdee[] = [];
+  for (const e of w) {
+    if (!istObjekt(e)) continue;
+    const { title, description, time } = e;
+    if (typeof title !== "string" || title.trim() === "") continue;
+    raus.push({
+      title,
+      description: typeof description === "string" ? description : "",
+      time: typeof time === "string" ? time : "",
+    });
+  }
+  return raus;
+}
+
+function leseSmartDates(w: unknown): SmartDate[] {
+  if (!Array.isArray(w)) return [];
+  const raus: SmartDate[] = [];
+  for (const e of w) {
+    if (!istObjekt(e)) continue;
+    const { date, time, idea, confidence } = e;
+    // Datum und Uhrzeit sind Pflicht: Ohne sie laesst sich kein Termin
+    // eintragen, und die Anzeige "undefined um undefined Uhr" waere
+    // schlimmer als der Hinweis, dass nichts gefunden wurde.
+    if (typeof date !== "string" || typeof time !== "string") continue;
+    raus.push({
+      date,
+      time,
+      idea: typeof idea === "string" ? idea : "",
+      confidence: typeof confidence === "number" && Number.isFinite(confidence) ? confidence : 0,
+    });
+  }
+  return raus;
+}
+
+function leseUmfrage(w: unknown): UmfrageAntwort[] {
+  if (!Array.isArray(w)) return [];
+  return w.filter(
+    (e): e is UmfrageAntwort =>
+      istObjekt(e) && typeof e["id"] === "string" && typeof e["answer"] === "number",
+  );
+}
+
+function leseCheckliste(w: unknown): ChecklistenPunkt[] {
+  if (!Array.isArray(w)) return [];
+  return w.filter(
+    (e): e is ChecklistenPunkt =>
+      istObjekt(e) &&
+      typeof e["id"] === "string" &&
+      typeof e["text"] === "string" &&
+      typeof e["done"] === "boolean",
+  );
+}
+
+function leseHistorie(w: unknown): DateHistoryEntry[] {
+  if (!Array.isArray(w)) return [];
+  const raus: DateHistoryEntry[] = [];
+  for (const e of w) {
+    if (!istObjekt(e)) continue;
+    const { id, matchName, title, date, rating, note, photo } = e;
+    if (typeof id !== "string" || typeof title !== "string") continue;
+    const eintrag: DateHistoryEntry = {
+      id,
+      title,
+      matchName: typeof matchName === "string" ? matchName : "",
+      date: typeof date === "string" ? date : "",
+    };
+    if (typeof rating === "number") eintrag.rating = rating;
+    if (typeof note === "string") eintrag.note = note;
+    if (typeof photo === "string") eintrag.photo = photo;
+    raus.push(eintrag);
+  }
+  return raus;
+}
+
+/** Aus dem lokalen Speicher lesen, ohne dem Inhalt zu vertrauen. */
+function ausSpeicher<T>(schluessel: string, leser: (w: unknown) => T, ersatz: T): T {
+  const roh = localStorage.getItem(schluessel);
+  if (!roh) return ersatz;
+  try {
+    return leser(JSON.parse(roh) as unknown);
+  } catch {
+    return ersatz;
+  }
+}
+
 export function ChatDatePlanner({ userInterests, matchInterests, matchName, chatHistory = [], onSelectDate, onClose }: ChatDatePlannerProps) {
-  const [ideas, setIdeas] = useState<{ title: string; description: string; time: string }[]>([]);
+  const [ideas, setIdeas] = useState<DateIdee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'plan' | 'smart' | 'history' | 'checklist'>('plan');
   const [history, setHistory] = useState<DateHistoryEntry[]>([]);
+  // Ersatzvorschlaege statt KI-Vorschlaege? Der Hinweistext haengt davon ab.
+  const [ideenSindErsatz, setIdeenSindErsatz] = useState(false);
   const [successFactors, setSuccessFactors] = useState<string[]>([]);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [dateSurveyData, setDateSurveyData] = useState<{ id: string, answer: number }[]>([]);
+  const [dateSurveyData, setDateSurveyData] = useState<UmfrageAntwort[]>([]);
   
   useEffect(() => {
-    const savedFactors = localStorage.getItem("klar_success_factors");
-    if (savedFactors) {
-      try { setSuccessFactors(JSON.parse(savedFactors)); } catch(e) {}
-    }
-    const savedSurvey = localStorage.getItem("klar_date_survey");
-    if (savedSurvey) {
-      try { setDateSurveyData(JSON.parse(savedSurvey)); } catch(e) {}
-    }
+    setSuccessFactors(ausSpeicher("klar_success_factors", nurZeichenketten, []));
+    setDateSurveyData(ausSpeicher("klar_date_survey", leseUmfrage, []));
   }, []);
 
 
-  const [smartDates, setSmartDates] = useState<{ date: string; time: string; idea: string; confidence: number }[]>([]);
+  const [smartDates, setSmartDates] = useState<SmartDate[]>([]);
   const [isSmartLoading, setIsSmartLoading] = useState(false);
   const [smartParsed, setSmartParsed] = useState(false);
   const [smartAdded, setSmartAdded] = useState(false);
@@ -70,21 +231,21 @@ export function ChatDatePlanner({ userInterests, matchInterests, matchName, chat
   // wie es heute ist, statt eine Oberflaeche zu erfinden.
   const [, setIsCheckingDate] = useState(false);
   const [, setCheckingIdeaIndex] = useState<number | null>(null);
-  const [, setDateCheck] = useState<any>(null);
+  const [, setDateCheck] = useState<unknown>(null);
 
   const runDateCheck = async (ideaIndex: number, dateIdea: string) => {
     setIsCheckingDate(true);
     setCheckingIdeaIndex(ideaIndex);
     try {
-      const savedNoGos = localStorage.getItem("userNoGos");
-      const userNoGos = savedNoGos ? JSON.parse(savedNoGos) : [];
+      const userNoGos = ausSpeicher("userNoGos", nurZeichenketten, []);
       const res = await fetch("/api/date-check", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dateIdea, userNoGos })
       });
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setDateCheck(data);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      setDateCheck(text ? (JSON.parse(text) as unknown) : null);
     } catch (e) {
       melde("ChatDatePlanner", e);
     } finally {
@@ -117,27 +278,28 @@ Keine Markdown-Block-Syntax.`;
 
       const response = await askAICoach(prompt);
       const cleaned = response.replace(/^```(json)?|```$/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      
-      if (Array.isArray(parsed)) {
-        setSmartDates(parsed);
-      }
+      setSmartDates(leseSmartDates(JSON.parse(cleaned) as unknown));
     } catch (e) {
-      console.warn("Smart extraction failed", e);
+      melde("ChatDatePlanner/smart", e);
     } finally {
       setIsSmartLoading(false);
       setSmartParsed(true);
     }
   };
 
-  const addSmartDateToCalendar = (suggestion: any) => {
-    const saved = localStorage.getItem('klar_planned_dates');
-    let dates = [];
-    if (saved) {
-      try { dates = JSON.parse(saved); } catch (e) {}
+  const addSmartDateToCalendar = (suggestion: SmartDate) => {
+    // BEFUND 12.08.2026: Hier stand `new Date(...).toISOString()` ohne
+    // Pruefung. Liefert die KI ein Datum, das der Browser nicht versteht,
+    // wirft `toISOString()` einen RangeError - der Knopf tat dann gar
+    // nichts, ohne Meldung. Jetzt wird vorher geprueft.
+    const zeitpunkt = new Date(`${suggestion.date}T${suggestion.time}`);
+    if (Number.isNaN(zeitpunkt.getTime())) {
+      melde("ChatDatePlanner/termin", new Error(`Unlesbarer Termin: ${suggestion.date} ${suggestion.time}`));
+      return;
     }
+    const dates = ausSpeicher<unknown[]>('klar_planned_dates', (w) => (Array.isArray(w) ? w : []), []);
     const matchId = allProfiles.find(p => p.name === matchName)?.id || "p1";
-    const dateTime = new Date(`${suggestion.date}T${suggestion.time}`).toISOString();
+    const dateTime = zeitpunkt.toISOString();
     
     dates.push({
       id: Date.now().toString(),
@@ -153,7 +315,7 @@ Keine Markdown-Block-Syntax.`;
   };
 
   
-  const [checklist, setChecklist] = useState<{id: string, text: string, done: boolean}[]>([]);
+  const [checklist, setChecklist] = useState<ChecklistenPunkt[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRating, setFilterRating] = useState<number | null>(null);
@@ -162,9 +324,7 @@ Keine Markdown-Block-Syntax.`;
   useEffect(() => {
     const saved = localStorage.getItem("klar_date_checklist_" + matchName);
     if (saved) {
-      try {
-        setChecklist(JSON.parse(saved));
-      } catch (e) {}
+      setChecklist(ausSpeicher("klar_date_checklist_" + matchName, leseCheckliste, []));
     } else {
       setChecklist([
         { id: "1", text: "Outfit planen", done: false },
@@ -175,7 +335,7 @@ Keine Markdown-Block-Syntax.`;
     }
   }, [matchName]);
 
-  const saveChecklist = (newList: {id: string, text: string, done: boolean}[]) => {
+  const saveChecklist = (newList: ChecklistenPunkt[]) => {
     setChecklist(newList);
     localStorage.setItem("klar_date_checklist_" + matchName, JSON.stringify(newList));
   };
@@ -199,12 +359,7 @@ Keine Markdown-Block-Syntax.`;
   const [editNote, setEditNote] = useState("");
 
   useEffect(() => {
-    const saved = localStorage.getItem("klar_date_history");
-    if (saved) {
-      try {
-        setHistory(JSON.parse(saved));
-      } catch (e) {}
-    }
+    setHistory(ausSpeicher("klar_date_history", leseHistorie, []));
   }, []);
 
   useEffect(() => {
@@ -219,15 +374,18 @@ Keine Markdown-Block-Syntax.`;
           
           const response = await askAICoach(prompt);
           const cleaned = response.replace(/^```(json)?|```$/g, "").trim();
-          const parsed = JSON.parse(cleaned);
-          
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setIdeas(parsed.slice(0, 3));
-          } else {
-            throw new Error("Format error");
-          }
+          const gelesen = leseDateIdeen(JSON.parse(cleaned) as unknown);
+          if (gelesen.length === 0) throw new Error("Antwort ohne verwertbare Vorschlaege");
+          setIdeas(gelesen.slice(0, 3));
+          setIdeenSindErsatz(false);
         } catch (e) {
-          console.warn("AI Planner fallback", e);
+          melde("ChatDatePlanner/ideen", e);
+          // Diese drei Vorschlaege sind von Hand geschrieben und passen zu
+          // jedem. Dass sie NICHT auf den Interessen beruhen, steht ab
+          // jetzt auch in der Oberflaeche - vorher behauptete der Text
+          // ueber der Liste weiterhin "Basierend auf euren gemeinsamen
+          // Interessen".
+          setIdeenSindErsatz(true);
           setIdeas([
             { title: "Kaffee & Spaziergang im Park", description: "Ein entspannter Spaziergang mit einem Coffee to go, perfekt zum ungestörten Kennenlernen.", time: "Samstag Nachmittag" },
             { title: "Galerie & Wein", description: "Zusammen eine lokale Ausstellung besuchen und danach bei einem Glas Wein austauschen.", time: "Freitag Abend" },
@@ -242,7 +400,7 @@ Keine Markdown-Block-Syntax.`;
     }
   }, [userInterests, matchInterests, activeTab, ideas.length]);
 
-  const handleSelect = (idea: any) => {
+  const handleSelect = (idea: DateIdee) => {
     const formattedProposal = `Lass uns ${idea.title} machen! 📅 ${idea.time}\n\n${idea.description}`;
     onSelectDate(formattedProposal, idea);
     
@@ -546,7 +704,9 @@ Keine Markdown-Block-Syntax.`;
       ) : activeTab === 'plan' ? (
         <>
           <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">
-            Basierend auf euren gemeinsamen Interessen schlägt die KI folgende Dates vor:
+            {ideenSindErsatz
+              ? "Die KI ist gerade nicht erreichbar. Diese Vorschläge sind allgemein und nicht auf euch zugeschnitten:"
+              : "Basierend auf euren gemeinsamen Interessen schlägt die KI folgende Dates vor:"}
           </p>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-6">
