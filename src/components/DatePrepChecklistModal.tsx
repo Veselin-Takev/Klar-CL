@@ -84,6 +84,7 @@ Finde gemeinsame Themen oder Dinge, über die man leicht reden kann. Gib nur ein
                 <h3 className="font-bold">Date-Prep Checkliste</h3>
               </div>
               <button
+                aria-label="Checkliste schließen"
                 onClick={onClose}
                 className="p-1.5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 rounded-full transition-colors"
               >

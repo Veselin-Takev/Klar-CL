@@ -75,7 +75,7 @@ export function RelationshipProgressWidget({ chatHistory, userName, targetName, 
           </p>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors bg-stone-100 dark:bg-stone-800 p-1.5 rounded-full">
+          <button aria-label="Analyse schließen" onClick={onClose} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors bg-stone-100 dark:bg-stone-800 p-1.5 rounded-full">
             <X size={16} />
           </button>
         )}

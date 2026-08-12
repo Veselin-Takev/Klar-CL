@@ -61,6 +61,7 @@ export function DatePrepModeWidget() {
         </div>
         {!isActive && (
           <button
+            aria-label="Date-Vorbereitung starten"
             onClick={toggleMode}
             className="p-2 bg-brand dark:bg-brand-light text-white rounded-full hover:opacity-90 transition-opacity"
           >

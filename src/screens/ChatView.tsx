@@ -1302,6 +1302,7 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
         <button 
           onClick={handleSend}
           disabled={!input.trim()}
+          aria-label="Nachricht senden"
           className="p-3 bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-full disabled:opacity-50 transition-opacity"
         >
           <Send size={20} />

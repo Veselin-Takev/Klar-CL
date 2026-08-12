@@ -133,6 +133,7 @@ export function TodayFeelingTrackerWidget() {
                         className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-2xl p-4 pr-12 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/50"
                       />
                       <button 
+                        aria-label="Antwort speichern"
                         onClick={submitAnswer}
                         disabled={!answer.trim()}
                         className="absolute bottom-3 right-3 p-2 bg-orange-500 hover:bg-orange-600 disabled:bg-stone-300 dark:disabled:bg-stone-700 text-white rounded-xl transition-colors"

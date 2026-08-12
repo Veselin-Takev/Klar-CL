@@ -40,6 +40,7 @@ export function WeeklyMilestoneRevealWidget() {
           </div>
           
           <button 
+            aria-label="Meilenstein schließen"
             onClick={handleDismiss}
             className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors z-20"
           >

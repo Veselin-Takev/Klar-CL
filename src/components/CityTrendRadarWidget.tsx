@@ -40,6 +40,7 @@ export function CityTrendRadarWidget({ location }: CityTrendRadarWidgetProps) {
           </p>
         </div>
         <button
+          aria-label="Trends neu laden"
           onClick={generateTrends}
           disabled={isLoading}
           className="p-2 text-stone-400 hover:text-indigo-500 transition-colors bg-stone-50 dark:bg-stone-800 rounded-full disabled:opacity-50"

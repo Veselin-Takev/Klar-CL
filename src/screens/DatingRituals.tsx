@@ -194,6 +194,7 @@ export const DatingRituals: React.FC = () => {
                     className="flex-1 bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-brand/50" 
                   />
                   <button 
+                    aria-label="Dankbarkeit hinzufügen"
                     onClick={addGratitude} 
                     disabled={!newGratitude.trim()} 
                     className="bg-brand dark:bg-brand-light text-white dark:text-stone-900 px-4 rounded-xl font-medium disabled:opacity-50 transition-opacity"

@@ -98,6 +98,7 @@ export function PhotoVerificationModal({ onClose, onSuccess }: Props) {
             <div className="absolute inset-0 border-4 border-brand/50 rounded-2xl m-4 pointer-events-none"></div>
             
             <button 
+              aria-label="Foto aufnehmen"
               onClick={handleCapture}
               className="absolute bottom-6 left-1/2 -translate-x-1/2 w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg"
             >

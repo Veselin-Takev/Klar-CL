@@ -301,7 +301,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                 <div className="flex-1 bg-stone-100 dark:bg-stone-800 h-10 rounded-full flex items-center px-4">
                   <span className="text-stone-400 text-sm">Nachricht...</span>
                 </div>
-                <button className="w-10 h-10 bg-brand text-white rounded-full flex items-center justify-center opacity-50 cursor-not-allowed">
+                <button disabled aria-label="Nachricht senden — in der Vorschau nicht verfügbar" className="w-10 h-10 bg-brand text-white rounded-full flex items-center justify-center opacity-50 cursor-not-allowed">
                   <ChevronRight size={18} />
                 </button>
               </div>

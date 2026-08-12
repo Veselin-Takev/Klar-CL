@@ -1,33 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { Vibrate, Volume2, RotateCcw, Play, Sun, Moon, Monitor, Palette } from 'lucide-react';
+// ENTFERNT 11.08.2026: Sun, Moon, Monitor, Palette — sie gehoerten zum
+// doppelten Theme-Block, siehe unten.
+import { Vibrate, Volume2, RotateCcw, Play } from 'lucide-react';
 import { triggerHaptic } from '../lib/haptics';
 
 export const HapticSettings: React.FC = () => {
   const [intensity, setIntensity] = useState<number>(100);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
   const [patternType, setPatternType] = useState<string>('medium');
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
-    return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
-  });
-
-  const updateTheme = (newTheme: 'light' | 'dark' | 'system') => {
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    window.dispatchEvent(new Event('themechange'));
-    
-    if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (newTheme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-    triggerHaptic('LIGHT_TAP');
-  };
+  // ── ENTFERNT 11.08.2026 — vierte Steuerung fuer dieselbe Einstellung ────
+  //
+  // Hier standen ein eigener `theme`-Zustand und `updateTheme`. Beide
+  // schrieben nach `localStorage['theme']`. Der ThemeProvider liest aber
+  // `localStorage['klar_theme']` (ThemeProvider.tsx:17). Die Einstellung war
+  // damit nach dem naechsten Neuladen weg — derselbe Befund wie bei
+  // QuickThemeToggle, nur an einer zweiten Stelle.
+  //
+  // Auf der Profilseite gab es die Wahl Hell/Dunkel/System DREIMAL:
+  //   1. ThemeSettingsWidget      (Profile.tsx:1528)  -> Schluessel 'theme'
+  //   2. hier, "Theme Settings"   (Profile.tsx:1529)  -> Schluessel 'theme'
+  //   3. Einstellungen -> Erscheinungsbild            -> useTheme, korrekt
+  // dazu seit heute die Systemleiste oben. Vier Bedienelemente fuer eine
+  // Einstellung, zwei davon ohne dauerhafte Wirkung, alle vier konnten
+  // widerspruechliche Zustaende anzeigen.
+  //
+  // Geblieben sind zwei, mit klarer Aufgabenteilung: die Systemleiste als
+  // schneller Wechsel Hell/Dunkel, und "Einstellungen -> Erscheinungsbild"
+  // fuer die vollstaendige Wahl einschliesslich "System". Beide gehen ueber
+  // `useTheme`, also ueber die eine Stelle, die den Zustand haelt.
 
   useEffect(() => {
     const storedIntensity = localStorage.getItem('klar_haptic_intensity');
@@ -89,7 +89,16 @@ export const HapticSettings: React.FC = () => {
             <p className="text-xs text-stone-500 dark:text-stone-400">Vibration für Aktionen</p>
           </div>
         </div>
+        {/* BEFUND 12.08.2026: Dieser Schalter bestand nur aus zwei
+            farbigen Flaechen — kein Text, kein Symbol, keine Beschriftung.
+            Vorgelesen wurde „Schaltflaeche", und ob das Feedback an oder
+            aus ist, war nicht zu erfahren. `aria-pressed` sagt den Zustand,
+            `aria-label` sagt, worum es geht. */}
         <button 
+          type="button"
+          role="switch"
+          aria-checked={isEnabled}
+          aria-label="Haptisches Feedback"
           onClick={toggleEnabled}
           className={`w-12 h-6 rounded-full transition-colors relative ${isEnabled ? 'bg-brand dark:bg-brand-light' : 'bg-stone-200 dark:bg-stone-700'}`}
         >
@@ -155,41 +164,10 @@ export const HapticSettings: React.FC = () => {
         </>
       )}
 
-      <div className="mt-8 pt-6 border-t border-stone-200 dark:border-stone-800">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-brand/10 dark:bg-brand-light/10 text-brand dark:text-brand-light rounded-full flex items-center justify-center">
-            <Palette size={20} />
-          </div>
-          <div>
-            <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100">Theme Settings</h3>
-            <p className="text-xs text-stone-500 dark:text-stone-400">Erscheinungsbild anpassen</p>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
-          <button 
-            onClick={() => updateTheme('light')}
-            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all ${theme === 'light' ? 'bg-brand/10 dark:bg-brand-light/10 border-brand/20 dark:border-brand-light/20 text-brand dark:text-brand-light' : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}
-          >
-            <Sun size={18} className="mx-auto mb-2" />
-            Hell
-          </button>
-          <button 
-            onClick={() => updateTheme('dark')}
-            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all ${theme === 'dark' ? 'bg-brand/10 dark:bg-brand-light/10 border-brand/20 dark:border-brand-light/20 text-brand dark:text-brand-light' : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}
-          >
-            <Moon size={18} className="mx-auto mb-2" />
-            Dunkel
-          </button>
-          <button 
-            onClick={() => updateTheme('system')}
-            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all ${theme === 'system' ? 'bg-brand/10 dark:bg-brand-light/10 border-brand/20 dark:border-brand-light/20 text-brand dark:text-brand-light' : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-50 dark:hover:bg-stone-800'}`}
-          >
-            <Monitor size={18} className="mx-auto mb-2" />
-            System
-          </button>
-        </div>
-      </div>
+      {/* ENTFERNT 11.08.2026 — der Abschnitt "Theme Settings".
+          Er war die zweite von drei Hell/Dunkel/System-Wahlen auf dieser
+          Seite und schrieb in den falschen Speicherschluessel. Begruendung
+          ausfuehrlich oben im Kopf dieser Datei. */}
 
     </div>
   );

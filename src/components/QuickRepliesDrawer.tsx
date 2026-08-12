@@ -61,7 +61,7 @@ export const QuickRepliesDrawer: React.FC<QuickRepliesDrawerProps> = ({ onSelect
               <MessageSquare size={16} className="text-brand dark:text-brand-light" />
               Schnellantworten
             </h3>
-            <button onClick={onClose} className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300">
+            <button aria-label="Schnellantworten schließen" onClick={onClose} className="p-1 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300">
               <X size={20} />
             </button>
           </div>

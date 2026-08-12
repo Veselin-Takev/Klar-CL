@@ -102,6 +102,7 @@ export function PopularDateIdeasWidget() {
 
         <div className="flex items-center justify-between mt-4">
           <button 
+            aria-label="Vorherige Date-Idee"
             onClick={handlePrev}
             className="p-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
           >
@@ -118,6 +119,7 @@ export function PopularDateIdeasWidget() {
           </div>
           
           <button 
+            aria-label="Nächste Date-Idee"
             onClick={handleNext}
             className="p-1.5 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-700 dark:hover:text-stone-300 transition-colors"
           >

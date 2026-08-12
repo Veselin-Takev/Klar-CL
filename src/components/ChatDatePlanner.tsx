@@ -351,7 +351,7 @@ Keine Markdown-Block-Syntax.`;
           <CalendarDays size={18} className="text-brand dark:text-brand-light" />
           Date mit {matchName}
         </h4>
-        <button onClick={onClose} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors">
+        <button aria-label="Date-Planer schließen" onClick={onClose} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors">
           <X size={20} />
         </button>
       </div>
@@ -479,6 +479,7 @@ Keine Markdown-Block-Syntax.`;
               className="flex-1 text-xs px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 focus:outline-none focus:border-brand"
             />
             <button 
+              aria-label="Punkt zur Checkliste hinzufügen"
               onClick={addChecklistItem}
               className="p-2 bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-lg hover:opacity-90 transition-opacity"
             >

@@ -106,6 +106,9 @@ export function SocialEnergyWidget() {
           </span>
         </div>
         <button 
+          role="switch"
+          aria-checked={powerSavingMode}
+          aria-label="Energiesparmodus"
           onClick={togglePowerSaving}
           className={`w-9 h-5 rounded-full relative transition-colors ${powerSavingMode ? 'bg-emerald-500' : 'bg-stone-200 dark:bg-stone-700'}`}
         >

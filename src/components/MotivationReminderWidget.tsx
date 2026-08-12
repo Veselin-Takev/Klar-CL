@@ -41,7 +41,7 @@ export function MotivationReminderWidget() {
             <h4 className="font-semibold text-indigo-900 dark:text-indigo-100 text-sm mb-1">Tägliche Motivation</h4>
             <p className="text-sm text-indigo-700 dark:text-indigo-300">{message}</p>
           </div>
-          <button onClick={dismiss} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600 transition-colors">
+          <button aria-label="Motivation schließen" onClick={dismiss} className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-600 transition-colors">
             <X size={16} />
           </button>
         </motion.div>

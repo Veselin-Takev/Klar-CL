@@ -127,7 +127,7 @@ export function QuickPreparationCountdownWidget() {
           </div>
           <div className="flex gap-2">
             <input type="text" value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTask()} placeholder="Aufgabe hinzufügen..." className="flex-1 text-sm bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl px-3 py-2 focus:outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/20 transition-all" />
-            <button onClick={addTask} disabled={!newTask.trim()} className="bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center justify-center">
+            <button aria-label="Aufgabe hinzufügen" onClick={addTask} disabled={!newTask.trim()} className="bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 px-3 rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-stone-300 dark:hover:bg-stone-700 transition-colors flex items-center justify-center">
               <Plus size={18} />
             </button>
           </div>

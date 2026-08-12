@@ -59,6 +59,7 @@ export const DailyCoachAffirmation: React.FC = () => {
             </p>
           </div>
           <button 
+            aria-label="Impuls schließen"
             onClick={handleDismiss}
             className="absolute top-3 right-3 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 p-1"
           >

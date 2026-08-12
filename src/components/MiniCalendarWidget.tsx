@@ -76,9 +76,9 @@ export function MiniCalendarWidget() {
           Date-Kalender
         </h3>
         <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"><ChevronLeft size={16} /></button>
+          <button aria-label="Vorheriger Monat" onClick={prevMonth} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"><ChevronLeft size={16} /></button>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 min-w-[70px] text-center">{monthName}</span>
-          <button onClick={nextMonth} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"><ChevronRight size={16} /></button>
+          <button aria-label="Nächster Monat" onClick={nextMonth} className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"><ChevronRight size={16} /></button>
         </div>
       </div>
 

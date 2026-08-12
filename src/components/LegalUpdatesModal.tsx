@@ -48,6 +48,7 @@ export function LegalUpdatesModal({ updates, onClose, onAcknowledge, acknowledge
             <h2 className="font-semibold text-lg">Rechtliche Updates</h2>
           </div>
           <button 
+            aria-label="Rechtliche Updates schließen"
             onClick={onClose}
             className="p-2 hover:bg-stone-200 dark:hover:bg-stone-700 rounded-full transition-colors text-stone-500 dark:text-stone-400"
           >

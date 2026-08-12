@@ -51,6 +51,7 @@ export const AppTour: React.FC = () => {
     <div className="fixed inset-0 z-50 pointer-events-none bg-stone-900/20 transition-all duration-500">
       <div className={`absolute ${steps[currentStep].position} bg-white dark:bg-stone-900 rounded-2xl p-5 shadow-2xl border border-brand/20 dark:border-brand-light/20 pointer-events-auto animate-in fade-in slide-in-from-bottom-4 duration-300`}>
         <button 
+          aria-label="Tour beenden"
           onClick={dismissTour}
           className="absolute top-3 right-3 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
         >

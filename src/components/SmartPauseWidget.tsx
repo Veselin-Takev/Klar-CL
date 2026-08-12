@@ -84,6 +84,9 @@ export const SmartPauseWidget: React.FC = () => {
           <h3 className="font-serif text-lg text-stone-900 dark:text-stone-100">Smart-Pause-Modus</h3>
         </div>
         <button 
+          role="switch"
+          aria-checked={isPaused}
+          aria-label="Smart-Pause-Modus"
           onClick={togglePause}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
             isPaused ? 'bg-indigo-500' : 'bg-stone-300 dark:bg-stone-700'
@@ -114,6 +117,9 @@ export const SmartPauseWidget: React.FC = () => {
              Zeitplan Automatisierung
            </span>
            <button 
+            role="switch"
+            aria-checked={hasSchedule}
+            aria-label="Zeitplan-Automatisierung"
             onClick={toggleSchedule}
             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
               hasSchedule ? 'bg-indigo-500' : 'bg-stone-200 dark:bg-stone-700'

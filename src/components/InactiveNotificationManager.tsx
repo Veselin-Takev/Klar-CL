@@ -95,6 +95,7 @@ export const InactiveNotificationManager: React.FC = () => {
   return (
     <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-8 md:bottom-8 md:w-80 bg-white dark:bg-stone-800 rounded-2xl shadow-xl border border-stone-100 dark:border-stone-700 p-4 z-50 animate-in fade-in slide-in-from-bottom-4">
       <button 
+        aria-label="Hinweis schließen"
         onClick={dismissPrompt}
         className="absolute top-3 right-3 text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
       >

@@ -100,6 +100,7 @@ export function MiniDiaryWidget() {
                 rows={2}
               />
               <button 
+                aria-label="Eintrag speichern"
                 onClick={submitEntry}
                 disabled={!selectedEmoji && !text.trim()}
                 className="absolute bottom-2 right-2 p-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-stone-300 dark:disabled:bg-stone-700 text-white rounded-lg transition-colors"

@@ -120,7 +120,7 @@ export function PastDatesArchiveWidget() {
                    <Sparkles size={14} className="text-violet-500" />
                    KI-Erfolgsanalyse
                  </h4>
-                 <button onClick={analyzePastDates} disabled={isAnalyzing} className="text-violet-500 hover:text-violet-700 disabled:opacity-50 transition-colors">
+                 <button aria-label="Erfolgsanalyse aktualisieren" onClick={analyzePastDates} disabled={isAnalyzing} className="text-violet-500 hover:text-violet-700 disabled:opacity-50 transition-colors">
                    <span className="w-4 h-4 rounded-full bg-current opacity-50 animate-pulse"></span>
                  </button>
                </div>

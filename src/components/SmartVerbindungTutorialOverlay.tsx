@@ -56,6 +56,7 @@ export function SmartVerbindungTutorialOverlay() {
           className="bg-white dark:bg-stone-900 w-full max-w-md rounded-3xl overflow-hidden shadow-md border border-stone-200 dark:border-stone-800 relative"
         >
           <button 
+            aria-label="Einführung schließen"
             onClick={dismiss}
             className="absolute top-4 right-4 p-2 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 z-10 transition-colors"
           >

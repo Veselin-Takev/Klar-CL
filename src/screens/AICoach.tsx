@@ -582,6 +582,7 @@ Halte es ermutigend und hilfreich.`;
                 className="flex-1 bg-stone-100 dark:bg-stone-900 rounded-xl px-4 py-3 text-sm focus:outline-none"
               />
               <button 
+                aria-label="Nachricht senden"
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
                 className="px-4 bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-xl disabled:opacity-50 transition-opacity"
@@ -945,6 +946,7 @@ Halte es ermutigend und hilfreich.`;
                     className="flex-1 bg-stone-100 dark:bg-stone-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 border border-transparent dark:border-stone-700"
                   />
                   <button 
+                    aria-label="Antwort senden"
                     onClick={handleScenarioSend}
                     disabled={!scenarioInput.trim() || isScenarioLoading}
                     className="px-4 bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-xl disabled:opacity-50 transition-opacity flex items-center justify-center shrink-0"
