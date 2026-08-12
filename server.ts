@@ -2964,11 +2964,27 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     res.status(antwort.status).json(antwort.koerper);
   });
 
+  // UMGESTELLT 12.08.2026. Der Ausfallpfad war hier bereits vorbildlich:
+  // Am 10.08. wurde entfernt, dass zweimal `isSafe: true` behauptet wurde,
+  // ohne dass etwas geprueft war. Das Feld `geprueft: false` blieb als
+  // ausdrueckliches Signal an die Oberflaeche.
+  //
+  // Dieses Signal bleibt — und wird sogar vollstaendiger: `geprueft` steht
+  // jetzt in JEDER Antwort, `true` bei einem echten Ergebnis, `false`
+  // sonst. Dazu kommen Zeitgrenze und zweiter Versuch aus `beantworte`.
+  // Strategie in kiPolitik.ts: `kein_ersatz` — eine erfundene
+  // Sicherheitszusage waere hier das Schlimmste, was passieren koennte.
+  //
+  // HINWEIS: Dieser Endpunkt hat seit dem 12.08.2026 keinen Aufrufer mehr
+  // (`runDateCheck` in ChatDatePlanner.tsx war tot und ist entfernt).
   app.post("/api/date-check", async (req, res) => {
-    try {
-      const { dateIdea, userNoGos } = req.body;
-      const noGoStr = userNoGos && userNoGos.length > 0 ? userNoGos.join(", ") : "Keine";
-      const response = await ai.models.generateContent({
+    const { dateIdea, userNoGos } = req.body;
+    const noGoStr = userNoGos && userNoGos.length > 0 ? userNoGos.join(", ") : "Keine";
+    const antwort = await beantworte(
+      "/api/date-check",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
         contents: `Date-Idee: ${dateIdea}\nMeine No-Gos: ${noGoStr}\nPasst diese Date-Idee zu meinen No-Gos? Gib eine Checkliste zurück.`,
         config: {
@@ -2983,30 +2999,15 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
             required: ["isSafe", "checklist"]
           }
         }
-      });
-      // BEFUND 10.08.2026: Zweimal wurde `isSafe: true` behauptet, ohne
-      // dass etwas geprueft war -- als Vorgabewert bei leerer Antwort und
-      // im catch. Der Text "Konnte nicht analysiert werden." stand dabei
-      // NEBEN einem isSafe: true. Die Oberflaeche liest das Feld, nicht
-      // den Satz. Eine Sicherheitszusage ohne Pruefung ist schlimmer als
-      // keine.
-      const roh = response.text?.trim();
-      if (!roh) {
-        return res.status(502).json({
-          error: "Die Prüfung lieferte kein Ergebnis.",
-          code: "ki_leer",
-          geprueft: false,
-        });
-      }
-      res.json(JSON.parse(roh));
-    } catch (e: unknown) {
-      if (!isQuotaExceeded(e)) console.error(e);
-      res.status(503).json({
-        error: "Die Date-Idee konnte nicht geprüft werden.",
-        code: isQuotaExceeded(e) ? "ki_kontingent" : "ki_fehler",
-        geprueft: false,
-      });
-    }
+      }),
+    );
+    // Das Feld aus dem Befund vom 10.08.2026: Die Oberflaeche liest, ob
+    // geprueft wurde — nicht den Begleitsatz. Eine Sicherheitszusage ohne
+    // Pruefung ist schlimmer als keine.
+    res.status(antwort.status).json({
+      ...antwort.koerper,
+      geprueft: antwort.koerper["herkunft"] === "ki",
+    });
   });
 
   // UMGESTELLT 12.08.2026 — und dabei die VIERZEHNTE erfundene
@@ -3114,33 +3115,45 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
   });
 
   
+  // UMGESTELLT 12.08.2026, mit einer Aenderung am Antwortformat.
+  //
+  // Der Endpunkt lieferte ein ARRAY auf oberster Ebene und verpackte es
+  // selbst als `{ factors }`. `beantworte` kann das nicht durchreichen:
+  // Eine Antwort ist dort ein Objekt, und ein Array wuerde beim Weitergeben
+  // zu `{ "0": …, "1": … }` zerfallen.
+  //
+  // Deshalb liefert das Schema jetzt direkt `{ factors: string[] }`. Das
+  // ist ohne Risiko, weil dieser Endpunkt KEINEN Aufrufer hat: In `src/`
+  // steht er nur in `kiPolitik.ts`. Sollte die Erfolgsfaktoren-Anzeige
+  // spaeter gebaut werden, ist das ohnehin das saubere Format.
   app.post("/api/extract-success-factors", async (req, res) => {
-    try {
-      const { note, rating, location } = req.body;
-      const prompt = `Analysiere das Feedback zu diesem Date und extrahiere die 3 wichtigsten Erfolgsfaktoren für gute Dates basierend darauf (z.B. Kommunikation, Aktivität, Ort).
+    const { note, rating, location } = req.body;
+    const prompt = `Analysiere das Feedback zu diesem Date und extrahiere die 3 wichtigsten Erfolgsfaktoren für gute Dates basierend darauf (z.B. Kommunikation, Aktivität, Ort).
       Feedback: ${note}
       Bewertung: ${rating}/5
       Ort/Idee: ${location}
-      Gib das Ergebnis als JSON-Array von Strings zurück, z.B. ["Gute Kommunikation", "Entspannte Atmosphäre", "Kaffee"].`;
-      
-      const response = await ai.models.generateContent({
+      Gib das Ergebnis als JSON-Objekt mit dem Feld "factors" zurück, z.B. { "factors": ["Gute Kommunikation", "Entspannte Atmosphäre", "Kaffee"] }.`;
+
+    const antwort = await beantworte(
+      "/api/extract-success-factors",
+      // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
+      // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
+      (_signal) => ai.models.generateContent({
         model: "gemini-3.5-flash-lite",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
-            type: "array",
-            items: { type: "string" }
+            type: "object",
+            properties: {
+              factors: { type: "array", items: { type: "string" } }
+            },
+            required: ["factors"]
           }
         }
-      });
-      
-      const factors = JSON.parse(response.text || "{}");
-      res.json({ factors });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Fehler bei der Extraktion" });
-    }
+      }),
+    );
+    res.status(antwort.status).json(antwort.koerper);
   });
 
   // UMGESTELLT 12.08.2026. Der kuratierte Ersatz sagt bewusst NICHTS ueber
