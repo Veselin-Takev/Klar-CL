@@ -1350,8 +1350,17 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                 <p className="text-xs text-stone-500 dark:text-stone-400">Deine Deep-Verbindung Ausrichtung</p>
               </div>
             </div>
+            {/* BEFUND 12.08.2026 — endlich zugeordnet:
+                Die Warnung „The width(0) and height(0) of chart should be
+                greater than 0" verfolgt uns seit Tagen ohne Fundort. Sie
+                kommt von HIER. Der Behaelter startete mit `scale: 0`; im
+                ersten Bild misst `ResponsiveContainer` deshalb 0 x 0 und
+                recharts beschwert sich. `h-64 w-full` half nicht — die
+                Transformation verkleinert die gemessene Box trotzdem.
+                Jetzt startet die Animation bei 0.98 statt 0. Sichtbar ist
+                das kaum; die Warnung ist weg. */}
             <motion.div 
-              initial={{ opacity: 0, scale: 0 }}
+              initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2, type: "spring", bounce: 0.4 }}
               id="werte-radar-container" className="h-64 w-full relative"
@@ -1603,7 +1612,20 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
         <SmartAuditWidget 
           bio={userBio} 
           values={userValuesRadar} 
-          profileImageUrl="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200"
+          // ENTFERNT 12.08.2026: Hier stand fest verdrahtet
+          // profileImageUrl="https://images.unsplash.com/photo-1535713875002-...".
+          // Zwei Gruende:
+          // 1. Das ist ein Stockfoto einer fremden Person. Der "Smart-Audit"
+          //    hat also nicht das Profilbild der lesenden Person bewertet,
+          //    sondern ein beliebiges Bild aus dem Netz.
+          // 2. pruefeBildUrl (SEC-03) laesst nur Firebase Storage und
+          //    Google-Profilbilder zu. Der Server antwortete deshalb mit
+          //    400 "Diese Herkunft ist nicht freigegeben." - seit dem
+          //    08.08. bei JEDEM Audit. Vorher fiel das nicht auf, weil die
+          //    Fehlerantwort als Ergebnis angezeigt wurde ("undefined / 10").
+          // Das Audit laeuft jetzt ohne Bild, also auf Bio und Werten.
+          // Sobald es ein echtes Profilbild aus Firebase Storage gibt,
+          // gehoert dessen Adresse hierher.
           onAuditComplete={setAuditScore}
         />
 
