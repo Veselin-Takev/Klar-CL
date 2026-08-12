@@ -69,7 +69,8 @@ import { WeeklyMoodSummaryWidget } from "../components/WeeklyMoodSummaryWidget";
 
 // Lock entfaellt mit dem alten Sperrbildschirm — noUnusedLocals braeche
 // sonst den Build, sobald @ts-nocheck aus dieser Datei verschwindet.
-import { DatingProgressChartWidget } from "../components/DatingProgressChartWidget";
+// ENTFERNT 12.08.2026: DatingProgressChartWidget — Interaktion und
+// Kompatibilitaet kamen aus `Math.random()`.
 import { WeeklyTimelineWidget } from "../components/WeeklyTimelineWidget";
 import { ProfileCheckWidget } from "../components/ProfileCheckWidget";
 import { QuickPreparationCountdownWidget } from "../components/QuickPreparationCountdownWidget";
@@ -1710,7 +1711,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <DatingSuccessArchiveWidget />
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-            <DatingProgressChartWidget />
+            {/* ENTFERNT: DatingProgressChartWidget, siehe Kommentar am Import. */}
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <DatingKarmaWidget />

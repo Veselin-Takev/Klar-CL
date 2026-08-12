@@ -1,7 +1,11 @@
 import { useState, useRef } from 'react';
 import { FileText, Sparkles, Download, CheckCircle2 } from 'lucide-react';
 import { askAICoach } from '../lib/api';
-import html2canvas from 'html2canvas';
+// 12.08.2026: `html2canvas` -> `html2canvas-pro`. Der urspruengliche
+// Paketstand versteht die Farbfunktion `oklch()` nicht, die Tailwind v4
+// durchgehend verwendet — jeder PDF-Export brach mit „Attempting to
+// parse an unsupported color function oklch" ab. Der Fork kann sie.
+import html2canvas from 'html2canvas-pro';
 import { jsPDF } from 'jspdf';
 
 type PDFResumeGeneratorProps = {

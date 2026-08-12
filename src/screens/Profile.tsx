@@ -31,7 +31,6 @@ const DEEP_MATCH_INSIGHTS: Record<string, string[]> = {
   'Karriere': ['Ihr teilt den Drive für berufliche Ziele.', 'Verständnis für längere Arbeitszeiten ist gegeben.']
 };
 
-import { DatingProgressChartWidget } from "../components/DatingProgressChartWidget";
 import { VibeSummaryPDFGenerator } from "../components/VibeSummaryPDFGenerator";
 import { DatingVibeChartWidget } from "../components/DatingVibeChartWidget";
 import { DatingMoodTrackerWidget } from "../components/DatingMoodTrackerWidget";
@@ -39,20 +38,19 @@ import { InsightsChart } from "../components/InsightsChart";
 import { ProfileCheckWidget } from "../components/ProfileCheckWidget";
 import { DatingMilestones } from "../components/DatingMilestones";
 import { UserAchievementsWidget } from "../components/UserAchievementsWidget";
-import { DatingActivityDashboardWidget } from "../components/DatingActivityDashboardWidget";
 import { PDFResumeGenerator } from "../components/PDFResumeGenerator";
 // ENTFERNT 12.08.2026: `ValuesQuizWidget` und `ProfileCompletionWidget`
 // waren importiert, aber nirgends eingehaengt. Beides hat `@ts-nocheck`
 // verdeckt — `noUnusedLocals` haette es sofort gemeldet.
 import { ProfileCardThemeSelector } from "../components/ProfileCardThemeSelector";
-import { ConversationHealthWidget } from "../components/ConversationHealthWidget";
 import { FocusTimeSettingsWidget } from "../components/FocusTimeSettingsWidget";
 import { SmartPauseWidget } from "../components/SmartPauseWidget";
 import { SmartPausePlanner } from "../components/SmartPausePlanner";
 import { HapticSettings } from "../components/HapticSettings";
-import { ChatResponseTimeWidget } from "../components/ChatResponseTimeWidget";
+// ENTFERNT 12.08.2026: fuenf Widgets mit erfundenen Daten. Siehe die
+// Stellen im Text weiter unten. Die Dateien unter src/components/ sind
+// damit ohne Aufrufer und koennen geloescht werden.
 import { MoodCalendarGridWidget } from "../components/MoodCalendarGridWidget";
-import { ReflectionRadarWidget } from "../components/ReflectionRadarWidget";
 import { SmartAuditWidget } from "../components/SmartAuditWidget";
 import { saveSmartMatchSettings, isSmartMatchEnabled } from "../services/smartMatchService";
 import { useAuth } from "../lib/AuthContext";
@@ -840,7 +838,8 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
 
         
         <div className="mt-8">
-          <ChatResponseTimeWidget />
+          {/* ENTFERNT: ChatResponseTimeWidget — die Reaktionszeiten kamen
+              aus `Math.random()`. Bei jedem Neuladen ein anderer Verlauf. */}
         </div>
         <div className="mt-4">
           <MoodCalendarGridWidget />
@@ -1633,8 +1632,13 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
           <ProfileCheckWidget />
         </div>
         <div className="mb-6">
-          <ReflectionRadarWidget />
-          <ConversationHealthWidget />
+          {/* ENTFERNT: ReflectionRadarWidget — die Stimmungswerte kamen
+              aus `Math.random()`. */}
+          {/* ENTFERNT: ConversationHealthWidget — im Quelltext standen
+              `healthScore = 85`, `longMessages = 24`, `emojiOnly = 3` als
+              Konstanten, angezeigt unter „So kommunizierst du diese Woche"
+              mit dem Etikett „Sehr Gut". Die Zahlen aenderten sich nie,
+              fuer niemanden. */}
           <ProfileCardThemeSelector />
           
         <div className="mb-6">
@@ -1667,11 +1671,14 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
 
         </div>
 
-        <DatingProgressChartWidget />
+        {/* ENTFERNT: DatingProgressChartWidget — Interaktion und
+            Kompatibilitaet kamen aus `Math.random()`. */}
         <InsightsChart />
         
         <UserAchievementsWidget />
-        <DatingActivityDashboardWidget />
+        {/* ENTFERNT: DatingActivityDashboardWidget — eine feste
+            4-Wochen-Tabelle im Quelltext, angezeigt als „Dating-Aktivitaet
+            (30 Tage)". */}
         <DatingMilestones />
         
         <PDFResumeGenerator userBio={userBio} userInterests={userInterests} />

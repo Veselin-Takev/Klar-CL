@@ -10,7 +10,7 @@ import { useParams, useNavigate } from "react-router";
 // 14 Symbole wurden importiert und nie gerendert: Phone, Video, Settings,
 // Check, ChevronRight, Lightbulb, TrendingUp, TrendingDown, Target, Smile,
 // HelpCircle, FileText, Info, MicOff. Entfernt.
-import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, ShieldAlert, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Minimize2, Mic, MessageSquare } from "lucide-react";
+import { Languages, Moon, HeartPulse, ArrowLeft, Sparkles, Send, CalendarDays, Clock, X, CheckCheck, History, Activity, Flag, AlertTriangle, Bookmark, Brain, ListChecks, MapPin, Bell, BellOff, Minimize2, Mic, MessageSquare } from "lucide-react";
 
 import { allProfiles } from "../data";
 
@@ -114,17 +114,9 @@ interface Spracherkennung {
 }
 type SpracherkennungBauer = new () => Spracherkennung;
 
-/** Ergebnis der Kontext-Auswertung. */
-interface Kontextauswertung {
-  mood: string;
-  recommendation: string;
-}
-
-/** Ergebnis der Sicherheitspruefung einer eingehenden Nachricht. */
-interface Sicherheitshinweis {
-  explanation: string;
-  suggestions: string[];
-}
+// ENTFERNT 12.08.2026: die Typen `Kontextauswertung` und
+// `Sicherheitshinweis`. Sie beschrieben die Ergebnisse von `analyzeContext`
+// und `simulateRedFlagMessage` — beide Funktionen sind entfallen.
 
 const nurZeichenketten = (w: unknown): string[] =>
   Array.isArray(w) ? w.filter((x): x is string => typeof x === 'string') : [];
@@ -302,13 +294,7 @@ export default function ChatView() {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [icebreakerHistory, setIcebreakerHistory] = useState<string[]>([]);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
-  // BEFUND 12.08.2026: `chatDynamic` wurde GESETZT (Zeile darunter, aus
-  // /api/conversation-dynamics), aber nirgends gelesen. Der Aufruf laeuft
-  // bei jeder neuen Nachricht und kostet — angezeigt wird nichts. Der
-  // Lesename ist entfernt, damit der Zustand nicht so aussieht, als wuerde
-  // er irgendwo gebraucht. Ob die Gespraechsdynamik angezeigt werden soll,
-  // steht in der Liste im Kopf dieser Datei.
-  const [, setChatDynamic] = useState<{ dynamic: string; explanation: string } | null>(null);
+  // `chatDynamic` ist mit dem Aufruf an /api/conversation-dynamics entfallen.
   
   const [isGeneratingReplies, setIsGeneratingReplies] = useState(false);
   const [showTuning, setShowTuning] = useState(false);
@@ -350,39 +336,12 @@ export default function ChatView() {
   const [savedSmartIntros, setSavedSmartIntros] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'icebreakers' | 'savedIntros'>('icebreakers');
 
-  useEffect(() => {
-    // Fetch chat dynamics if we have some messages
-    if (messages.length >= 4) {
-      fetch("/api/conversation-dynamics", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatHistory: messages })
-      })
-        // BEFUND 10.08.2026: Hier stand .then(res => res.json()) ohne
-        // Pruefung des Status. Weil der Endpunkt hinter der Vite-Middleware
-        // lag und mit einem leeren 404 antwortete, warf res.json()
-        // "Unexpected end of JSON input" -- eine Meldung, die auf einen
-        // Datenfehler zeigt, obwohl es ein Routenfehler war. Die Ursache lag
-        // zwei Bildschirmseiten daneben.
-        .then(async (res) => {
-          if (!res.ok) {
-            console.warn(`/api/conversation-dynamics antwortete ${res.status}`);
-            return null;
-          }
-          return res.json().catch(() => null);
-        })
-        .then((roh: unknown) => {
-          if (roh === null || typeof roh !== 'object') return;
-          const o = roh as Record<string, unknown>;
-          if (typeof o['dynamic'] !== 'string') return;
-          setChatDynamic({
-            dynamic: o['dynamic'],
-            explanation: typeof o['explanation'] === 'string' ? o['explanation'] : '',
-          });
-        })
-        .catch(console.error);
-    }
-  }, [messages.length]);
+  // ENTFERNT 12.08.2026 auf Ihre Entscheidung: Hier lief bei jeder vierten
+  // und jeder weiteren Nachricht ein Aufruf an /api/conversation-dynamics.
+  // Das Ergebnis wurde in `chatDynamic` geschrieben und nirgends gelesen —
+  // eine laufende Rechnung ohne Gegenwert. Der Endpunkt bleibt im Server
+  // bestehen und ist ueber kiAufruf angebunden; er hat jetzt nur keinen
+  // Aufrufer mehr.
 
   useEffect(() => {
     setSavedSmartIntros(listeAusSpeicher("klar_saved_smart_intros"));
@@ -390,12 +349,8 @@ export default function ChatView() {
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   
-    const [isCheckingSafety, setIsCheckingSafety] = useState(false);
-  const [, setSafetyWarning] = useState<Sicherheitshinweis | null>(null);
-  const [, setIsLongSilence] = useState(false);
-  const [, setReentryImpulses] = useState<string[]>([]);
-  const [, setIsLoadingImpulses] = useState(false);
-  const [, setContextAnalysis] = useState<Kontextauswertung | null>(null);
+  // ENTFERNT 12.08.2026: sechs Zustaende, die ausschliesslich zu den oben
+  // gestrichenen Funktionen gehoerten. Keiner von ihnen wurde je gelesen.
 
   const [intensity, setIntensity] = useState(50);
   // BEFUND 12.08.2026: `setTargetLanguage` wurde nirgends aufgerufen. Die
@@ -409,8 +364,6 @@ export default function ChatView() {
 
   const [isGeneratingSmartIntro, setIsGeneratingSmartIntro] = useState(false);
 
-  const [contextModeActive, setContextModeActive] = useState(false);
-    const [isAnalyzingContext, setIsAnalyzingContext] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
   const [userInterests, setUserInterests] = useState<string[]>([]);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
@@ -423,45 +376,11 @@ export default function ChatView() {
     setSavedSmartIntros(listeAusSpeicher("klar_saved_smart_intros").slice(0, 5));
   }, []);
 
-  useEffect(() => {
-    if (contextModeActive && messages.length >= 2) {
-      analyzeContext();
-    }
-  }, [messages, contextModeActive]);
 
-  const analyzeContext = async () => {
-    // `profile` kommt aus `allProfiles.find(...)` und ist damit
-    // `Profil | undefined`. Weiter unten sperrt zwar
-    // `if (!profile) return <div>Verbindung nicht gefunden</div>`, aber das
-    // steht in der Ausgabe — der Compiler kann daraus fuer diese Funktion
-    // nichts schliessen. Die Sperre hier kostet nichts und macht die
-    // Annahme sichtbar, statt sie zu verschweigen.
-    if (!profile) return;
-    if (messages.length < 2) return;
-    setIsAnalyzingContext(true);
-    try {
-      const recentChat = messages.slice(-4).map(m => `${m.role === 'user' ? 'Ich' : profile.name}: ${m.text}`).join('\n');
-
-      const savedSentiment = localStorage.getItem(`klar_chat_sentiment_${id}`);
-      const sentimentContext = savedSentiment 
-        ? `Beachte: Mein Eindruck vom bisherigen Gespräch mit dieser Person war "${savedSentiment === 'positive' ? 'sehr positiv' : savedSentiment === 'negative' ? 'eher negativ/zäh' : 'neutral/okay'}". `
-        : '';
-
-      const prompt = `Analysiere diesen kurzen Dating-Chat-Verlauf:\n${recentChat}\n\n${sentimentContext}Antworte strikt im Format "Stimmung: <ein bis zwei Wörter> | Empfehlung: <ein kurzer Satz für den nächsten Schritt>".`;
-      const response = await askAICoach(prompt);
-      const parts = response.split('|');
-      if (parts.length >= 2) {
-        setContextAnalysis({
-          mood: (parts[0] || '').replace(/Stimmung:/i, '').trim(),
-          recommendation: (parts[1] || '').replace(/Empfehlung:/i, '').trim()
-        });
-      }
-    } catch (e) {
-      melde("ChatView", e);
-    } finally {
-      setIsAnalyzingContext(false);
-    }
-  };
+  // ENTFERNT 12.08.2026 auf Ihre Entscheidung: `analyzeContext`.
+  // Die Funktion rief `askAICoach` und schrieb Stimmung und Empfehlung in
+  // einen Zustand, den niemand las. Mit dem Knopf daven ist sie entfallen;
+  // `noUnusedLocals` haette sie sonst als ungenutzt gemeldet.
 
   const handleSmartIntro = async () => {
     if (!profile) return;
@@ -499,94 +418,22 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
     }
   };
 
-  const simulateSilence = async () => {
-    if (!profile) return;
-    setIntensity(15);
-    setIsLongSilence(true);
-    setIsLoadingImpulses(true);
-    try {
-      const gespeicherteInteressen = listeAusSpeicher("userInterests");
-      const userInterests = gespeicherteInteressen.length > 0 ? gespeicherteInteressen.join(", ") : "Nicht angegeben";
-      
-      
-      const savedSentiment = localStorage.getItem(`klar_chat_sentiment_${id}`);
-      const sentimentContext = savedSentiment 
-        ? `Beachte: Mein Eindruck vom bisherigen Gespräch mit dieser Person war "${savedSentiment === 'positive' ? 'sehr positiv' : savedSentiment === 'negative' ? 'eher negativ/zäh' : 'neutral/okay'}". `
-        : '';
-
-      const prompt = `Du bist ein Dating-Coach. ${sentimentContext}Nach einer längeren Funkstille im Chat mit ${profile.name} (Interessen: ${profile.interests.join(", ")}), schlage 3 kurze, charmante und unaufdringliche "Wiedereinstiegs-Impulse" (Nachrichten) vor, um das Gespräch wieder aufzunehmen. Berücksichtige meine Interessen: ${userInterests}. Antworte nur mit einer unformatierten Liste, jede Nachricht in einer neuen Zeile, ohne Aufzählungszeichen oder Nummern.`;
-      
-      const response = await askAICoach(prompt);
-      const suggestions = response.split('\n').map(s => s.trim().replace(/^[-\d.]\s*/, '')).filter(s => s.length > 5);
-      setReentryImpulses(suggestions);
-    } catch (e) {
-      melde("ChatView", e);
-      setReentryImpulses(["Hey, wie war deine Woche bisher?", "Habe gerade an dich gedacht. Alles gut bei dir?"]);
-    } finally {
-      setIsLoadingImpulses(false);
-    }
-  };
+  // ENTFERNT 12.08.2026 auf Ihre Entscheidung: `simulateSilence`.
+  // Ein Klick auf das „Spannungs-Barometer" setzte die Intensitaet auf 15,
+  // rief `askAICoach` fuer drei „Wiedereinstiegs-Impulse" — und schrieb sie
+  // in einen Zustand, den niemand las. Der Aufruf kostete, angezeigt wurde
+  // nichts.
 
   
   
-  const simulateForeignMessage = async () => {
-    const foreignMsg = "Hey there! I saw your profile and thought you seemed really cool. What kind of music do you like?";
-    
-    let textToStore = foreignMsg;
-    let translatedText = undefined;
-    let translationError = false;
+  // ENTFERNT 12.08.2026 auf Ihre Entscheidung: `simulateForeignMessage`.
+  // Die Funktion haengte eine erfundene englische Nachricht der anderen
+  // Person in den Gespraechsverlauf.
 
-    if (isLiveTranslationEnabled) {
-      try {
-        translatedText = await translateMessage(foreignMsg, "Deutsch");
-        if (translatedText && translatedText !== foreignMsg) {
-          textToStore = translatedText;
-        } else {
-          translationError = true;
-        }
-      } catch (e) {
-        translationError = true;
-      }
-    }
-
-    setMessages(prev => {
-      const markedRead = prev.map(m => m.role === 'user' ? { ...m, isRead: true } : m);
-      return [...markedRead, { 
-        role: 'verbindung', 
-        text: textToStore,
-        originalText: translatedText ? foreignMsg : undefined,
-        isTranslated: !!translatedText,
-        translationError
-      }];
-    });
-  };
-
-  const simulateRedFlagMessage = async () => {
-    const toxicMsg = "Komm schon, sei nicht so verklemmt. Schick mir endlich ein Bild, sonst lösche ich das Verbindung.";
-    setMessages(prev => {
-      const markedRead = prev.map(m => m.role === 'user' ? { ...m, isRead: true } : m);
-      return [...markedRead, { role: 'verbindung', text: toxicMsg }];
-    });
-    
-    setIsCheckingSafety(true);
-    try {
-        const prompt = `Analysiere diese eingehende Nachricht in einer Dating-App auf unangemessenes Verhalten, Respektlosigkeit oder Red Flags: "${toxicMsg}". 
-Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklärung, und danach "SUGGESTIONS:" gefolgt von 2-3 konkreten Vorschlägen, wie man höflich, deeskalierend und bestimmt antworten kann (als unformatierte Liste, jede Antwort eine neue Zeile). Wenn sie harmlos ist, antworte nur mit "SAFE".`;
-        const response = await askAICoach(prompt);
-        if (response.includes("FLAG:")) {
-            const parts = response.split("SUGGESTIONS:");
-            const explanation = parts[0]?.replace("FLAG:", "").trim() || "Unangemessene Nachricht erkannt.";
-            const suggestions = parts[1] ? parts[1].split('\n').map(s => s.replace(/^[-\d.]\s*/, '').trim()).filter(s => s.length > 3) : [];
-            setSafetyWarning({ explanation, suggestions });
-        }
-    } catch (e) {
-        melde("ChatView", e);
-        // We could show an alert or just set the safety warning to the error message.
-        setSafetyWarning({ explanation: (e instanceof Error ? e.message : String(e)) || "Fehler beim Generieren. Bitte versuche es später nochmal.", suggestions: [] });
-    } finally {
-        setIsCheckingSafety(false);
-    }
-  };
+  // ENTFERNT 12.08.2026 auf Ihre Entscheidung: `simulateRedFlagMessage`.
+  // Die Funktion haengte eine erfundene uebergriffige Nachricht der anderen
+  // Person in den Gespraechsverlauf und startete danach einen KI-Aufruf,
+  // dessen Ergebnis nirgends erschien.
 
   
   const handleSend = async (forceSend = false) => {
@@ -921,11 +768,10 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
                 </div>
               )}
             </div>
-            <div 
-              onClick={simulateSilence}
-              className="flex items-center gap-1.5 mt-0.5 cursor-pointer" 
-              title="Spannungs-Barometer (Klick für Funkstille)"
-            >
+            {/* Der Klick loeste `simulateSilence` aus (siehe oben) und ist
+                mit der Funktion entfallen. Die Anzeige bleibt: Sie zeigt die
+                Intensitaet, sie ist kein Knopf. */}
+            <div className="flex items-center gap-1.5 mt-0.5">
               <div className="flex gap-0.5">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${intensity > i * 20 ? (intensity > 60 ? 'bg-rose-500' : intensity > 30 ? 'bg-amber-500' : 'bg-brand dark:bg-brand-light') : 'bg-stone-200 dark:bg-stone-700'}`} />
@@ -986,13 +832,13 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
             {timerEnabled ? <Bell size={20} /> : <BellOff size={20} />}
           </button>
           <button onClick={() => setShowChecklist(true)} className="p-2 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors" title="Date-Prep Checkliste"><ListChecks size={20} /></button>
-          <button 
-            onClick={() => setContextModeActive(!contextModeActive)}
-            className={`p-2 rounded-full transition-colors ${contextModeActive ? 'bg-brand/10 dark:bg-brand-light/10 text-brand dark:text-brand-light' : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'}`}
-            title="Context-Aware Coach Modus"
-          >
-            <Brain size={20} className={isAnalyzingContext ? "animate-pulse" : ""} />
-          </button>
+          {/* ENTFERNT 12.08.2026 auf Ihre Entscheidung: der „Context-Aware
+              Coach". Der Knopf loeste bei JEDER neuen Nachricht einen
+              KI-Aufruf aus; das Ergebnis landete in einem Zustand, den
+              niemand las. Das Symbol pulsierte, der Aufruf kostete,
+              angezeigt wurde nichts. `analyzeContext` steht weiter unten
+              vollstaendig im Code — wer die Anzeige bauen will, findet
+              alles vor. */}
           <button 
             onClick={() => setShowProgressWidget(!showProgressWidget)}
             disabled={messages.length < 2}
@@ -1008,22 +854,13 @@ Wenn sie problematisch ist, antworte mit "FLAG:" gefolgt von einer kurzen Erklä
           >
             <Flag size={20} />
           </button>
-          <button 
-            onClick={simulateForeignMessage}
-            className="p-2 bg-stone-100 dark:bg-stone-800 text-blue-500 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
-            title="Englische Nachricht empfangen"
-          >
-            <Languages size={20} />
-          </button>
-
-          <button 
-            onClick={simulateRedFlagMessage}
-            disabled={isCheckingSafety}
-            className="p-2 bg-stone-100 dark:bg-stone-800 text-rose-500 rounded-full hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
-            title="Red Flag Message simulieren"
-          >
-            <ShieldAlert size={20} className={isCheckingSafety ? "animate-pulse" : ""} />
-          </button>
+          {/* ENTFERNT 12.08.2026 auf Ihre Entscheidung: „Englische Nachricht
+              empfangen" und „Red Flag Message simulieren". Beide haengten eine
+              ERFUNDENE Nachricht der anderen Person dauerhaft in den
+              Gespraechsverlauf — in einer App, deren Versprechen „Echtes
+              Dating ohne Spielchen" lautet. Dieselbe Kategorie wie der
+              Sentry-Testknopf vom 11.08. Die Red-Flag-Variante startete
+              ausserdem einen KI-Aufruf, dessen Ergebnis nirgends erschien. */}
 
           <button 
             onClick={() => {

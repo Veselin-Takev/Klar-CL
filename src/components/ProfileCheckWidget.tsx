@@ -2,7 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { Sparkles, AlertCircle, ChevronRight, X, TrendingUp, TrendingDown, Download, Check, History, Filter, ArrowRight, User, RefreshCw, Layers, Copy, Undo } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+// 12.08.2026: `html2canvas` -> `html2canvas-pro`. Der urspruengliche
+// Paketstand versteht die Farbfunktion `oklch()` nicht, die Tailwind v4
+// durchgehend verwendet — jeder PDF-Export brach mit „Attempting to
+// parse an unsupported color function oklch" ab. Der Fork kann sie.
+import html2canvas from "html2canvas-pro";
 import confetti from "canvas-confetti";
 import { BarChart, Bar, Cell, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { melde } from "../lib/fehler";
