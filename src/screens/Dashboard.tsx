@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useUsageAnalytics } from "../lib/useUsageAnalytics";
 // FE-05: haengt Widgets erst ein, wenn sie in Sichtnaehe kommen.
 import { BeiSicht } from "../components/BeiSicht";
@@ -27,7 +26,10 @@ import { beginneKontakt, nimmKontaktZurueck } from "../lib/klar";
 import { meldeKontaktVerbraucht } from "../components/KontingentAnzeige";
 import { allProfiles } from "../data";
 import type { Profile } from "../data";
-import { Info, X, Heart, BatteryFull, BatteryMedium, BatteryLow, Sparkles, Filter, ShieldCheck, MapPin, ChevronDown, Star, Sun, Moon } from "lucide-react";
+// Entfernt, weil nie gerendert: BatteryFull, BatteryMedium, BatteryLow
+// (gehoerten zum geloeschten `getBatteryIcon`), Sun und Moon (zum
+// geloeschten `toggleTheme`).
+import { Info, X, Heart, Sparkles, Filter, ShieldCheck, MapPin, ChevronDown, Star } from "lucide-react";
 import { MatchCompatibilityInsights } from "../components/MatchCompatibilityInsights";
 import { VerbindungOptimizerWidget } from "../components/VerbindungOptimizerWidget";
 import { calculateMatchScore, isInterestShared, calculateDeepMatch } from "../services/matchScore";
@@ -55,7 +57,9 @@ import { MiniCalendarWidget } from "../components/MiniCalendarWidget";
 import { SmartVorschlaegeWidget } from "../components/SmartVorschlaegeWidget";
 import { DateSuccessRadarWidget } from "../components/DateSuccessRadarWidget";
 import { DashboardDateBanner } from "../components/DashboardDateBanner";
-import { AICoachMoodCheckWidget } from "../components/AICoachMoodCheckWidget";
+// ENTFERNT 12.08.2026: vier Importe ohne Verwendung — AICoachMoodCheckWidget,
+// Focus, SuccessRadarWidget und RelationshipJourneyWidget. Alle vier
+// Komponenten existieren, werden aber nirgends eingehaengt.
 import { ReflectionInsightDashboard } from "../components/ReflectionInsightDashboard";
 
 import { DatingGoalRoadmapWidget } from "../components/DatingGoalRoadmapWidget";
@@ -65,7 +69,6 @@ import { WeeklyMoodSummaryWidget } from "../components/WeeklyMoodSummaryWidget";
 
 // Lock entfaellt mit dem alten Sperrbildschirm — noUnusedLocals braeche
 // sonst den Build, sobald @ts-nocheck aus dieser Datei verschwindet.
-import { Focus } from "lucide-react";
 import { DatingProgressChartWidget } from "../components/DatingProgressChartWidget";
 import { WeeklyTimelineWidget } from "../components/WeeklyTimelineWidget";
 import { ProfileCheckWidget } from "../components/ProfileCheckWidget";
@@ -100,7 +103,6 @@ import { CityInsiderWidget } from "../components/CityInsiderWidget";
 import { SmartDatingDiaryWidget } from "../components/SmartDatingDiaryWidget";
 import { DateDiaryStatsWidget } from "../components/DateDiaryStatsWidget";
 import { ClarityScoreWidget } from "../components/ClarityScoreWidget";
-import { SuccessRadarWidget } from "../components/SuccessRadarWidget";
 import { DatingTimelineWidget } from "../components/DatingTimelineWidget";
 import { WeeklyConsistencyWidget } from "../components/WeeklyConsistencyWidget";
 import { NextDateWidget } from "../components/NextDateWidget";
@@ -144,7 +146,6 @@ import { Confetti } from "../components/Confetti";
 import { MoodDiaryWidget } from "../components/MoodDiaryWidget";
 import { PopularDateIdeasWidget } from "../components/PopularDateIdeasWidget";
 import { DailyIcebreakerWidget } from "../components/DailyIcebreakerWidget";
-import { RelationshipJourneyWidget } from "../components/RelationshipJourneyWidget";
 import { DailyCoachAffirmation } from "../components/DailyCoachAffirmation";
 import { AppTour } from "../components/AppTour";
 import { EmailSummaryWidget } from "../components/EmailSummaryWidget";
@@ -177,6 +178,66 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return Math.round(R * c);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// `// @ts-nocheck` ENTFERNT am 12.08.2026 — die letzte der acht Dateien.
+// Was die Zeile verdeckt hat:
+//
+// ── 1. DIE NO-GOS WURDEN NIE GELESEN ──────────────────────────────────────
+// `setUserNoGos` wurde nirgends aufgerufen. Die Liste blieb dauerhaft leer
+// — und sie geht an DREI Stellen in `calculateDeepMatch(…, userNoGos,
+// noGoStrictness)` ein. Was auf der Profilseite unter „Meine No-Gos"
+// eingetragen wird, hatte auf das Deep-Match also keinerlei Wirkung.
+// Jetzt wird die Liste im Ladeeffekt geholt.
+//
+// ── 2. DIE GESPRÄCHSANFÄNGE DES TAGES HATTEN KEINEN BEZUG ─────────────────
+// `<DailyIcebreakerWidget verbindungenInterests={…} />` — die Komponente
+// kennt diese Eigenschaft nicht, sie heisst `matchesInterests`. Der Wert
+// wurde verworfen, und das Widget schickte `matchesInterests: undefined`
+// an `/api/daily-icebreaker`. Derselbe Fehler wie bei `ChatDatePlanner`
+// heute Vormittag, an einer zweiten Stelle.
+//
+// ── 3. VIER SCHALTER, DIE ES NICHT GIBT ───────────────────────────────────
+// `setIsFocusMode`, `setPrioritizeInterests`, `setIsFilterMenuOpen` und
+// `setShowSmartMatchTooltip` haben keinen Aufrufer. Der Fokus-Modus ist
+// damit dauerhaft aus, der Filter „Interessen bevorzugen" ebenso. Das
+// Verhalten bleibt, wie es ist — die Setzer sind weg, damit es nicht
+// aussieht, als gäbe es die Schalter.
+//
+// ── 4. ZWEI TOTE FUNKTIONEN ───────────────────────────────────────────────
+// `fetchWeeklyReview` (rief `/api/weekly-review`, kein Aufrufer, Ergebnis
+// nirgends angezeigt) und `getBatteryIcon`. Dazu `toggleTheme`, das
+// ausserdem nach `localStorage['theme']` schrieb statt nach `klar_theme` —
+// derselbe Fehler wie im am 11.08. entfernten `ThemeSettingsWidget`.
+// FOLGE: `/api/weekly-review` hat keinen Aufrufer mehr in der App.
+//
+// ── 5. EIN `JSON.parse` OHNE `try` IM EFFEKT ──────────────────────────────
+// `klar_search_history`. Steht dort etwas Unlesbares, wirft der Aufruf im
+// Effekt, und React zeigt den Fehlerbildschirm statt des Dashboards.
+//
+// ── 6. `data.reduce((acc: any, item: any) => …)` ──────────────────────────
+// Antwortet `/api/ai-passgenauigkeit` mit einem Objekt statt einer Liste —
+// etwa `{ error: … }` —, gibt es kein `.reduce`, und der Klick endet in
+// einem TypeError.
+//
+// ── 7. NEUN UNBENUTZTE IMPORTE ────────────────────────────────────────────
+// Darunter vier ganze Widgets: AICoachMoodCheckWidget, SuccessRadarWidget,
+// RelationshipJourneyWidget und Focus.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const nurZeichenketten = (w: unknown): string[] =>
+  Array.isArray(w) ? w.filter((x): x is string => typeof x === 'string') : [];
+
+/** Zeichenketten-Liste aus dem lokalen Speicher, ohne Vertrauen in den Inhalt. */
+function listeAusSpeicher(schluessel: string): string[] {
+  const roh = localStorage.getItem(schluessel);
+  if (!roh) return [];
+  try {
+    return nurZeichenketten(JSON.parse(roh) as unknown);
+  } catch {
+    return [];
+  }
+}
+
 export default function Dashboard() {
   const { trackEvent } = useUsageAnalytics();
   const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -188,7 +249,7 @@ export default function Dashboard() {
   /** Wortlaut des Servers, wenn ein Kontakt abgelehnt wurde. `null` heisst:
    *  keine Ablehnung — nicht „alles in Ordnung, aber unbekannt". */
   const [kontaktFehler, setKontaktFehler] = useState<string | null>(null);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsInitialLoading(false), 1500);
@@ -203,8 +264,14 @@ export default function Dashboard() {
   const [seenIds, setSeenIds] = useState<string[]>([]);
   const [contactsLeft, setContactsLeft] = useState(DAILY_LIMIT);
   const [userInterests, setUserInterests] = useState<string[]>([]);
+  // BEFUND 12.08.2026: `setUserNoGos` wurde NIE aufgerufen. Die Liste blieb
+  // dauerhaft leer — und sie geht in `calculateDeepMatch(…, userNoGos,
+  // noGoStrictness)` an drei Stellen ein. Die No-Gos, die auf der
+  // Profilseite eingetragen und unter `userNoGos` gespeichert werden,
+  // wurden hier also nie gelesen: Das Deep-Match hat sie schlicht
+  // ignoriert. Jetzt werden sie im Ladeeffekt weiter unten geholt.
   const [userNoGos, setUserNoGos] = useState<string[]>([]);
-  const [noGoStrictness, setNoGoStrictness] = useState<number>(() => {
+  const [noGoStrictness] = useState<number>(() => {
     const saved = localStorage.getItem("noGoStrictness");
     return saved ? parseInt(saved) : 100;
   });
@@ -214,8 +281,15 @@ export default function Dashboard() {
   
   
   
-  const [weeklyReview, setWeeklyReview] = useState<string | null>(null);
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  // ENTFERNT 12.08.2026: `weeklyReview` und `isFetchingReview` wurden
+  // gesetzt und nie gelesen; ihr einziger Schreiber `fetchWeeklyReview`
+  // hatte keinen Aufrufer. Der ganze Wochenrueckblick war tot — siehe die
+  // Stelle, an der die Funktion stand.
+  // BEFUND: `setIsFocusMode` wird nirgends aufgerufen — der Fokus-Modus
+  // laesst sich nicht einschalten. `!isFocusMode` ist damit immer wahr, die
+  // drei betroffenen Widgets sind immer sichtbar. Verhalten unveraendert;
+  // der Setzer ist weg, damit es nicht so aussieht, als gaebe es den Schalter.
+  const [isFocusMode] = useState(false);
   // ── 11.08.2026: toter Smart-Lock-Apparat entfernt ────────────────────────
   // Hier standen drei Dinge, die zusammen nichts taten:
   //
@@ -233,8 +307,7 @@ export default function Dashboard() {
   // `App.tsx` über allen Routen eingehängt.
 
 
-  const [isFetchingReview, setIsFetchingReview] = useState(false);
-  const [newDeepMatchAlert, setNewDeepMatchAlert] = useState(false);
+  const [, setNewDeepMatchAlert] = useState(false);
   const [deepMatchCount, setDeepMatchCount] = useState<number>(0);
   
   
@@ -243,7 +316,9 @@ export default function Dashboard() {
   const [mustHaveInterests, setMustHaveInterests] = useState<string[]>([]);
   const [showHighVerbindungenOnly, setShowHighVerbindungenOnly] = useState(false);
   const [highCompatibilityFirst, setHighCompatibilityFirst] = useState(false);
-  const [prioritizeInterests, setPrioritizeInterests] = useState(false);
+  // BEFUND: `setPrioritizeInterests` wird nirgends aufgerufen — dieser
+  // Filter laesst sich nicht einschalten und ist damit immer aus.
+  const [prioritizeInterests] = useState(false);
   const [matchIntensity, setMatchIntensity] = useState<number>(0);
   const [notifiedHighVerbindungen, setNotifiedHighVerbindungen] = useState<Set<string>>(new Set());
   const [notification, setNotification] = useState<{ id: string, message: string, onUndo?: () => void } | null>(null);
@@ -255,7 +330,7 @@ export default function Dashboard() {
   const [filterSharedHobbies, setFilterSharedHobbies] = useState<boolean>(false);
   const [filterSharedGoals, setFilterSharedGoals] = useState<boolean>(false);
   const [filterSharedCommunication, setFilterSharedCommunication] = useState<boolean>(false);
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
+  // ENTFERNT: `isFilterMenuOpen` wurde weder gesetzt noch gelesen.
   const [filterMaxDistance, setFilterMaxDistance] = useState<number>(100);
   const [filterMinAge, setFilterMinAge] = useState<number>(18);
   const [filterMaxAge, setFilterMaxAge] = useState<number>(99);
@@ -263,8 +338,10 @@ export default function Dashboard() {
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   
   useEffect(() => {
-    const history = JSON.parse(localStorage.getItem('klar_search_history') || '[]');
-    setSearchHistory(history);
+    // BEFUND 12.08.2026: Hier stand `JSON.parse(...)` ohne `try`. Steht
+    // unter `klar_search_history` etwas Unlesbares, wirft der Aufruf im
+    // Effekt — und React zeigt den Fehlerbildschirm statt des Dashboards.
+    setSearchHistory(listeAusSpeicher('klar_search_history'));
   }, []);
   
   const saveSearchHistory = (search: string) => {
@@ -278,8 +355,11 @@ export default function Dashboard() {
   const [generatedIcebreaker, setGeneratedIcebreaker] = useState<string | null>(null);
   const [isGeneratingIcebreaker, setIsGeneratingIcebreaker] = useState(false);
   const [smartMatchEnabledState, setSmartMatchEnabledState] = useState(isSmartMatchEnabled());
-  const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
-  const [showSmartMatchTooltip, setShowSmartMatchTooltip] = useState(false);
+  // `isDarkMode` wird nur noch geschrieben: Der einzige Leser war
+  // `toggleTheme`, und der hatte keinen Aufrufer. Der Beobachter darunter
+  // bleibt, damit ein spaeterer Leser den Wert vorfindet.
+  const [, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
+  // ENTFERNT: `showSmartMatchTooltip` wurde weder gesetzt noch gelesen.
   const [smartMatchDetailProfile, setSmartMatchDetailProfile] = useState<Profile | null>(null);
   const [celebratedProfiles, setCelebratedProfiles] = useState<Set<string>>(new Set());
   const [showConfetti, setShowConfetti] = useState(false);
@@ -294,9 +374,11 @@ export default function Dashboard() {
       const saved = localStorage.getItem('klar_dating_roadmap');
       if (saved) {
         try {
-          const completed = JSON.parse(saved);
-          setRoadmapMilestone(completed.length);
-            } catch (e) {}
+          const roh: unknown = JSON.parse(saved);
+          setRoadmapMilestone(Array.isArray(roh) ? roh.length : 0);
+        } catch (e) {
+          melde('Dashboard/roadmap', e);
+        }
       }
     };
 
@@ -327,11 +409,10 @@ export default function Dashboard() {
     };
   }, []);
 
-  const toggleTheme = () => {
-    const newTheme = isDarkMode ? 'light' : 'dark';
-    localStorage.setItem('theme', newTheme);
-    window.dispatchEvent(new Event('themechange'));
-  };
+  // ENTFERNT 12.08.2026: `toggleTheme` hatte keinen Aufrufer — und schrieb
+  // ausserdem nach `localStorage['theme']` statt nach `klar_theme`, dem
+  // Schluessel, den `ThemeProvider` liest. Derselbe Fehler wie im am
+  // 11.08. entfernten `ThemeSettingsWidget`: eine Umschaltung ohne Wirkung.
 
   useEffect(() => {
     const handleSettingsChange = () => {
@@ -400,20 +481,29 @@ export default function Dashboard() {
     const savedSeenIds = localStorage.getItem('klar_seen_ids');
     if (savedSeenIds) {
       try {
-        setSeenIds(JSON.parse(savedSeenIds));
+        setSeenIds(nurZeichenketten(JSON.parse(savedSeenIds) as unknown));
       } catch { /* unbrauchbarer Eintrag — dann eben ohne */ }
     }
     try {
       const interests = localStorage.getItem("userInterests");
       if (interests) {
-        setUserInterests(JSON.parse(interests));
+        setUserInterests(nurZeichenketten(JSON.parse(interests) as unknown));
       }
   
       const mustHaves = localStorage.getItem("mustHaveInterests");
       if (mustHaves) {
-        setMustHaveInterests(JSON.parse(mustHaves));
+        setMustHaveInterests(nurZeichenketten(JSON.parse(mustHaves) as unknown));
       }
-  
+
+      // NEU 12.08.2026: Die No-Gos wurden hier nie geladen. Sie stehen seit
+      // jeher unter "userNoGos" (geschrieben von der Profilseite) und gehen
+      // an drei Stellen in `calculateDeepMatch` ein — mit einer leeren Liste
+      // also wirkungslos.
+      const noGos = localStorage.getItem("userNoGos");
+      if (noGos) {
+        setUserNoGos(nurZeichenketten(JSON.parse(noGos) as unknown));
+      }
+
     } catch (e) {
       melde("Dashboard", e);
 
@@ -688,25 +778,14 @@ export default function Dashboard() {
     if (availableProfiles.length > 0) checkDeepVerbindungen();
   }, [availableProfiles, userInterests, userNoGos, noGoStrictness]);
 
-  const fetchWeeklyReview = async () => {
-    setIsFetchingReview(true);
-    try {
-      const savedJournals = localStorage.getItem("klar_dating_journals");
-      const journals = savedJournals ? JSON.parse(savedJournals) : [];
-      const res = await fetch("/api/weekly-review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ journals })
-      });
-      const data = await res.text().then(text => text ? JSON.parse(text) : {});
-      setWeeklyReview(data.review);
-    } catch(e) {
-      melde("Dashboard", e);
-      setWeeklyReview("Dein KI-Coach ist gerade offline. Versuch es später noch einmal.");
-    } finally {
-      setIsFetchingReview(false);
-    }
-  };
+  // ── ENTFERNT 12.08.2026: `fetchWeeklyReview` ────────────────────────────
+  // Die Funktion rief `/api/weekly-review` auf und schrieb das Ergebnis in
+  // `weeklyReview`. Sie hatte keinen Aufrufer, und `weeklyReview` wurde
+  // nirgends angezeigt. Der Wochenrueckblick war an beiden Enden tot.
+  // FOLGE: `/api/weekly-review` hat damit keinen Aufrufer mehr in der App.
+  // Ob der Rueckblick gebaut werden soll, ist eine Produktentscheidung.
+  // ────────────────────────────────────────────────────────────────────────
+
 
   const handleContact = async (profile: Profile, interaction: "nachricht" | "pass") => {
     trackEvent('profile_interaction', { profileId: profile.id, interaction });
@@ -919,21 +998,13 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
     );
   }
 
-  // ── 11.08.2026: Farbwechsel entfernt ─────────────────────────────────────
-  // Hier stand `text-amber-500` ab 3 und `text-rose-500` ab 1. Das
-  // widerspricht der eigenen Vorgabe in KontingentAnzeige.tsx:14:
-  //   „BEWUSST NICHT: kein Countdown, kein Rot bei „1 übrig", kein
-  //    pulsender Punkt. Künstliche Dringlichkeit ist in §12 verboten."
-  // Zwei Komponenten derselben App widersprachen sich in einer
-  // dokumentierten Entwurfsregel. Das Symbol zeigt weiterhin den Füllstand
-  // — nur ohne Warnfarbe. Wer acht Kontakte hat und noch einen übrig, soll
-  // ihn in Ruhe vergeben, nicht unter Zeitdruck.
-  const getBatteryIcon = () => {
-    const farbe = "text-brand dark:text-brand-light";
-    if (contactsLeft > 3) return <BatteryFull size={16} className={farbe} />;
-    if (contactsLeft > 1) return <BatteryMedium size={16} className={farbe} />;
-    return <BatteryLow size={16} className={farbe} />;
-  };
+  // ── ENTFERNT 12.08.2026: `getBatteryIcon` ───────────────────────────────
+  // Die Funktion hatte keinen Aufrufer. Sie stammt aus der Zeit vor der
+  // gemeinsamen `KontingentAnzeige`, die den Fuellstand heute an einer
+  // Stelle darstellt. Der Hinweis von damals — kein Rot, keine kuenstliche
+  // Dringlichkeit (§ 12) — gilt weiter und steht dort im Code.
+  // ────────────────────────────────────────────────────────────────────────
+
 
 
   const verbindungenInterests = availableProfiles.flatMap(p => p.interests);
@@ -1127,11 +1198,24 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                                 })
                               });
                               if (!res.ok) throw new Error("API request failed");
-                              const data = await res.text().then(text => text ? JSON.parse(text) : {});
-                              const scoresMap = data.reduce((acc: any, item: any) => {
-                                acc[item.id] = { score: item.score, reason: item.reason };
-                                return acc;
-                              }, {});
+                              // BEFUND 12.08.2026: Hier stand `data.reduce(…)`
+                              // mit `any`. Antwortet der Server mit einem
+                              // Objekt statt einer Liste — etwa
+                              // `{ error: … }` —, gibt es kein `.reduce`,
+                              // und der Klick endet in einem TypeError.
+                              const roh: unknown = JSON.parse((await res.text()) || '[]');
+                              const scoresMap: Record<string, { score: number; reason: string }> = {};
+                              if (Array.isArray(roh)) {
+                                for (const eintrag of roh) {
+                                  if (eintrag === null || typeof eintrag !== 'object') continue;
+                                  const o = eintrag as Record<string, unknown>;
+                                  if (typeof o['id'] !== 'string') continue;
+                                  scoresMap[o['id']] = {
+                                    score: typeof o['score'] === 'number' ? o['score'] : 0,
+                                    reason: typeof o['reason'] === 'string' ? o['reason'] : '',
+                                  };
+                                }
+                              }
                               setAiMatchScores(scoresMap);
                             } catch (err) {
                               console.warn("Failed to calculate AI verbindung scores", err);
@@ -1292,7 +1376,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.7}
-        onDragEnd={(e, { offset, velocity }) => {
+        onDragEnd={(_e, { offset, velocity }) => {
           if (offset.x < -80 || velocity.x < -500) {
             handleContact(profile, "pass");
           } else if (offset.x > 80 || velocity.x > 500) {
@@ -2043,7 +2127,13 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <BeiSicht><EmailSummaryWidget /></BeiSicht>
           <DatingJournalWidget userInterests={userInterests} />
           <BeiSicht><QualityConversationsChartWidget /></BeiSicht>
-          <DailyIcebreakerWidget userInterests={userInterests} verbindungenInterests={uniqueVerbindungenInterests} />
+          {/* BEFUND 12.08.2026: Hier stand `verbindungenInterests={…}`.
+              `DailyIcebreakerWidget` kennt diese Eigenschaft nicht — sie
+              heisst `matchesInterests`. Der Wert wurde also verworfen, und
+              das Widget schickte `matchesInterests: undefined` an
+              /api/daily-icebreaker. Die Gespraechsanfaenge des Tages waren
+              damit ohne jeden Bezug zu den Interessen der Verbindungen. */}
+          <DailyIcebreakerWidget userInterests={userInterests} matchesInterests={uniqueVerbindungenInterests} />
           <SmartDatePlannerWidget location={filterLocation} />
           <DateInspirationTab userInterests={userInterests} userCoords={userCoords} />
         </div>
