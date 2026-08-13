@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 
+// ── LEER HEISST UNSICHTBAR (14.08.2026) ─────────────────────────────────
+// BEFUND: Bei einem frischen Konto zeigte diese Karte ein leeres Raster ueber
+// 30 Tage — eine graue Flaeche, die aussieht wie ein Fehler und keiner ist.
+// Zusammen mit den anderen leeren Karten war die Profilseite gleichzeitig
+// sehr lang und fast leer: der schlechteste erste Eindruck, den sie machen
+// kann. Siehe klar/27-profilseite-layout, Abschnitt 4.
+//
+// Diese Karte ist eine REINE ANZEIGE — sie liest `klar_reflection_logs` und
+// bietet keine Eingabe. Sie auszublenden nimmt also niemandem einen Weg.
+// (Bei Karten MIT Eingabe waere dasselbe ein Fehler: Wer nichts eingetragen
+// hat, kaeme nie an die Stelle, an der man etwas eintraegt.)
 export function MoodCalendarGridWidget() {
   const [grid, setGrid] = useState<any[]>([]);
+  const [hatDaten, setHatDaten] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('klar_reflection_logs');
@@ -36,7 +48,13 @@ export function MoodCalendarGridWidget() {
       });
     }
     setGrid(newGrid);
+    // Nicht aus `newGrid` ableitbar: Das Raster hat IMMER 30 Eintraege, auch
+    // wenn keiner davon eine Stimmung traegt. Die Frage „gibt es ueberhaupt
+    // etwas" beantwortet nur die Quelle.
+    setHatDaten(logs.length > 0);
   }, []);
+
+  if (!hatDaten) return null;
 
   return (
     <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm">

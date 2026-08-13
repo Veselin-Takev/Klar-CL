@@ -1676,6 +1676,18 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
 
         {reiter === "entwicklung" && (
         <div role="tabpanel" id="profil-entwicklung-inhalt" aria-labelledby="profil-entwicklung" className="space-y-4">
+        {/* ── EINLEITUNG STATT LEERER RASTER (14.08.2026) ──────────────────
+            Karten ohne Daten blenden sich seit heute selbst aus (siehe
+            MoodCalendarGridWidget und DatingVibeChartWidget). Damit dieser
+            Reiter bei einem frischen Konto nicht einfach leer ist, steht
+            hier ein Satz, der in BEIDEN Faellen stimmt — mit und ohne Daten.
+            Eine Meldung, die nur den leeren Fall beschreibt, muesste wissen,
+            ob die Kinder etwas gerendert haben; das weiss der Elternteil in
+            React nicht. */}
+        <p className="text-sm text-stone-500 dark:text-stone-400 px-1">
+          Hier siehst du, wie sich dein Dating-Alltag entwickelt. Auswertungen
+          erscheinen von selbst, sobald es etwas auszuwerten gibt.
+        </p>
         <div className="mb-6">
           <DatingMoodTrackerWidget />
           <div className="mt-6">

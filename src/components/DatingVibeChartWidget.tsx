@@ -102,6 +102,12 @@ export function DatingVibeChartWidget() {
     return null;
   };
 
+  // ── LEER HEISST UNSICHTBAR (14.08.2026) ────────────────────────────────
+  // Reine Anzeige: liest `klar_dating_moods` und `klar_journal_entries`,
+  // bietet keine Eingabe. Ohne Daten war hier ein leeres Diagramm ueber 14
+  // Tage zu sehen. Siehe klar/27-profilseite-layout, Abschnitt 4.
+  if (data.length === 0) return null;
+
   return (
     <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col">
       <div className="flex items-center gap-3 mb-6">
