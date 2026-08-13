@@ -344,6 +344,31 @@ export default function ChatView() {
     if (savedTimer === "true") setTimerEnabled(true);
   }, [id]);
 
+  // ── BEFUND 14.08.2026, im Browser beobachtet ──────────────────────────
+  // Im Gespraech mit Lena stand eine abgeschickte Nachricht, die mit
+  // „Hi Clara" begann. Der Entwurf aus dem Gespraech mit Clara hatte den
+  // Wechsel ueberlebt.
+  //
+  // URSACHE: `/chat/p3` und `/chat/p1` sind DIESELBE Route mit anderem
+  // Parameter. React montiert `ChatView` dabei NICHT neu — der Zustand
+  // bleibt, und `input` ist Zustand. Wer ein Gespraech verlaesst, ohne
+  // abzuschicken, und ein anderes oeffnet, findet dort seinen alten
+  // Entwurf im Feld.
+  //
+  // WARUM DAS SCHWERER WIEGT ALS EIN ANZEIGEFEHLER: Es geht nicht um eine
+  // falsche Zahl, sondern um eine Nachricht an einen MENSCHEN — mit dem
+  // Namen einer anderen darin. Bei einer App, deren Versprechen „niemals
+  // mit deiner Wuerde" lautet, ist das der teuerste denkbare Fehler.
+  //
+  // Mit zuruecksetzen: alles, was zum vorigen Gespraech gehoerte und beim
+  // Wechsel stehen bleiben wuerde.
+  useEffect(() => {
+    setInput("");
+    setAiSuggestions([]);
+    setVorschlagFehler(null);
+    setShowIcebreakers(false);
+  }, [id]);
+
   const toggleTimer = () => {
     const newState = !timerEnabled;
     setTimerEnabled(newState);
