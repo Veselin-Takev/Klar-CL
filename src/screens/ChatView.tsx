@@ -38,6 +38,8 @@ import { QuickRepliesDrawer } from "../components/QuickRepliesDrawer";
 // P1-Zusatzbefund: wurde benutzt, aber nie importiert (@ts-nocheck hat es verdeckt).
 import { MessageBubble } from "../components/MessageBubble";
 import { melde } from "../lib/fehler";
+import { meldeKontoErforderlich, sollGateZeigen } from "../lib/gastGrenze";
+import { auth } from "../lib/firebase";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // `// @ts-nocheck` ENTFERNT am 12.08.2026. Was die Zeile verdeckt hat:
@@ -310,6 +312,22 @@ export default function ChatView() {
   // Ein Fehler ist kein Vorschlag. Er bekommt einen eigenen Zustand und
   // eine eigene Darstellung, die man nicht abschicken kann.
   const [vorschlagFehler, setVorschlagFehler] = useState<string | null>(null);
+  // ── BEFUND 14.08.2026, im Browser beobachtet ────────────────────────
+  // Bei `429 Too Many Requests` (Gastgrenze: 15 KI-Aufrufe/Stunde) schrieb
+  // der `catch` von `handleSmartIntro` einen ERFUNDENEN Satz ins
+  // Eingabefeld:
+  //
+  //   setInput(`Hey ${profile.name}, interessantes Profil! Gemeinsamkeiten: …`)
+  //
+  // Das ist einer der 13 geduldeten Client-Ersatztexte (check:client-ersatz)
+  // — und der mit Abstand heikelste: Er steht direkt vor dem Absenden an
+  // einen Menschen. Wer nicht genau hinsieht, schickt einen Satz, den die
+  // App sich ausgedacht hat, im eigenen Namen.
+  //
+  // Jetzt: keine Zeile ins Feld, sondern ein Hinweis darunter. Und bei
+  // einem Gast fuehrt der Weg dorthin, wo er hingehoert — ins
+  // Registrierungs-Gate.
+  const [introFehler, setIntroFehler] = useState<string | null>(null);
   const [icebreakerHistory, setIcebreakerHistory] = useState<string[]>([]);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
   // `chatDynamic` ist mit dem Aufruf an /api/conversation-dynamics entfallen.
@@ -366,6 +384,7 @@ export default function ChatView() {
     setInput("");
     setAiSuggestions([]);
     setVorschlagFehler(null);
+    setIntroFehler(null);
     setShowIcebreakers(false);
   }, [id]);
 
@@ -460,7 +479,16 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
       });
     } catch (e) {
       melde("ChatView", e);
-      setInput(`Hey ${profile.name}, interessantes Profil! Gemeinsamkeiten: ${profile.interests.join(", ")}`);
+      const text = e instanceof Error ? e.message : String(e);
+      // Die Gastgrenze ist kein Fehler, sondern eine Grenze. Sie fuehrt in
+      // denselben Dialog wie jede andere gesperrte Handlung — eine Aussage,
+      // ein Weg.
+      if (sollGateZeigen(e, auth.currentUser) || /kostenloses Konto/i.test(text)) {
+        meldeKontoErforderlich({ herkunft: 'api', vorgang: text });
+        setIntroFehler(null);
+      } else {
+        setIntroFehler(text || "Der Einstieg konnte nicht erzeugt werden. Bitte versuche es später noch einmal.");
+      }
     } finally {
       setIsGeneratingSmartIntro(false);
     }
@@ -1118,6 +1146,16 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
                   </>
                 )}
               </button>
+
+              {/* Der Hinweis steht direkt unter dem Knopf, der ihn ausgeloest
+                  hat — und NICHT im Eingabefeld. Bis zum 14.08.2026 schrieb
+                  der Fehlerfall einen erfundenen Satz dorthin, wo gleich
+                  „Senden" gedrueckt wird. */}
+              {introFehler && (
+                <p role="note" className="mt-3 text-xs text-stone-600 dark:text-stone-300 max-w-[260px]">
+                  {introFehler}
+                </p>
+              )}
             </div>
           )}
           
@@ -1387,6 +1425,8 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
             Wirkung — und davon hatte diese App genug. */}
         {isLiveTranslationEnabled && (
           <select
+            id="chat-zielsprache"
+            name="zielsprache"
             value={sprachCode}
             onChange={(e) => { setSprachCode(e.target.value); setzeZielsprache(e.target.value); }}
             aria-label="Sprache, in die übersetzt wird"
