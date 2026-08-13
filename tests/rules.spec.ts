@@ -85,6 +85,28 @@ beforeEach(async () => {
 const als = (uid: string) => env.authenticatedContext(uid).firestore();
 const anonym = () => env.unauthenticatedContext().firestore();
 
+// ── GAST-01 (14.08.2026) ──────────────────────────────────────────────────
+// Ein Gastkonto ist ANGEMELDET, aber anonym. Der Unterschied steht im Token:
+// Firebase setzt bei `signInAnonymously()` `firebase.sign_in_provider` auf
+// "anonymous". Genau darauf prueft `istGast()` in firestore.rules.
+//
+// `authenticatedContext(uid, tokenOptions)` reicht die Angaben in das
+// Mock-Token durch. Ob die Bibliothek `firebase.sign_in_provider` dabei
+// tatsaechlich uebernimmt, ist die EINE Annahme in diesem Abschnitt, die ich
+// nicht am Schreibtisch pruefen konnte.
+//
+// Deshalb steht unten eine Kontrollprobe: Ein Gast DARF sein Nutzerdokument
+// anlegen und darf es NICHT aendern. Griffe die Angabe nicht, wuerde der
+// zweite Test gruen statt rot — und der Abschnitt meldete genau das, was er
+// nicht mehr leisten kann. Ein Test, der bei fehlender Wirkung stillschweigend
+// durchlaeuft, ist schlimmer als keiner.
+const alsGast = (uid: string) =>
+  env
+    .authenticatedContext(uid, {
+      firebase: { sign_in_provider: 'anonymous', identities: {} },
+    })
+    .firestore();
+
 // ── Profile ────────────────────────────────────────────────────────────────
 
 describe('Profile', () => {
@@ -458,6 +480,96 @@ describe('Was nur dem Server gehört', () => {
       await assertFails(addDoc(collection(als(ANNA), pfad), { x: 1 }));
       await assertFails(getDoc(doc(als(ANNA), `${pfad}/x`)));
     }
+  });
+});
+
+// ── Gastzugang ─────────────────────────────────────────────────────────────
+//
+// BEFUND 14.08.2026: Diese Datei hatte 54 Tests und keinen einzigen fuer ein
+// Gastkonto — weil die Regeln bis dahin keines kannten. „Als Gast
+// fortfahren" gab volle Rechte.
+//
+// Die Linie steht in `src/server/gastrechte.ts`: Vorschau ja, Interaktion
+// nein. Was der Server abweist, weisen die Regeln unabhaengig davon noch
+// einmal ab — der Server ist die eine Sperre, die Regeln sind die zweite.
+// Faellt eine aus, haelt die andere.
+
+describe('Gastzugang', () => {
+  const GAST = 'gast';
+
+  // ── KONTROLLPROBE ────────────────────────────────────────────────────────
+  // Erst nachweisen, dass der Gast-Kontext ueberhaupt schreiben KANN. Ohne
+  // diesen Test wuerde ein Gastkontext, der aus einem ganz anderen Grund
+  // scheitert (falsche uid, fehlendes Pflichtfeld), alle folgenden Tests
+  // gruen faerben — und der Abschnitt behauptete eine Sperre, die er nie
+  // geprueft hat.
+  it('KONTROLLE: ein Gast darf sein Nutzerdokument anlegen', async () => {
+    // Ohne das kaeme ein Gast nicht durch die Altersabfrage und damit
+    // nirgendwohin. Anlegen ja, Aendern nein — siehe naechster Test.
+    await assertSucceeds(
+      setDoc(doc(alsGast(GAST), `users/${GAST}`), {
+        uid: GAST, createdAt: '2026-08-14', updatedAt: '2026-08-14', name: 'Gast',
+      }),
+    );
+  });
+
+  it('ein Gast darf sein Nutzerdokument NICHT aendern', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `users/${GAST}`), {
+        uid: GAST, createdAt: '2026-08-14', updatedAt: '2026-08-14', name: 'Gast',
+      });
+    });
+    await assertFails(
+      updateDoc(doc(alsGast(GAST), `users/${GAST}`), { name: 'Neu', updatedAt: '2026-08-15' }),
+    );
+  });
+
+  it('ein dauerhaftes Konto darf sein Nutzerdokument weiterhin aendern', async () => {
+    // Die Gegenprobe zum vorigen Test in derselben Datei: Waere die Sperre zu
+    // weit gefasst, faende man es hier — und nicht erst im Betrieb.
+    await assertSucceeds(
+      updateDoc(doc(als(ANNA), 'users/anna'), { name: 'Anna neu', updatedAt: '2026-08-15' }),
+    );
+  });
+
+  it('ein Gast kann keinen Chat anlegen', async () => {
+    // Zwei Sperren treffen hier zusammen: `isVerified` (ein Gast ist nie
+    // verifiziert) und `istGast()`. Der Test sagt nur, DASS es scheitert.
+    await assertFails(
+      setDoc(doc(alsGast(GAST), 'chats/c1'), {
+        participants: [GAST, ANNA], createdAt: '2026-08-14', updatedAt: '2026-08-14',
+      }),
+    );
+  });
+
+  it('ein Gast kann in einen bestehenden Chat keine Nachricht schreiben', async () => {
+    // Der Chat wird mit umgangenen Regeln angelegt, damit WIRKLICH die
+    // Nachrichtenregel geprueft wird und nicht die Chatregel davor.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'chats/c1'), {
+        participants: [GAST, ANNA], createdAt: '2026-08-14', updatedAt: '2026-08-14',
+      });
+    });
+    await assertFails(
+      setDoc(doc(alsGast(GAST), 'chats/c1/messages/m1'), {
+        chatId: 'c1', senderId: GAST, text: 'Hallo', createdAt: '2026-08-14',
+      }),
+    );
+  });
+
+  it('ein Gast kann keinen Kontakt eintragen', async () => {
+    // Kontakte schreibt ohnehin nur der Server. Der Test haelt fest, dass das
+    // auch fuer Gaeste gilt — und faellt auf, falls jemand die Sammlung
+    // spaeter fuer Clients oeffnet.
+    await assertFails(
+      setDoc(doc(alsGast(GAST), `contacts/${GAST}_anna`), { fromUid: GAST, toUid: ANNA }),
+    );
+  });
+
+  it('ein Gast kann seine Einwilligung nicht selbst schreiben', async () => {
+    await assertFails(
+      setDoc(doc(alsGast(GAST), `users/${GAST}/einwilligungen/e1`), { zweck: 'ki_auswertung' }),
+    );
   });
 });
 
