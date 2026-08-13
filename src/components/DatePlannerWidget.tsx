@@ -227,12 +227,16 @@ export function DatePlannerWidget({ userInterests }: DatePlannerWidgetProps) {
             </h4>
             <div className="flex gap-2 mb-3">
               <input 
+                id="slot-datum"
+                name="slot-datum"
                 type="date" 
                 value={newAvailDate}
                 onChange={e => setNewAvailDate(e.target.value)}
                 className="flex-1 text-sm p-2 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700"
               />
               <input 
+                id="slot-uhrzeit"
+                name="slot-uhrzeit"
                 type="time" 
                 value={newAvailTime}
                 onChange={e => setNewAvailTime(e.target.value)}
@@ -361,6 +365,8 @@ export function DatePlannerWidget({ userInterests }: DatePlannerWidgetProps) {
                 {planningIdea === idx ? (
                   <div className="mt-3 p-3 bg-white dark:bg-stone-900 rounded-lg border border-stone-200 dark:border-stone-700 flex flex-col gap-2">
                     <select
+                      id="planer-verbindung"
+                      name="planer-verbindung"
                       value={selectedProfileId}
                       onChange={e => setSelectedProfileId(e.target.value)}
                       className="w-full text-xs p-1.5 rounded bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
@@ -373,12 +379,16 @@ export function DatePlannerWidget({ userInterests }: DatePlannerWidgetProps) {
                     
                     <div className="flex gap-2">
                       <input 
+                        id="planer-datum"
+                        name="planer-datum"
                         type="date" 
                         value={planDate}
                         onChange={e => setPlanDate(e.target.value)}
                         className="flex-1 text-xs p-1.5 rounded bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-100"
                       />
                       <input 
+                        id="planer-uhrzeit"
+                        name="planer-uhrzeit"
                         type="time" 
                         value={planTime}
                         onChange={e => setPlanTime(e.target.value)}

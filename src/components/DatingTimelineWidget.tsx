@@ -530,8 +530,10 @@ export function DatingTimelineWidget() {
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">Datum</label>
+                  <label htmlFor="verlauf-datum" className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">Datum</label>
                   <input 
+                    id="verlauf-datum"
+                    name="verlauf-datum"
                     type="date"
                     value={newEntry.date}
                     onChange={e => setNewEntry({...newEntry, date: e.target.value})}
@@ -539,8 +541,10 @@ export function DatingTimelineWidget() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">Date-Typ</label>
+                  <label htmlFor="verlauf-typ" className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">Date-Typ</label>
                   <select
+                    id="verlauf-typ"
+                    name="verlauf-typ"
                     value={newEntry.type}
                     onChange={e => setNewEntry({...newEntry, type: e.target.value})}
                     className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-stone-900 dark:text-stone-100"
@@ -554,8 +558,10 @@ export function DatingTimelineWidget() {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">Aktivität / Person</label>
+                <label htmlFor="verlauf-aktivitaet" className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-1.5">Aktivität / Person</label>
                 <input 
+                  id="verlauf-aktivitaet"
+                  name="verlauf-aktivitaet"
                   type="text"
                   placeholder="z.B. Kaffee mit Anna"
                   value={newEntry.name}
@@ -565,12 +571,14 @@ export function DatingTimelineWidget() {
               </div>
               <div>
                 <div className="flex justify-between items-end mb-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                  <label htmlFor="verlauf-stimmung" className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                     Stimmung ({newEntry.mood}%)
                   </label>
                   <span className="text-[10px] text-stone-400">{newEntry.mood >= 75 ? 'Positiv' : newEntry.mood >= 40 ? 'Neutral' : 'Reflektierend'}</span>
                 </div>
                 <input 
+                  id="verlauf-stimmung"
+                  name="verlauf-stimmung"
                   type="range"
                   min="0" max="100"
                   value={newEntry.mood}
@@ -580,7 +588,7 @@ export function DatingTimelineWidget() {
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Notiz / Lerneffekt</label>
+                  <label htmlFor="verlauf-notiz" className="block text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">Notiz / Lerneffekt</label>
                   <div className="flex gap-2">
                     <button onClick={startRecording} className={`text-[10px] font-medium flex items-center gap-1 px-2 py-1 rounded-md transition-colors ${isRecording ? 'bg-rose-50 text-rose-500 animate-pulse' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 hover:text-stone-700'}`}>
                       <Mic size={10} /> {isRecording ? 'Höre zu...' : 'Sprache'}
@@ -591,6 +599,8 @@ export function DatingTimelineWidget() {
                   </div>
                 </div>
                 <textarea
+                  id="verlauf-notiz"
+                  name="verlauf-notiz"
                   placeholder="Was hast du gelernt? Wie war es?"
                   value={newEntry.learning}
                   onChange={e => setNewEntry({...newEntry, learning: e.target.value})}

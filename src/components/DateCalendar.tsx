@@ -171,8 +171,10 @@ export function DateCalendar() {
             
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1">Verbindung</label>
+                <label htmlFor="kalender-verbindung" className="block text-xs font-medium text-stone-500 mb-1">Verbindung</label>
                 <select 
+                  id="kalender-verbindung"
+                  name="kalender-verbindung"
                   value={selectedProfileId}
                   onChange={(e) => setSelectedProfileId(e.target.value)}
                   className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20"
@@ -187,8 +189,10 @@ export function DateCalendar() {
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-stone-500 mb-1">Idee / Ort</label>
+                <label htmlFor="kalender-idee" className="block text-xs font-medium text-stone-500 mb-1">Idee / Ort</label>
                 <input 
+                  id="kalender-idee"
+                  name="kalender-idee"
                   type="text" 
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
@@ -199,8 +203,10 @@ export function DateCalendar() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 mb-1">Datum</label>
+                  <label htmlFor="kalender-datum" className="block text-xs font-medium text-stone-500 mb-1">Datum</label>
                   <input 
+                    id="kalender-datum"
+                    name="kalender-datum"
                     type="date" 
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -208,8 +214,10 @@ export function DateCalendar() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-stone-500 mb-1">Uhrzeit</label>
+                  <label htmlFor="kalender-uhrzeit" className="block text-xs font-medium text-stone-500 mb-1">Uhrzeit</label>
                   <input 
+                    id="kalender-uhrzeit"
+                    name="kalender-uhrzeit"
                     type="time" 
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
@@ -230,6 +238,8 @@ export function DateCalendar() {
                   <p className="text-xs text-stone-500 dark:text-stone-400">2 Stunden vorher an Ort & Checkliste erinnern</p>
                 </div>
                 <input 
+                  id="kalender-erinnerung"
+                  name="kalender-erinnerung"
                   type="checkbox" 
                   className="hidden" 
                   checked={remindMe} 
