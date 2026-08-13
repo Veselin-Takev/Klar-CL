@@ -21,7 +21,7 @@ import { askAICoach } from "../lib/api";
 // fehl, und die Oberflaeche zeigte nur "Uebersetzung nicht verfuegbar".
 // Genau die Fehlerklasse, die heute die teuerste war: kein Absturz, nur eine
 // Zusage ohne Wirkung.
-import { translateMessage } from "../services/translationService";
+import { SPRACHEN, zielsprachenCode, nameZuCode, setzeZielsprache } from "../lib/sprache";
 import { NotificationService } from "../services/notificationService";
 
 import { RelationshipProgressWidget } from "../components/RelationshipProgressWidget";
@@ -290,7 +290,12 @@ export default function ChatView() {
   }, [input, id]);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [isLiveTranslationEnabled, setIsLiveTranslationEnabled] = useState(false);
-  const [isTranslating, setIsTranslating] = useState(false);
+  // `setIsTranslating` ist am 14.08.2026 entfallen: Beim Senden wird nicht
+  // mehr uebersetzt. Der Zustand bleibt als Lesewert bestehen, damit die
+  // Absperre in `handleSend` unveraendert lesbar ist — sie ist seitdem
+  // dauerhaft `false`, und das steht hier, damit es niemand fuer eine
+  // vergessene Verdrahtung haelt.
+  const [isTranslating] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [icebreakerHistory, setIcebreakerHistory] = useState<string[]>([]);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
@@ -353,13 +358,18 @@ export default function ChatView() {
   // gestrichenen Funktionen gehoerten. Keiner von ihnen wurde je gelesen.
 
   const [intensity, setIntensity] = useState(50);
-  // BEFUND 12.08.2026: `setTargetLanguage` wurde nirgends aufgerufen. Die
-  // Zielsprache steht damit dauerhaft auf `undefined` — und `MessageBubble`
-  // uebersetzt nur, wenn `targetLang` gesetzt ist. Die Sprachauswahl, die
-  // hier vorgesehen war, gibt es nicht. Der Setzer ist entfernt, damit der
-  // Zustand nicht laenger so aussieht, als koenne er sich aendern.
-  // Ob eine Sprachwahl gebaut werden soll, ist eine Produktentscheidung.
-  const [targetLanguage] = useState<string | undefined>(undefined);
+  // BEHOBEN 14.08.2026. Vorher stand hier `const [targetLanguage] =
+  // useState<string | undefined>(undefined)` ohne Setzer — die Zielsprache
+  // war dauerhaft `undefined`, und `MessageBubble` uebersetzt nur, wenn sie
+  // gesetzt ist. EINGEHENDE Nachrichten wurden also nie uebersetzt, seit es
+  // die Funktion gibt. Der Knopf oben schaltete ausschliesslich den
+  // ausgehenden Weg.
+  //
+  // Jetzt: eine waehlbare Sprache aus `src/lib/sprache.ts`, vorbelegt aus
+  // dem Speicher bzw. der Browsersprache. Uebersetzt wird nur, wenn die
+  // Live-Uebersetzung eingeschaltet ist — deshalb steht der Schalter
+  // getrennt von der Sprachwahl.
+  const [sprachCode, setSprachCode] = useState<string>(() => zielsprachenCode());
       
 
   const [isGeneratingSmartIntro, setIsGeneratingSmartIntro] = useState(false);
@@ -456,35 +466,26 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
     if (!input.trim() || isTranslating) return;
     
     
-    let textToSend = input;
-    let translatedText = undefined;
-    let translationError = false;
-    
-    if (isLiveTranslationEnabled) {
-      setIsTranslating(true);
-      try {
-        translatedText = await translateMessage(input, "Englisch");
-        if (translatedText && translatedText !== input) {
-          textToSend = translatedText;
-        } else {
-          translationError = true;
-        }
-      } catch (e) {
-        translationError = true;
-        console.error("Translation failed", e);
-      } finally {
-        setIsTranslating(false);
-      }
-    }
-    
+    // ── ENTFERNT AM 14.08.2026: die stille Ersetzung beim Senden ──────────
+    // Hier wurde der eingetippte Text durch eine maschinelle Uebersetzung
+    // nach "Englisch" ERSETZT und diese als eigene Nachricht abgeschickt.
+    // Zwei Dinge waren daran falsch:
+    //
+    //   1. Verschickt wurden nicht die Worte der schreibenden Person,
+    //      sondern die einer Maschine — ohne Kennzeichnung, ohne Ansicht
+    //      vorher, ohne Moeglichkeit zu widersprechen.
+    //   2. Scheiterte die Uebersetzung, ging der deutsche Text hinaus, und
+    //      angezeigt wurde derselbe Hinweis wie bei einem Netzproblem.
+    //
+    // Gesendet wird jetzt IMMER das Original. Uebersetzt wird auf der
+    // lesenden Seite, sichtbar gekennzeichnet, mit dem Original darueber.
+    // Das ist dieselbe Regel wie bei den KI-Antworten: Nichts anzeigen oder
+    // verschicken, was wie eigener Inhalt aussieht, es aber nicht ist.
     setInput('');
-    setMessages(prev => [...prev, { 
-      role: 'user', 
-      text: textToSend,
-      originalText: translatedText ? input : undefined,
-      isTranslated: !!translatedText,
-      translationError,
-      isRead: false 
+    setMessages(prev => [...prev, {
+      role: 'user',
+      text: input,
+      isRead: false
     }]);
 
     setInput("");
@@ -1090,7 +1091,7 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
             {msg.isDateProposal && msg.proposalDetails ? (
               <DateProposalMessage msg={msg} profileName={profile?.name || ''} />
             ) : (
-                            <MessageBubble msg={msg} targetLang={targetLanguage} />
+                            <MessageBubble msg={msg} zielsprache={isLiveTranslationEnabled ? nameZuCode(sprachCode) : undefined} />
             )}
           </div>
         ))}
@@ -1315,13 +1316,31 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
           <Sparkles size={20} className={isGeneratingReplies ? "animate-pulse text-brand" : ""} />
         </button>
         
-        <button 
+        <button
           onClick={() => setIsLiveTranslationEnabled(!isLiveTranslationEnabled)}
+          aria-pressed={isLiveTranslationEnabled}
           className={`p-2 transition-colors ${isLiveTranslationEnabled ? "text-blue-500" : "text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"}`}
-          title="Live-Übersetzung (z.B. Englisch → Deutsch)"
+          title={isLiveTranslationEnabled ? "Übersetzung ausschalten" : "Eingehende Nachrichten übersetzen"}
         >
-          <Languages size={20} className={isTranslating ? "animate-pulse" : ""} />
+          <Languages size={20} />
         </button>
+
+        {/* Die Sprachwahl erscheint nur, wenn uebersetzt wird. Ein Auswahlfeld
+            fuer eine ausgeschaltete Funktion waere eine Einstellung ohne
+            Wirkung — und davon hatte diese App genug. */}
+        {isLiveTranslationEnabled && (
+          <select
+            value={sprachCode}
+            onChange={(e) => { setSprachCode(e.target.value); setzeZielsprache(e.target.value); }}
+            aria-label="Sprache, in die übersetzt wird"
+            title="Sprache, in die übersetzt wird"
+            className="text-xs bg-transparent text-stone-500 dark:text-stone-400 border border-stone-200 dark:border-stone-700 rounded-lg px-1 py-1 focus:outline-none focus:ring-2 focus:ring-brand"
+          >
+            {SPRACHEN.map((s) => (
+              <option key={s.code} value={s.code}>{s.name}</option>
+            ))}
+          </select>
+        )}
 
         
         

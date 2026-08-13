@@ -13,7 +13,7 @@
     "start": "NODE_ENV=production node dist/server.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:pure": "tsx --test tests/pure.spec.ts tests/kiPolitik.spec.ts tests/kiAufruf.spec.ts tests/zwischenspeicher.spec.ts tests/wiederholung.spec.ts",
+    "test:pure": "tsx --test tests/pure.spec.ts tests/kiPolitik.spec.ts tests/kiAufruf.spec.ts tests/zwischenspeicher.spec.ts tests/wiederholung.spec.ts tests/sprache.spec.ts",
     "verify": "npm run typecheck && npm run check:hooks && npm run check:namen && npm run check:vorlagen && npm run check:beschriftung && npm run check:ki && npm run check:client-ersatz && npm run check:json-form && npm run check:kontrast && npm run test:pure && npm test && npm run test:rules",
     "check:kontrast": "node scripts/check-kontrast.mjs",
     "check:hooks": "node scripts/check-hooks.mjs",
