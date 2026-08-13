@@ -447,6 +447,8 @@ Halte es ermutigend und hilfreich.`;
               </button>
             </div>
             <select
+              id="coach-tonfall"
+              name="coach-tonfall"
 
               value={coachTone}
               onChange={(e) => {
@@ -466,6 +468,8 @@ Halte es ermutigend und hilfreich.`;
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input 
+                  id="coach-verlaufsuche"
+                  name="coach-verlaufsuche"
                   type="text" 
                   placeholder="Verlauf durchsuchen..."
                   value={searchQuery}
@@ -582,6 +586,8 @@ Halte es ermutigend und hilfreich.`;
                 {isRecordingVoice ? <Mic size={20} /> : <MicOff size={20} />}
               </button>
               <input 
+                id="coach-nachricht"
+                name="coach-nachricht"
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -615,6 +621,8 @@ Halte es ermutigend und hilfreich.`;
             <div className="space-y-3">
               <div className="relative">
                 <select 
+                  id="dateplaner-verbindung"
+                  name="dateplaner-verbindung"
                   value={selectedProfileId}
                   onChange={(e) => setSelectedProfileId(e.target.value)}
                   className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 appearance-none"
@@ -635,6 +643,8 @@ Halte es ermutigend und hilfreich.`;
                 <span className="text-xs font-medium text-stone-500 dark:text-stone-400 mb-2 block">Stadt / Region (optional):</span>
                 <div className="relative">
                   <input
+                    id="dateplaner-ort"
+                    name="dateplaner-ort"
                     type="text"
                     value={dateLocation}
                     onChange={(e) => setDateLocation(e.target.value)}
@@ -719,6 +729,8 @@ Halte es ermutigend und hilfreich.`;
             <div className="space-y-4">
               <div className="relative">
                 <select 
+                  id="debrief-verbindung"
+                  name="debrief-verbindung"
                   value={recapProfileId}
                   onChange={(e) => setRecapProfileId(e.target.value)}
                   className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 appearance-none"
@@ -741,6 +753,8 @@ Halte es ermutigend und hilfreich.`;
                   <div className="space-y-2">
                     {[0, 1, 2].map((i) => (
                       <input 
+                        id={`debrief-pro-${i + 1}`}
+                        name={`debrief-pro-${i + 1}`}
                         key={`pro-${i}`}
                         type="text"
                         placeholder={`Pro ${i + 1}`}
@@ -760,6 +774,8 @@ Halte es ermutigend und hilfreich.`;
                   <div className="space-y-2">
                     {[0, 1, 2].map((i) => (
                       <input 
+                        id={`debrief-con-${i + 1}`}
+                        name={`debrief-con-${i + 1}`}
                         key={`con-${i}`}
                         type="text"
                         placeholder={`Con ${i + 1}`}
@@ -872,6 +888,8 @@ Halte es ermutigend und hilfreich.`;
                 <div className="space-y-4">
                   <div className="relative">
                     <select 
+                      id="szenario-auswahl"
+                      name="szenario-auswahl"
                       value={scenario}
                       onChange={(e) => setScenario(e.target.value)}
                       className="w-full bg-stone-50 dark:bg-stone-950 border border-stone-200 dark:border-stone-800 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 appearance-none"
@@ -949,6 +967,8 @@ Halte es ermutigend und hilfreich.`;
               <div className="p-4 bg-white/95 dark:bg-stone-900/95  pb-safe border-t border-stone-100 dark:border-stone-800 absolute bottom-0 left-0 right-0">
                 <div className="flex gap-2">
                   <input 
+                    id="szenario-antwort"
+                    name="szenario-antwort"
                     type="text" 
                     value={scenarioInput}
                     onChange={(e) => setScenarioInput(e.target.value)}

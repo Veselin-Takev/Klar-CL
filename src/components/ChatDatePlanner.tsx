@@ -615,6 +615,8 @@ Keine Markdown-Block-Syntax.`;
           </div>
           <div className="flex items-center gap-2 mt-2">
             <input 
+              id="checkliste-neuer-punkt"
+              name="checkliste-neuer-punkt"
               type="text"
               value={newChecklistItem}
               onChange={(e) => setNewChecklistItem(e.target.value)}
@@ -762,6 +764,8 @@ Keine Markdown-Block-Syntax.`;
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-2.5 text-stone-400" />
                 <input 
+                  id="datesuche"
+                  name="datesuche"
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -838,6 +842,8 @@ Keine Markdown-Block-Syntax.`;
                         ))}
                       </div>
                       <textarea 
+                        id="date-notiz"
+                        name="date-notiz"
                         value={editNote}
                         onChange={(e) => setEditNote(e.target.value)}
                         placeholder="Private Notiz (z.B. Lief super, tolle Gespräche...)"
@@ -891,7 +897,7 @@ Keine Markdown-Block-Syntax.`;
                             <div className="mt-2">
                               <label className="text-[10px] text-stone-500 hover:text-brand flex items-center gap-1 w-fit cursor-pointer">
                                 <Camera size={10} /> Foto hinzufügen
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, entry.id)} />
+                                <input type="file" id={`date-foto-a-${entry.id}`} name="date-foto" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, entry.id)} />
                               </label>
                             </div>
                           )}
@@ -911,7 +917,7 @@ Keine Markdown-Block-Syntax.`;
                           {!entry.photo && (
                             <label className="text-[10px] px-3 py-1 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300 rounded-md hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors cursor-pointer flex items-center justify-center">
                               <Camera size={12} />
-                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, entry.id)} />
+                              <input type="file" id={`date-foto-b-${entry.id}`} name="date-foto" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, entry.id)} />
                             </label>
                           )}
                         </div>

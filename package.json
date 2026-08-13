@@ -24,7 +24,7 @@
     "check:client-ersatz": "node scripts/client-ersatz.mjs src 12",
     "check:json-form": "node scripts/json-form.mjs 0",
     "check:doppelte-einstellungen": "node scripts/doppelte-einstellungen.mjs src 26",
-    "check:formularfelder": "node scripts/formularfelder.mjs src 99",
+    "check:formularfelder": "node scripts/formularfelder.mjs src 84",
     "check:label-bezug": "node scripts/label-bezug.mjs src 39",
     "check:knopf-ohne-wirkung": "node scripts/knopf-ohne-wirkung.mjs src 5",
     "check:meilensteine": "node scripts/meilensteine-erreichbar.mjs src",
