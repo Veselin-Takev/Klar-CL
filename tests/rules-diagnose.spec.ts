@@ -79,20 +79,49 @@ beforeEach(async () => {
  * Führt einen Schreibvorgang aus und PROTOKOLLIERT das Ergebnis.
  * Wirft nie — der Zweck ist die Auskunft, nicht das Urteil.
  */
+const ergebnisse: { name: string; art: string; create: string; update: string }[] = [];
+
+/** Zieht aus der Meldung heraus, was Firestore je Zweig gesagt hat. */
+function zweig(meldung: string, welcher: 'create' | 'update'): string {
+  if (new RegExp(`evaluation error[^,]*for '${welcher}'`).test(meldung)) return 'ABSTURZ';
+  if (new RegExp(`false for '${welcher}'`).test(meldung)) return 'false';
+  return '—';
+}
+
 async function protokolliere(name: string, tuWas: () => Promise<unknown>): Promise<void> {
   try {
     await tuWas();
+    ergebnisse.push({ name, art: 'durchgelassen', create: 'ja', update: '—' });
     console.log(`\n  [${name}]\n    ERGEBNIS: durchgelassen\n`);
   } catch (fehler) {
     const meldung = fehler instanceof Error ? fehler.message : String(fehler);
     const art = /evaluation error/i.test(meldung)
-      ? 'REGEL ABGESTUERZT (evaluation error)'
+      ? 'ABGESTUERZT'
       : /PERMISSION_DENIED|permission-denied/i.test(meldung)
         ? 'sauber abgelehnt'
         : 'anderer Fehler';
+    ergebnisse.push({ name, art, create: zweig(meldung, 'create'), update: zweig(meldung, 'update') });
     console.log(`\n  [${name}]\n    ERGEBNIS: ${art}\n    WORTLAUT: ${meldung}\n`);
   }
 }
+
+// ── ÜBERSICHT AM ENDE ─────────────────────────────────────────────────────
+// Beim Lauf vom 14.08.2026 sind mir die Faelle 2a bis 2c weggescrollt, und
+// ich habe trotzdem eine Reparatur gebaut. Sie war falsch. Eine Diagnose,
+// deren Ergebnis man nicht am Stueck sehen kann, verleitet genau dazu.
+after(() => {
+  console.log('\n\n══ UEBERSICHT ' + '═'.repeat(61));
+  console.log('\n  Fall                                    | Ergebnis        | create | update');
+  console.log('  ' + '-'.repeat(76));
+  for (const e of ergebnisse) {
+    console.log(
+      `  ${e.name.padEnd(38).slice(0, 38)} | ${e.art.padEnd(15)} | ${e.create.padEnd(6)} | ${e.update}`,
+    );
+  }
+  console.log('\n  ABSTURZ = evaluation error (Regel gerechnet und gestolpert)');
+  console.log('  false   = Regel hat entschieden und abgelehnt (richtig)\n');
+  console.log('═'.repeat(75) + '\n');
+});
 
 describe('Diagnose: Teil-Schreibvorgang auf ein fehlendes Nutzerdokument', () => {
   // 1 — der beobachtete Fall. Gast, `merge` auf ein Dokument, das es nicht
@@ -151,6 +180,87 @@ describe('Diagnose: Teil-Schreibvorgang auf ein fehlendes Nutzerdokument', () =>
     }).firestore();
     await protokolliere('4 Angemeldet, theme am vorhandenen Dokument', () =>
       setDoc(doc(anna, 'users/anna'), { theme: 'dark', updatedAt: '2026-08-14' }, { merge: true }),
+    );
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RUNDE 2 — welche Teilbedingung stuerzt ab?
+//
+// Runde 1 ergab: Teil-Schreibvorgang auf ein fehlendes Dokument stuerzt ab
+// (Fall 2), vollstaendiges Anlegen geht durch (Fall 3). ZWEI Dinge waren an
+// diesem Vergleich aber gleichzeitig verschieden:
+//
+//   Fall 2:  { theme }                        MIT    merge: true
+//   Fall 3:  { uid, createdAt, updatedAt }    OHNE   merge
+//
+// Damit laesst sich nicht sagen, ob es an den fehlenden Pflichtfeldern liegt
+// oder an `merge` selbst. Runde 2 trennt beides — jeweils genau EINE
+// Aenderung gegenueber dem bekannten Fall.
+//
+// LESEART DES ERGEBNISSES:
+//   · Stuerzt 2a (Pflichtfelder + merge) AB, liegt es an `merge`.
+//   · Geht 2a DURCH, liegt es an den fehlenden Pflichtfeldern — und 2c/2d
+//     sagen, an welchem.
+//   · Stuerzt 2b (nur theme, OHNE merge) ebenfalls ab, ist `merge`
+//     unbeteiligt und es liegt allein am Inhalt.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const alsAnna = () =>
+  env.authenticatedContext('anna', { firebase: { sign_in_provider: 'password' } }).firestore();
+
+describe('Runde 2: merge oder Pflichtfelder?', () => {
+  it('2a · Pflichtfelder vollstaendig, ABER mit merge', async () => {
+    await protokolliere('2a vollstaendig + merge', () =>
+      setDoc(
+        doc(alsAnna(), 'users/anna'),
+        { uid: 'anna', createdAt: '2026-08-14', updatedAt: '2026-08-14' },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('2b · nur `theme`, OHNE merge', async () => {
+    await protokolliere('2b nur theme, ohne merge', () =>
+      setDoc(doc(alsAnna(), 'users/anna'), { theme: 'dark' }),
+    );
+  });
+
+  it('2c · nur `uid` (+ merge)', async () => {
+    await protokolliere('2c nur uid + merge', () =>
+      setDoc(doc(alsAnna(), 'users/anna'), { uid: 'anna' }, { merge: true }),
+    );
+  });
+
+  it('2d · `uid` + `createdAt`, es fehlt nur `updatedAt` (+ merge)', async () => {
+    await protokolliere('2d uid+createdAt, updatedAt fehlt', () =>
+      setDoc(
+        doc(alsAnna(), 'users/anna'),
+        { uid: 'anna', createdAt: '2026-08-14' },
+        { merge: true },
+      ),
+    );
+  });
+
+  it('2e · Pflichtfelder + ein GESPERRTES Feld (isVerified)', async () => {
+    // Kontrollprobe: Dieser Fall MUSS abgelehnt werden — aber sauber, nicht
+    // mit einem Absturz. Er prueft die zweite Bedingung der create-Regel
+    // (`!keys().hasAny([...])`) getrennt von `isValidUser`.
+    await protokolliere('2e vollstaendig + isVerified', () =>
+      setDoc(doc(alsAnna(), 'users/anna'), {
+        uid: 'anna',
+        createdAt: '2026-08-14',
+        updatedAt: '2026-08-14',
+        isVerified: true,
+      }),
+    );
+  });
+
+  it('2f · leeres Objekt mit merge', async () => {
+    // Der Grenzfall: gar nichts schreiben. Sagt, ob schon das blosse
+    // Auswerten ohne jedes Feld stolpert.
+    await protokolliere('2f leeres Objekt + merge', () =>
+      setDoc(doc(alsAnna(), 'users/anna'), {}, { merge: true }),
     );
   });
 });
