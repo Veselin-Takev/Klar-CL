@@ -1627,6 +1627,16 @@ Sprich den Nutzer direkt an (Du-Form). Beziehe dich explizit auf gemeinsame Inte
 Keine Halluzinationen. Halte es prägnant, charmant und nachvollziehbar.`,
         }
       }),
+      // BEFUND 14.08.2026: Hier stand kein Beiwerk. `beantworte` parst die
+      // Antwort dann als JSON — die Systemanweisung darueber verlangt aber
+      // Fliesstext („max 3 Saetze"), und im Aufruf steht kein
+      // `responseMimeType`. `JSON.parse` scheiterte folglich IMMER, und der
+      // Endpunkt antwortete seit dem Umbau am 12.08.2026 ausnahmslos mit
+      // HTTP 502 „Das Ergebnis war unbrauchbar".
+      //
+      // `feld: "summary"`, weil `fetchProfileSummary` in `src/lib/api.ts`
+      // genau `data.summary` liest. Ein anderer Name waere leer angekommen.
+      { json: false, feld: "summary" },
     );
     res.status(antwort.status).json(antwort.koerper);
   });
