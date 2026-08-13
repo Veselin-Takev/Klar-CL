@@ -751,32 +751,45 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
           </button>
         </div>
       </div>
-      <div className="flex flex-col items-center mb-8">
-        <div className="relative mb-4">
-          <div className="w-24 h-24 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden border-2 border-white dark:border-stone-900 shadow-sm">
+      {/* ── KOPF EINZEILIG (14.08.2026) ──────────────────────────────────
+          VORHER: Foto (96 px), Name, Ort und der Hinweis „Lokal: Bio,
+          Interessen, No-Gos" untereinander, mittig, mit `mb-8`. Rund 380 px,
+          bevor der erste Inhalt kam — und zwar auf JEDEM der drei Reiter.
+
+          JETZT: Foto 56 px links, Name und Ort rechts daneben. Der Gewinn
+          ist nicht einmalig, sondern bei jedem Reiterwechsel derselbe.
+
+          `OfflineCacheStatus` ist in den Reiter „Einstellungen" gewandert:
+          Das ist eine Diagnoseanzeige („Lokal: Bio, Interessen, No-Gos"),
+          kein Profilinhalt. Im Kopf beantwortete sie eine Frage, die dort
+          niemand stellt. */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="relative shrink-0">
+          <div className="w-14 h-14 bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden border-2 border-white dark:border-stone-900 shadow-sm">
             <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=200&h=200" alt="Avatar" className="w-full h-full object-cover" />
           </div>
           {auditScore !== null && (
-            <div className="absolute -bottom-1 -right-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-md flex items-center gap-1 border-2 border-white dark:border-stone-900" title="Deep-Verbindung Qualität">
+            <div className="absolute -bottom-1 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-md flex items-center gap-1 border-2 border-white dark:border-stone-900" title="Deep-Verbindung Qualität">
               <Sparkles size={10} />
               {auditScore * 10}%
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <h2 className="text-xl font-medium text-stone-900 dark:text-stone-100">Du, 29</h2>
-          {isFocusTimeActive && (
-            <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 rounded-full text-xs font-medium border border-stone-200 dark:border-stone-700">
-              <Moon size={12} className="text-indigo-500" />
-              Gerade offline (Fokus-Zeit)
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-medium text-stone-900 dark:text-stone-100 truncate">Du, 29</h2>
+            <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-1 rounded-full shrink-0" title="Verifiziert">
+              <ShieldCheck size={16} />
             </div>
-          )}
-          <div className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 p-1 rounded-full" title="Verifiziert">
-            <ShieldCheck size={16} />
           </div>
+          <p className="text-stone-500 dark:text-stone-400 text-sm">Berlin</p>
         </div>
-        <p className="text-stone-500 dark:text-stone-400 mt-1">Berlin</p>
-        <OfflineCacheStatus />
+        {isFocusTimeActive && (
+          <div className="ml-auto flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 rounded-full text-xs font-medium border border-stone-200 dark:border-stone-700 shrink-0">
+            <Moon size={12} className="text-indigo-500" />
+            Fokus-Zeit
+          </div>
+        )}
       </div>
       
       {/* ── DREI REITER (14.08.2026) ─────────────────────────────────
@@ -784,12 +797,19 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
           zu verschiedenen Anlaessen aufgerufen werden. Der Zustand
           liegt in `reiter`; die Inhalte sind unveraendert, nur
           gruppiert. Siehe klar/27-profilseite-layout. */}
-      <Reiterleiste
-        name="profil"
-        reiter={PROFIL_REITER}
-        aktiv={reiter}
-        aufWechsel={setReiter}
-      />
+      {/* Am oberen Rand festgehalten: Wer unten in einem Reiter steht,
+          musste zum Wechseln erst nach oben scrollen. `-mx-6 px-6` holt den
+          Rand des Behaelters zurueck, damit nichts seitlich darunter
+          durchscheint; die Hintergrundfarbe deckt den Inhalt ab, der
+          darunter wegscrollt. */}
+      <div className="sticky top-0 z-10 -mx-6 px-6 pt-1 bg-light-bg dark:bg-dark-bg">
+        <Reiterleiste
+          name="profil"
+          reiter={PROFIL_REITER}
+          aktiv={reiter}
+          aufWechsel={setReiter}
+        />
+      </div>
       <div className="space-y-4">
         {reiter === "profil" && (
         <div role="tabpanel" id="profil-profil-inhalt" aria-labelledby="profil-profil" className="space-y-4">
@@ -1683,6 +1703,9 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
 
         {reiter === "einstellungen" && (
         <div role="tabpanel" id="profil-einstellungen-inhalt" aria-labelledby="profil-einstellungen" className="space-y-4">
+        {/* Aus dem Kopf hierher: eine Diagnoseanzeige gehoert zu den
+            Einstellungen, nicht ueber das Profilbild. */}
+        <div className="flex justify-center"><OfflineCacheStatus /></div>
         <div className="mb-6">
           
 
