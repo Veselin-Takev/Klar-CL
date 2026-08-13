@@ -12,6 +12,7 @@ import { Target, TrendingUp } from "lucide-react";
 import { SentimentAnalyticsWidget } from "../components/SentimentAnalyticsWidget";
 import { DailyCheckinWidget } from "../components/DailyCheckinWidget";
 import { CheckinTimelineWidget } from "../components/CheckinTimelineWidget";
+import { Antworttext } from "../components/Antworttext";
 
 type JournalEntry = {
   id: string;
@@ -482,9 +483,17 @@ Halte es ermutigend und hilfreich.`;
                 <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === 'user' 
                     ? 'bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-tr-sm' 
-                    : 'bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-tl-sm shadow-sm whitespace-pre-wrap'
+                    : 'bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-tl-sm shadow-sm'
                 }`}>
-                  {msg.text}
+                  {/* 14.08.2026: Hier stand `{msg.text}` mit
+                      `whitespace-pre-wrap`. Das Modell antwortet in Markdown,
+                      und auf dem Bildschirm standen die Sternchen wörtlich:
+                      „* **Option 1 (Werte):** …". Die eigene Nachricht bleibt
+                      unveraendert — was der Mensch getippt hat, wird nicht
+                      umgedeutet. */}
+                  {msg.role === 'user'
+                    ? <span className="whitespace-pre-wrap">{msg.text}</span>
+                    : <Antworttext text={msg.text} />}
                 </div>
               </div>
             ))}
@@ -916,9 +925,12 @@ Halte es ermutigend und hilfreich.`;
                     <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === 'user' 
                         ? 'bg-brand dark:bg-brand-light text-white dark:text-stone-900 rounded-tr-sm' 
-                        : 'bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-tl-sm shadow-sm whitespace-pre-wrap'
+                        : 'bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-tl-sm shadow-sm'
                     }`}>
-                      {msg.text}
+                      {/* Siehe oben — dieselbe Stelle im Uebungsgespraech. */}
+                      {msg.role === 'user'
+                        ? <span className="whitespace-pre-wrap">{msg.text}</span>
+                        : <Antworttext text={msg.text} />}
                     </div>
                   </div>
                 ))}
