@@ -14,7 +14,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:pure": "tsx --test tests/pure.spec.ts tests/kiPolitik.spec.ts tests/kiAufruf.spec.ts tests/zwischenspeicher.spec.ts tests/wiederholung.spec.ts tests/sprache.spec.ts tests/gastrechte.spec.ts tests/pausenplan.spec.ts",
-    "verify": "npm run typecheck && npm run check:hooks && npm run check:namen && npm run check:vorlagen && npm run check:beschriftung && npm run check:ki && npm run check:client-ersatz && npm run check:json-form && npm run check:doppelte-einstellungen && npm run check:kontrast && npm run test:pure && npm test && npm run test:rules",
+    "verify": "npm run typecheck && npm run check:hooks && npm run check:namen && npm run check:vorlagen && npm run check:beschriftung && npm run check:ki && npm run check:client-ersatz && npm run check:json-form && npm run check:doppelte-einstellungen && npm run check:formularfelder && npm run check:kontrast && npm run test:pure && npm test && npm run test:rules",
     "check:kontrast": "node scripts/check-kontrast.mjs",
     "check:hooks": "node scripts/check-hooks.mjs",
     "check:namen": "node scripts/check-namen.mjs src",
@@ -24,6 +24,7 @@
     "check:client-ersatz": "node scripts/client-ersatz.mjs src 13",
     "check:json-form": "node scripts/json-form.mjs 0",
     "check:doppelte-einstellungen": "node scripts/doppelte-einstellungen.mjs src 27",
+    "check:formularfelder": "node scripts/formularfelder.mjs src 107",
     "test:rules": "firebase emulators:exec --project demo-klar --only firestore --config firebase.pruefung.json \"tsx --test tests/rules.spec.ts\"",
     "dev:lokal": "firebase emulators:exec --project demo-klar --only auth,firestore \"VITE_EMULATOR=true tsx server.ts\"",
     "dev:moderator": "node scripts/dev-moderator.mjs"

@@ -836,7 +836,10 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
           ) : (
             <div className="animate-in fade-in slide-in-from-top-2 duration-300">
               <h3 className="font-medium text-stone-900 dark:text-stone-100 mb-2">Text einfügen</h3>
-              <textarea 
+              <textarea
+                id="profil-import-text"
+                name="profil-import-text"
+                aria-label="Text zum Importieren"
                 value={importText}
                 onChange={e => setImportText(e.target.value)}
                 placeholder="z.B. 'Ich bin Softwareentwickler, spiele gerne Gitarre und liebe es zu reisen...'"
@@ -990,9 +993,12 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
               })}
             </div>
             <div className="flex gap-2 mt-3">
-              <input 
-                type="text" 
-                value={newInterest} 
+              <input
+                id="profil-neues-interesse"
+                name="profil-neues-interesse"
+                aria-label="Neues Interesse hinzufügen"
+                type="text"
+                value={newInterest}
                 onChange={(e) => setNewInterest(e.target.value)}
                 placeholder="Neues Interesse hinzufügen..."
                 className="flex-1 bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl px-3 py-1.5 text-sm text-stone-700 dark:text-stone-300 focus:outline-none focus:ring-2 focus:ring-brand/50"
@@ -1042,8 +1048,11 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
             ))}
           </div>
           <div className="flex gap-2 mt-3">
-            <input 
-              type="text" 
+            <input
+              id="profil-neues-nogo"
+              name="profil-neues-nogo"
+              aria-label="No-Go hinzufügen"
+              type="text"
               value={newNoGo}
               onChange={(e) => setNewNoGo(e.target.value)}
               placeholder="No-Go hinzufügen (z.B. Raucher)"
@@ -1155,6 +1164,9 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
           {isEditingBio ? (
             <div className="mb-2 space-y-2">
               <textarea
+                id="profil-bio"
+                name="profil-bio"
+                aria-label="Über mich"
                 value={userBio}
                 onChange={(e) => setUserBio(e.target.value)}
                 className="w-full min-h-[100px] p-3 text-sm bg-stone-50 dark:bg-stone-900 border border-brand/30 dark:border-brand-light/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand/50 resize-none text-stone-700 dark:text-stone-300"
@@ -1496,11 +1508,11 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                   <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="text-xs font-medium text-stone-600 dark:text-stone-400 block mb-1">Dein Profil</label>
-                      <input type="color" value={radarColorA} onChange={(e) => setRadarColorA(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
+                      <input id="radar-farbe-a" name="radar-farbe-a" aria-label="Farbe für deine Werte" type="color" value={radarColorA} onChange={(e) => setRadarColorA(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
                     </div>
                     <div className="flex-1">
                       <label className="text-xs font-medium text-stone-600 dark:text-stone-400 block mb-1">Verbindung Profil</label>
-                      <input type="color" value={radarColorB} onChange={(e) => setRadarColorB(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
+                      <input id="radar-farbe-b" name="radar-farbe-b" aria-label="Farbe für die Werte der Verbindung" type="color" value={radarColorB} onChange={(e) => setRadarColorB(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
                     </div>
                   </div>
                 </motion.div>
