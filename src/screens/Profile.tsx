@@ -3,7 +3,7 @@ import { useTheme } from '../components/ThemeProvider';
 import { motion, AnimatePresence } from "motion/react";
 // `Heart` und `FileText` wurden importiert und nie gerendert — entfernt.
 // `LogOut` bleibt: siehe die Abmelden-Schaltflaeche weiter unten.
-import { Settings, Download, Edit, BellRing, Moon, Sun, Monitor, LogOut, ShieldCheck, Trash2, Sparkles, Zap, Share2, Wand2, RefreshCw, ArrowRight, History, EyeOff, Eye, MessageCircle, Check, X, Smartphone, ChevronRight } from "lucide-react";
+import { Settings, Download, Edit, BellRing, Moon, Sun, Monitor, LogOut, ShieldCheck, Trash2, Sparkles, Zap, Share2, Wand2, RefreshCw, ArrowRight, History, EyeOff, Eye, MessageCircle, Check, X, ChevronRight } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { askAICoach, parseProfileImport, optimizeProfileApi } from "../lib/api";
 // BEFUND 10.08.2026: downloadRadarImage war am Knopf "Als Bild exportieren"
@@ -406,26 +406,9 @@ export default function Profile() {
 
   const { theme, setTheme } = useTheme();
 
-  const [hapticIntensity, setHapticIntensity] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('klar_haptic_intensity');
-      if (stored !== null) return parseInt(stored, 10);
-      
-      const oldSetting = localStorage.getItem('klar_haptic_feedback');
-      if (oldSetting === 'Off') return 0;
-      if (oldSetting === 'Low') return 50;
-      return 100;
-    }
-    return 100;
-  });
-
-  const updateHapticIntensity = (value: number) => {
-    setHapticIntensity(value);
-    localStorage.setItem('klar_haptic_intensity', value.toString());
-    if (value > 0) {
-      import('../lib/haptics').then(({ hapticFeedback }) => hapticFeedback(50));
-    }
-  };
+  // `hapticIntensity` und `updateHapticIntensity` sind am 14.08.2026
+  // entfallen: Sie gehoerten zur zweiten Haptik-Bedienung, die es hier nicht
+  // mehr gibt. Den Zustand haelt jetzt ausschliesslich <HapticSettings />.
 
   useEffect(() => {
     if (darkModeVariant === "black") {
@@ -1655,7 +1638,8 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
               unten (vollstaendige Wahl, ueber useTheme).
               Die Datei src/components/ThemeSettingsWidget.tsx wird damit
               von niemandem mehr benutzt und ist zu loeschen. */}
-          <HapticSettings />
+          {/* <HapticSettings /> ist am 14.08.2026 nach unten in den
+              Abschnitt "Einstellungen" gewandert — siehe Begruendung dort. */}
           <SmartPauseWidget />
           <FocusTimeSettingsWidget />
         </div>
@@ -1830,31 +1814,23 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                     
 
           
+          {/* ── BEFUND 14.08.2026: HAPTIK STAND ZWEIMAL AUF DIESER SEITE ──
+              Hier war eine ZWEITE, in Profile.tsx selbst gebaute Bedienung
+              (Aus / Sanft / Stark), waehrend weiter oben bereits
+              <HapticSettings /> stand. Beide schrieben denselben Schluessel
+              `klar_haptic_intensity`, hielten den Wert aber in GETRENNTEN
+              React-Zustaenden: Wer oben "Stark" waehlte, sah unten den alten
+              Wert — bis zum Neuladen. Zwei Bedienelemente fuer eine
+              Einstellung, die sich widersprechen koennen.
+
+              Geblieben ist <HapticSettings />, weil es die vollstaendigere
+              ist: Schalter, Muster UND Staerke, und es schreibt auch
+              `klar_haptic_enabled`. Es steht jetzt HIER, unter
+              "Einstellungen", statt mitten auf der Seite — das ist zugleich
+              der erste Schritt zum Reiter "Einstellungen"
+              (klar/27-profilseite-layout). */}
           <div className="mb-6">
-            <h4 className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-3 flex items-center gap-2">
-              <Smartphone size={18} className="text-stone-500" />
-              Haptisches Feedback
-            </h4>
-            <div className="flex bg-stone-100 dark:bg-stone-800 p-1 rounded-xl">
-              <button
-                onClick={() => updateHapticIntensity(0)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-colors ${hapticIntensity === 0 ? 'bg-white dark:bg-stone-700 text-brand shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'}`}
-              >
-                Aus
-              </button>
-              <button
-                onClick={() => updateHapticIntensity(50)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-colors ${hapticIntensity === 50 ? 'bg-white dark:bg-stone-700 text-brand shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'}`}
-              >
-                Sanft
-              </button>
-              <button
-                onClick={() => updateHapticIntensity(100)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-lg transition-colors ${hapticIntensity === 100 ? 'bg-white dark:bg-stone-700 text-brand shadow-sm' : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'}`}
-              >
-                Stark
-              </button>
-            </div>
+            <HapticSettings />
           </div>
 
           <div className="mt-8 pt-6 border-t border-stone-200 dark:border-stone-700">
