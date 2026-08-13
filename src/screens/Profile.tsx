@@ -1507,12 +1507,12 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
                 >
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <label className="text-xs font-medium text-stone-600 dark:text-stone-400 block mb-1">Dein Profil</label>
-                      <input id="radar-farbe-a" name="radar-farbe-a" aria-label="Farbe für deine Werte" type="color" value={radarColorA} onChange={(e) => setRadarColorA(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
+                      <label htmlFor="radar-farbe-a" className="text-xs font-medium text-stone-600 dark:text-stone-400 block mb-1">Dein Profil</label>
+                      <input id="radar-farbe-a" name="radar-farbe-a" type="color" value={radarColorA} onChange={(e) => setRadarColorA(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
                     </div>
                     <div className="flex-1">
-                      <label className="text-xs font-medium text-stone-600 dark:text-stone-400 block mb-1">Verbindung Profil</label>
-                      <input id="radar-farbe-b" name="radar-farbe-b" aria-label="Farbe für die Werte der Verbindung" type="color" value={radarColorB} onChange={(e) => setRadarColorB(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
+                      <label htmlFor="radar-farbe-b" className="text-xs font-medium text-stone-600 dark:text-stone-400 block mb-1">Verbindung Profil</label>
+                      <input id="radar-farbe-b" name="radar-farbe-b" type="color" value={radarColorB} onChange={(e) => setRadarColorB(e.target.value)} className="w-full h-8 rounded cursor-pointer" />
                     </div>
                   </div>
                 </motion.div>
