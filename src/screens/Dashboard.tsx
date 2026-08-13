@@ -1553,13 +1553,13 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <ValuesQuizWidget onComplete={handleQuizComplete} />
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <CompatibilityRadarWidget userInterests={userInterests} verbindungen={availableProfiles} />
+          <BeiSicht vorlauf="150px" platzhalterHoehe="12rem"><CompatibilityRadarWidget userInterests={userInterests} verbindungen={availableProfiles} /></BeiSicht>
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <DailyMoodCheckInWidget />
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <MoodMonitorWidget />
+          <BeiSicht vorlauf="150px" platzhalterHoehe="12rem"><MoodMonitorWidget /></BeiSicht>
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <ProfileCheckWidget />
@@ -1610,13 +1610,13 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <NextDateWidget />
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <CityTrendRadarWidget location={filterLocation} />
+          <BeiSicht vorlauf="150px" platzhalterHoehe="12rem"><CityTrendRadarWidget location={filterLocation} /></BeiSicht>
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <SmartVibeMapWidget />
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <DatePreparationChecklistWidget userInterests={userInterests} />
+          <BeiSicht vorlauf="150px" platzhalterHoehe="12rem"><DatePreparationChecklistWidget userInterests={userInterests} /></BeiSicht>
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <DateReflectionJournalWidget />
@@ -1640,7 +1640,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <BreathingExerciseWidget />
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <SituationalIcebreakerWidget userInterests={userInterests} />
+          <BeiSicht vorlauf="150px" platzhalterHoehe="12rem"><SituationalIcebreakerWidget userInterests={userInterests} /></BeiSicht>
         </div>
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <MatchIcebreakersWidget />
@@ -2136,7 +2136,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
               damit ohne jeden Bezug zu den Interessen der Verbindungen. */}
           <DailyIcebreakerWidget userInterests={userInterests} matchesInterests={uniqueVerbindungenInterests} />
           <SmartDatePlannerWidget location={filterLocation} />
-          <DateInspirationTab userInterests={userInterests} userCoords={userCoords} />
+          <BeiSicht><DateInspirationTab userInterests={userInterests} userCoords={userCoords} /></BeiSicht>
         </div>
       </div>
     </div>

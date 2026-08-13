@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import { sollWiederholen } from "./wiederholung";
 
 export async function getAuthToken(): Promise<string | null> {
   const user = auth.currentUser;
@@ -139,9 +140,26 @@ export async function fetchWithTimeout(resource: RequestInfo, options: RequestIn
         window.dispatchEvent(new CustomEvent('klar_api_retry_end'));
       }
       
-      if (!response.ok && response.status >= 500 && attempt < retries) {
-         // Force retry on 5xx errors
-         throw new Error(`Server error: ${response.status}`);
+      if (!response.ok && attempt < retries) {
+         // BEFUND 13.08.2026: Hier stand `response.status >= 500` als einzige
+         // Bedingung. Damit wurde ein 503 aus `kiPolitik.ts` — also ein
+         // erschoepftes KI-Kontingent, das der Server bereits selbst
+         // wiederholt hatte — noch zweimal nachgefragt. Aus einem Ausfall
+         // wurden drei Anfragen. Siehe `src/lib/wiederholung.ts`.
+         //
+         // Der Koerper wird auf einer KOPIE gelesen: `response` geht gleich
+         // an den Aufrufer, und ein einmal gelesener Koerper laesst sich
+         // nicht erneut lesen.
+         let koerper: unknown = null;
+         try {
+           koerper = await response.clone().json();
+         } catch {
+           // Kein JSON: dann auch kein `code`, also gilt die 5xx-Regel.
+           koerper = null;
+         }
+         if (sollWiederholen(response.status, koerper)) {
+           throw new Error(`Server error: ${response.status}`);
+         }
       }
       
       return response;
