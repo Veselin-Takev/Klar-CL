@@ -34,6 +34,7 @@
     "routen": "node scripts/routen-inventar.mjs 999 --liste",
     "wiedervorlage": "node scripts/wiedervorlage.mjs",
     "test:rules": "firebase emulators:exec --project demo-klar --only firestore --config firebase.pruefung.json \"tsx --test tests/rules.spec.ts\"",
+    "test:rules-diagnose": "firebase emulators:exec --project demo-klar --only firestore --config firebase.pruefung.json \"tsx --test tests/rules-diagnose.spec.ts\"",
     "dev:lokal": "firebase emulators:exec --project demo-klar --only auth,firestore \"VITE_EMULATOR=true tsx server.ts\"",
     "dev:moderator": "node scripts/dev-moderator.mjs"
   },
