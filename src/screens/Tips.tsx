@@ -489,6 +489,8 @@ export default function Tips() {
           <div className="p-6 pb-safe animate-in fade-in slide-in-from-bottom-4 duration-500">
             <h3 className="font-serif text-2xl mb-2 text-brand dark:text-brand-light">KI-Date-Ideen</h3>
             <textarea
+              id="ideen-interessen"
+              name="ideen-interessen"
               value={interests}
               onChange={(e) => setInterests(e.target.value)}
               placeholder="Interessen..."
@@ -521,6 +523,8 @@ export default function Tips() {
             <h3 className="font-serif text-2xl mb-2 text-brand dark:text-brand-light">Date-Journal</h3>
             <div className="mb-6 p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-xl space-y-4">
               <input
+                id="journal-person"
+                name="journal-person"
                 type="text"
                 placeholder="Mit wem?"
                 value={newPerson}
@@ -528,6 +532,8 @@ export default function Tips() {
                 className="w-full p-3 rounded-lg border border-stone-200 dark:border-stone-800 bg-light-bg dark:bg-dark-bg"
               />
               <textarea
+                id="journal-notiz"
+                name="journal-notiz"
                 placeholder="Notizen..."
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
@@ -557,10 +563,10 @@ export default function Tips() {
             
             <div className="mb-6 p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-xl space-y-4">
               <h4 className="font-medium text-brand dark:text-brand-light mb-2">Date Erinnerung</h4>
-              <input type="text" placeholder="Titel" value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} className="w-full p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg mb-2" />
+              <input type="text" id="erinnerung-titel" name="erinnerung-titel" placeholder="Titel" value={reminderTitle} onChange={(e) => setReminderTitle(e.target.value)} className="w-full p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg mb-2" />
               <div className="flex gap-2">
-                <input type="date" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="flex-1 p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
-                <input type="time" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="flex-1 p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
+                <input type="date" id="erinnerung-datum" name="erinnerung-datum" value={reminderDate} onChange={(e) => setReminderDate(e.target.value)} className="flex-1 p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
+                <input type="time" id="erinnerung-uhrzeit" name="erinnerung-uhrzeit" value={reminderTime} onChange={(e) => setReminderTime(e.target.value)} className="flex-1 p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
               </div>
               {timeLeft && (
                 <div className="flex gap-2 justify-center py-2 text-brand dark:text-brand-light font-medium">
@@ -596,8 +602,8 @@ export default function Tips() {
                   </div>
                   {editingEntryId === entry.id ? (
                     <div className="space-y-3">
-                      <input value={editPerson} onChange={(e) => setEditPerson(e.target.value)} className="w-full p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
-                      <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} className="w-full p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
+                      <input id={`journal-bearbeiten-person-${entry.id}`} name="journal-bearbeiten-person" value={editPerson} onChange={(e) => setEditPerson(e.target.value)} className="w-full p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
+                      <textarea id={`journal-bearbeiten-notiz-${entry.id}`} name="journal-bearbeiten-notiz" value={editNote} onChange={(e) => setEditNote(e.target.value)} className="w-full p-2 border border-stone-200 dark:border-stone-800 rounded-lg bg-light-bg dark:bg-dark-bg" />
                       <div className="flex flex-wrap gap-2">
                         {['Inspiriert', 'Entspannt', 'Unsicher', 'Erschöpft', 'Klar', 'Überrascht'].map(mood => (
                           <button key={mood} onClick={() => setEditMood(editMood === mood ? null : mood)} className={`px-3 py-1.5 rounded-full text-xs font-medium ${editMood === mood ? 'bg-brand dark:bg-brand-light text-white dark:text-stone-900' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>

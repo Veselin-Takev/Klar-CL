@@ -1169,6 +1169,8 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                     <span className="text-sm font-medium text-stone-900 dark:text-stone-100">KI-Deep-Match</span>
                     <label className="relative inline-block w-10 h-5 align-middle select-none transition duration-200 ease-in">
                       <input 
+                        id="filter-ki-deep-match"
+                        name="filter-ki-deep-match"
                         type="checkbox" 
                         checked={aiFilterMode}
                         onChange={async (e) => {
@@ -1242,13 +1244,15 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                 </div>
 
                 <div>
-                  <label className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 flex justify-between">
+                  <label htmlFor="filter-matching-intensitaet" className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 flex justify-between">
                     <span>Matching-Intensität</span>
                     <span className="font-medium text-brand dark:text-brand-light">
                       {matchIntensity === 0 ? "Offen für Neues" : matchIntensity < 50 ? "Etwas selektiver" : matchIntensity < 80 ? "Starke Verbindungen" : "Präzise Verbindungen"}
                     </span>
                   </label>
                   <input
+                    id="filter-matching-intensitaet"
+                    name="filter-matching-intensitaet"
                     type="range"
                     min="0"
                     max="100"
@@ -1265,11 +1269,13 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
 
                 {userCoords && (
                   <div>
-                    <label className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 flex justify-between">
+                    <label htmlFor="filter-max-distanz" className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 flex justify-between">
                       <span>Maximale Distanz</span>
                       <span className="font-medium text-brand dark:text-brand-light">{filterMaxDistance < 100 ? `${filterMaxDistance} km` : 'Egal'}</span>
                     </label>
                     <input
+                      id="filter-max-distanz"
+                      name="filter-max-distanz"
                       type="range"
                       min="5"
                       max="100"
@@ -1288,6 +1294,8 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                   </label>
                   <div className="flex items-center gap-2">
                     <input
+                      id="filter-alter-min"
+                      name="filter-alter-min"
                       type="number"
                       min="18"
                       max="99"
@@ -1297,6 +1305,8 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                     />
                     <span className="text-stone-400">-</span>
                     <input
+                      id="filter-alter-max"
+                      name="filter-alter-max"
                       type="number"
                       min="18"
                       max="99"
@@ -1308,8 +1318,10 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                 </div>
 
                 <div>
-                  <label className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 block">Interesse suchen</label>
+                  <label htmlFor="filter-interesse" className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 block">Interesse suchen</label>
                   <input
+                    id="filter-interesse"
+                    name="filter-interesse"
                     type="text"
                     placeholder="z.B. Yoga, Klettern..."
                     value={filterSpecificInterest}
@@ -1338,9 +1350,11 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
                 </div>
 
                 <div>
-                  <label className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 block">Standort</label>
+                  <label htmlFor="filter-standort" className="text-xs text-stone-500 dark:text-stone-400 mb-1.5 block">Standort</label>
                   <div className="relative">
                     <select 
+                      id="filter-standort"
+                      name="filter-standort"
                       value={filterLocation || ""} 
                       onChange={(e) => setFilterLocation(e.target.value || null)}
                       className="w-full bg-stone-100 dark:bg-stone-800 border border-transparent rounded-xl px-4 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-brand/50 appearance-none"
