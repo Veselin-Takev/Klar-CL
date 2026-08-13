@@ -48,6 +48,7 @@ import { FocusTimeSettingsWidget } from "../components/FocusTimeSettingsWidget";
 // Komponente geworden — Begruendung im Kopf von SmartPause.tsx.
 import { SmartPause } from "../components/SmartPause";
 import { HapticSettings } from "../components/HapticSettings";
+import { Reiterleiste, type Reiter } from "../components/Reiterleiste";
 // ENTFERNT 12.08.2026: fuenf Widgets mit erfundenen Daten. Siehe die
 // Stellen im Text weiter unten. Die Dateien unter src/components/ sind
 // damit ohne Aufrufer und koennen geloescht werden.
@@ -236,6 +237,15 @@ const CustomRadarTooltip = ({ active, payload }: RadarTooltipEigenschaften) => {
   return null;
 };
 
+// Die drei Bereiche. Reihenfolge: was andere sehen, wie es laeuft, wie die
+// App eingestellt ist — von aussen nach innen.
+type ReiterId = "profil" | "entwicklung" | "einstellungen";
+const PROFIL_REITER: readonly Reiter<ReiterId>[] = [
+  { id: "profil", beschriftung: "Profil" },
+  { id: "entwicklung", beschriftung: "Entwicklung" },
+  { id: "einstellungen", beschriftung: "Einstellungen" },
+];
+
 export default function Profile() {
   const { logOut, updateProfileData } = useAuth();
   const [activeRadarValue, setActiveRadarValue] = useState<string | null>(null);
@@ -404,6 +414,8 @@ export default function Profile() {
     }
     return "gray";
   });
+
+  const [reiter, setReiter] = useState<ReiterId>("profil");
 
   const { theme, setTheme } = useTheme();
 
@@ -767,7 +779,20 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
         <OfflineCacheStatus />
       </div>
       
+      {/* ── DREI REITER (14.08.2026) ─────────────────────────────────
+          Aus einer Seite mit 26 Abschnitten werden drei Bereiche, die
+          zu verschiedenen Anlaessen aufgerufen werden. Der Zustand
+          liegt in `reiter`; die Inhalte sind unveraendert, nur
+          gruppiert. Siehe klar/27-profilseite-layout. */}
+      <Reiterleiste
+        name="profil"
+        reiter={PROFIL_REITER}
+        aktiv={reiter}
+        aufWechsel={setReiter}
+      />
       <div className="space-y-4">
+        {reiter === "profil" && (
+        <div role="tabpanel" id="profil-profil-inhalt" aria-labelledby="profil-profil" className="space-y-4">
         {/* Import Section */}
         <div className="p-4  from-brand/5 to-brand-light/5 border border-brand/20 rounded-2xl shadow-sm">
           {!showImport ? (
@@ -1624,28 +1649,13 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
               mit dem Etikett „Sehr Gut". Die Zahlen aenderten sich nie,
               fuer niemanden. */}
           <ProfileCardThemeSelector />
-          
-        <div className="mb-6">
-          
-
-          <SmartPause />
-          {/* ENTFERNT 11.08.2026 — <ThemeSettingsWidget />.
-              Dritte Hell/Dunkel/System-Wahl auf derselben Seite, und die
-              dritte, die nach `localStorage['theme']` schrieb statt nach
-              `klar_theme`. Sie war damit ohne dauerhafte Wirkung und
-              konnte einen anderen Zustand anzeigen als die beiden
-              anderen. Geblieben sind die Systemleiste oben (schneller
-              Wechsel) und "Einstellungen -> Erscheinungsbild" weiter
-              unten (vollstaendige Wahl, ueber useTheme).
-              Die Datei src/components/ThemeSettingsWidget.tsx wird damit
-              von niemandem mehr benutzt und ist zu loeschen. */}
-          {/* <HapticSettings /> ist am 14.08.2026 nach unten in den
-              Abschnitt "Einstellungen" gewandert — siehe Begruendung dort.
-              <SmartPauseWidget /> stand hier ein zweites Mal; beide Karten
-              sind jetzt eine einzige <SmartPause />, die weiter oben steht. */}
-          <FocusTimeSettingsWidget />
         </div>
+        </div>
+        )}
+          
 
+        {reiter === "entwicklung" && (
+        <div role="tabpanel" id="profil-entwicklung-inhalt" aria-labelledby="profil-entwicklung" className="space-y-4">
         <div className="mb-6">
           <DatingMoodTrackerWidget />
           <div className="mt-6">
@@ -1668,6 +1678,31 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
         <DatingMilestones />
         
         <PDFResumeGenerator userBio={userBio} userInterests={userInterests} />
+        </div>
+        )}
+
+        {reiter === "einstellungen" && (
+        <div role="tabpanel" id="profil-einstellungen-inhalt" aria-labelledby="profil-einstellungen" className="space-y-4">
+        <div className="mb-6">
+          
+
+          <SmartPause />
+          {/* ENTFERNT 11.08.2026 — <ThemeSettingsWidget />.
+              Dritte Hell/Dunkel/System-Wahl auf derselben Seite, und die
+              dritte, die nach `localStorage['theme']` schrieb statt nach
+              `klar_theme`. Sie war damit ohne dauerhafte Wirkung und
+              konnte einen anderen Zustand anzeigen als die beiden
+              anderen. Geblieben sind die Systemleiste oben (schneller
+              Wechsel) und "Einstellungen -> Erscheinungsbild" weiter
+              unten (vollstaendige Wahl, ueber useTheme).
+              Die Datei src/components/ThemeSettingsWidget.tsx wird damit
+              von niemandem mehr benutzt und ist zu loeschen. */}
+          {/* <HapticSettings /> ist am 14.08.2026 nach unten in den
+              Abschnitt "Einstellungen" gewandert — siehe Begruendung dort.
+              <SmartPauseWidget /> stand hier ein zweites Mal; beide Karten
+              sind jetzt eine einzige <SmartPause />, die weiter oben steht. */}
+          <FocusTimeSettingsWidget />
+        </div>
 
         
         {/* Klar+ Premium Vergleichstabelle */}
@@ -1935,7 +1970,8 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
             
           </div>
         </div>
-      </div>
+        </div>
+        )}
     </div>
     </div>
     </>
