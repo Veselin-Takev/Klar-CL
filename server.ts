@@ -69,7 +69,10 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { handleBlock, handleDeleteAccount, handleReport } from './src/server/trustAndSafety';
 // SEC-03: Die Pruefung der Bild-Herkunft liegt in pure.ts — abhaengigkeitsfrei
 // und damit ohne Firebase und ohne Express nachrechenbar.
-import { pruefeBildUrl, zweckErlaubt, contactDay, BILD_MAX_BYTES, BILD_TIMEOUT_MS } from './src/server/pure';
+// `contactDay` stand hier bis zum 14.08.2026 mit im Import — gebraucht wurde
+// es nur von /api/admob-ssv. Mit dem Endpunkt faellt es weg; `noUnusedLocals`
+// haette `npm run verify` sonst mit TS6133 abgebrochen.
+import { pruefeBildUrl, zweckErlaubt, BILD_MAX_BYTES, BILD_TIMEOUT_MS } from './src/server/pure';
 // DSG-02 und DSG-04: Alter, Einwilligung, Datenauskunft.
 import {
   handleAlter,
@@ -348,7 +351,9 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
   // Reihenfolge: erst Limit (kostet nichts), dann Anmeldung.
   const OEFFENTLICH = new Set([
     "/api/health",
-    "/api/admob-ssv",   // signierter Callback von Google, kein Nutzertoken
+    // 14.08.2026: "/api/admob-ssv" entfernt — der Endpunkt gibt es nicht
+    // mehr. Ein oeffentlicher Weg in einer Liste, den es nicht gibt, ist
+    // harmlos, aber irrefuehrend: Er laesst vermuten, dass es ihn gibt.
   ]);
 
   app.use("/api", (req, res, next) => {
@@ -392,7 +397,6 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
    *  und die, die man auch danach immer braucht (Auskunft, Löschung). */
   const OHNE_ALTERSPRUEFUNG = new Set([
     "/api/health",
-    "/api/admob-ssv",
     "/api/account/alter",
     "/api/account/delete",
     "/api/account/export",
@@ -422,6 +426,15 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
     "/api/optimize-profile", "/api/parse-profile-import",
     "/api/profile-check", "/api/profile-summary", "/api/quick-insight",
     "/api/reflection-insight", "/api/reflection-questions",
+    // 14.08.2026 NACHGETRAGEN: `/api/reply-suggestions` fehlte hier und
+    // hatte damit WEDER die Kontogrenze (60/Stunde) NOCH die Gastgrenze
+    // (15). Aufgefallen ist es beim Endpunkt-Inventar
+    // (scripts/routen-inventar.mjs): Die Route ruft die KI nicht selbst
+    // auf, sondern legt die Anfrage in `chatSuggestionQueue` (Zeile 1962);
+    // gerufen wird Gemini erst beim Abarbeiten der Warteschlange
+    // (Zeile 1912). Genau deshalb hat sie keine Textsuche gefunden — und
+    // deshalb steht diese Grenze der Pruefung jetzt in ihrem Kopf.
+    "/api/reply-suggestions",
     "/api/smart-audit", "/api/smart-date-planner", "/api/smart-vibe-map",
     "/api/summarize-voice", "/api/timeline-summary", "/api/translate",
     "/api/verbindung-context-analysis", "/api/verbindung-optimizer",
@@ -624,11 +637,6 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
     }
   });
 
-  // Public routes (must be before requireAuth)
-  // Admib SSV
-  
-
-  
 
   // Initialize Gemini API client
   const ai = new GoogleGenAI({ 
@@ -2630,9 +2638,8 @@ Gib die Antwort als JSON zurück.`,
   //
   // Aufgefallen an /api/conversation-dynamics beim Oeffnen eines Gespraechs.
   // Betroffen waren aber auch /api/date-planner, /api/city-insider,
-  // /api/weekly-review, /api/smart-audit, /api/verify-photo und
-  // /api/admob-ssv -- letzterer ist der signierte Rueckruf von Google fuer
-  // Werbebelohnungen.
+  // /api/weekly-review, /api/smart-audit und /api/verify-photo. Betroffen war
+  // damals auch /api/admob-ssv; den gibt es seit dem 14.08.2026 nicht mehr.
   //
   // In der Produktion war der Schaden anders, aber nicht kleiner: Dort
   // faengt app.get('*') alle GET-Anfragen ab, POST lief durch. Die
@@ -3433,129 +3440,48 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
   });
 
   
-  // ── SEC-02 ──────────────────────────────────────────────────────────────
-  // BEFUND (Final Audit 08.08.2026): Hier stand
-  //   „In a real production environment, we would fetch AdMob keys and
-  //    verify the ECDSA-SHA-256 signature here.
-  //    For this implementation, we simulate the verification step passing."
+  // ── ENTFERNT 14.08.2026 — /api/admob-ssv und die Werbebelohnung ─────────
   //
-  // Der Endpunkt ist oeffentlich (Google ruft ihn ohne Nutzertoken auf) und
-  // vergab Belohnungen an jede beliebige `user_id`. Ein Aufruf mit frei
-  // erfundenen Parametern genuegte. Das ist keine Sicherheitsluecke im
-  // Nebenweg, sondern der Geldhahn: „mit Zeit zahlen" ohne die Zeit.
+  // ENTSCHEIDUNG DES AUFTRAGGEBERS, 14.08.2026:
+  //   „Fuer das MVP gilt: Streichen. Besser eine schlanke, voll
+  //    funktionsfaehige und ehrliche User Journey als unfertige
+  //    Monetarisierungs-Features."
   //
-  // Jetzt: echte Signaturpruefung gegen Googles oeffentliche Schluessel.
-  // Sie schlaegt FEHL, wenn irgendetwas nicht stimmt — auch wenn die
-  // Schluesselliste nicht erreichbar ist. Lieber keine Belohnung als eine
-  // unverdiente.
+  // Hier stand der signierte Rueckruf von Google AdMob (Server-Side
+  // Verification). Er pruefte die ECDSA-SHA-256-Signatur gegen Googles
+  // oeffentliche Schluessel und schrieb bei „likes+3" drei Zusatzkontakte
+  // in `users/{uid}.extraContacts` fuer den laufenden Kontingenttag.
   //
-  // NICHT AUSGEFUEHRT: Dieser Weg ist nie gegen einen echten AdMob-Callback
-  // gelaufen. Er ist nach Googles Beschreibung gebaut, nicht nach Beobachtung.
-  // Vor dem ersten Einsatz gehoert er mit einem echten Testgeraet geprueft.
-  // Bis dahin gilt: schlaegt er fehl, gibt es keine Belohnung — das ist der
-  // gewollte Ausgang, nicht ein Fehler.
+  // WARUM ER GEHT, OBWOHL ER TECHNISCH IN ORDNUNG WAR:
   //
-  // BLEIBT OFFEN: `user_id` stammt aus dem Aufruf der App. Die Signatur
-  // belegt, dass Google die Angabe unveraendert weiterreicht — nicht, dass
-  // die App sie ehrlich gesetzt hat. Wer will, kann also einem fremden Konto
-  // Belohnungen schenken. Missbrauch ist das kaum; Diebstahl waere es.
-  // ────────────────────────────────────────────────────────────────────────
-
-  const SSV_SCHLUESSEL_URL = "https://gstatic.com/admob/reward/verifier-keys.json";
-  const SSV_CACHE_MS = 24 * 60 * 60 * 1000;
-  let ssvCache: { geholt: number; keys: Map<string, string> } | null = null;
-
-  async function admobSchluessel(keyId: string): Promise<string | null> {
-    const jetzt = Date.now();
-    if (!ssvCache || jetzt - ssvCache.geholt > SSV_CACHE_MS) {
-      const r = await fetch(SSV_SCHLUESSEL_URL, { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error(`Schluesselliste HTTP ${r.status}`);
-      const j = (await r.json()) as { keys: { keyId: number | string; pem: string }[] };
-      ssvCache = { geholt: jetzt, keys: new Map(j.keys.map((k) => [String(k.keyId), k.pem])) };
-    }
-    return ssvCache.keys.get(keyId) ?? null;
-  }
-
-  app.get("/api/admob-ssv", async (req, res) => {
-    try {
-      const { signature, key_id, user_id, custom_data, transaction_id, reward_item } = req.query;
-
-      if (!signature || !key_id || !user_id || !transaction_id) {
-        return res.status(400).send("Missing parameters");
-      }
-
-      // Signiert ist die Abfragezeichenkette bis AUSSCHLIESSLICH
-      // "&signature=". Deshalb die rohe URL und nicht req.query: Die
-      // Reihenfolge der Parameter gehoert zur Signatur, ein neu
-      // zusammengesetzter String stimmt nicht mehr.
-      const roh = req.originalUrl;
-      const frage = roh.indexOf("?");
-      const abfrage = frage >= 0 ? roh.slice(frage + 1) : "";
-      const trenner = abfrage.indexOf("&signature=");
-      if (trenner < 0) {
-        return res.status(400).send("Signature parameter missing");
-      }
-      const signiert = abfrage.slice(0, trenner);
-
-      const pem = await admobSchluessel(String(key_id));
-      if (!pem) {
-        console.error("AdMob SSV: unbekannte key_id", key_id);
-        return res.status(401).send("Unknown key");
-      }
-
-      const pruefer = crypto.createVerify("SHA256");
-      pruefer.update(signiert);
-      pruefer.end();
-      const gueltig = pruefer.verify(pem, Buffer.from(String(signature), "base64url"));
-      if (!gueltig) {
-        console.error("AdMob SSV: Signatur ungueltig", { key_id, transaction_id });
-        return res.status(401).send("Invalid signature");
-      }
-
-      // Erst ab hier steht fest, dass der Aufruf von Google stammt.
-      // DAT-06: Die Sammlung heisst in firestore.rules `ad_transactions`.
-      // Der Server schrieb `admob_transactions` — eine Sammlung, die in den
-      // Regeln nicht vorkommt und daher unter die Vorgabe „verweigern"
-      // fiel. Namen angeglichen.
-      const db = getFirestore();
-      const transactionRef = db.collection('ad_transactions').doc(transaction_id as string);
-      const userRef = db.collection('users').doc(user_id as string);
-      
-      await db.runTransaction(async (t) => {
-        const doc = await t.get(transactionRef);
-        if (doc.exists) {
-          // Already processed
-          return;
-        }
-        
-        // Mark as processed
-        t.set(transactionRef, { 
-          processedAt: FieldValue.serverTimestamp(),
-          userId: user_id,
-          reward: reward_item
-        });
-        
-        // DAT-05: Die Belohnung gilt fuer den laufenden Kontingenttag und
-        // wird beim Tageswechsel wertlos — `entscheideKontakt` prueft
-        // `extraTag`. Vorher wurde nur hochgezaehlt, und gelesen hat das
-        // Feld niemand: Der Zaehler wuchs, das Kontingent blieb bei 8.
-        if (reward_item === "likes+3" || custom_data === "likes+3") {
-          const heute = contactDay();
-          const bisher = (await t.get(userRef)).data() ?? {};
-          const alt = bisher.extraTag === heute ? (bisher.extraContacts ?? 0) : 0;
-          t.set(userRef, {
-            extraContacts: alt + 3,
-            extraTag: heute,
-          }, { merge: true });
-        }
-      });
-      
-      res.status(200).send("OK");
-    } catch (error) {
-      console.error("AdMob SSV Error:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  });
+  //   1. Er hatte keine Gegenstelle mehr. Der `RewardedAdButton` in
+  //      `Chats.tsx` war die einzige Stelle, die Werbung anbot — und der
+  //      zeigte gar keine Werbung, sondern wartete drei Sekunden und rief
+  //      dann `alert("Gratuliere! Du hast 3 zusaetzliche Kontakte
+  //      erhalten.")`. Darunter stand: „Actual API integration would happen
+  //      here". Ein Rueckruf ohne Anrufer ist kein Weg, sondern eine offene
+  //      Tuer.
+  //   2. Er stand im Widerspruch zum Transparenz-Modell. Klar liefert keine
+  //      Werbung aus (klar/27, Abschnitt 9c).
+  //   3. Sein eigener Kommentar sagte: „NICHT AUSGEFUEHRT: Dieser Weg ist
+  //      nie gegen einen echten AdMob-Callback gelaufen." Ungeprueft und
+  //      ohne Gegenstelle — das ist genau die Sorte Halbfertiges, die vor
+  //      einem MVP wegkommt.
+  //
+  // MIT ENTFERNT: `extraContacts`/`extraTag` aus `QuotaStand` und aus
+  // `entscheideKontakt` (src/server/pure.ts), die Sonderbehandlung des
+  // Plans in `handleQuota`/`handleContact` (src/server/klarCore.ts), und
+  // `src/components/RewardedAdButton.tsx`.
+  //
+  // BESTEHENDE DATEN: Ein `extraContacts`-Feld, das bei frueheren Nutzern
+  // in Firestore liegt, wird ab jetzt schlicht nicht mehr gelesen. Es
+  // aufzuraeumen ist unnoetig — es hat keine Wirkung mehr.
+  //
+  // WIEDERVORLAGE: Wenn die Monetarisierung drankommt (RevenueCat bzw.
+  // Store-Beleg fuer Klar+), gehoert hier neu entschieden, ob es einen Weg
+  // „mit Zeit zahlen" ueberhaupt geben soll. Der Werbesatz sagt „ein paar
+  // Sekunden Transparenz" — klar/27, Abschnitt 9c empfiehlt dafuer die
+  // Verifizierung (Lesart A), nicht Werbung.
 
   // ── P1-BEFUND, ENTFERNT ─────────────────────────────────────────────────
   // /api/verify-photo setzte `isVerified: true` fuer den aufrufenden Nutzer

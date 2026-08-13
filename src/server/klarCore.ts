@@ -60,9 +60,13 @@ export async function handleQuota(req: Request, res: Response): Promise<void> {
     const heute = contactDay();
     const verbraucht = d.contactDay === heute ? (d.contactCount ?? 0) : 0;
     const plan = d.plan === 'plus' ? 'plus' : 'frei';
+    // 14.08.2026: Vorher stand hier `plan === 'plus' ? null : …` — Klar+
+    // bekam „unbegrenzt" gemeldet. Acht gelten fuer alle (klar/27, 9c);
+    // `plan` wird weiterhin gemeldet, weil die Oberflaeche ihn anzeigt,
+    // aber er aendert die Zahlen nicht mehr.
     res.json({
-      uebrig: plan === 'plus' ? null : Math.max(0, DAILY_CONTACTS - verbraucht),
-      gesamt: plan === 'plus' ? null : DAILY_CONTACTS,
+      uebrig: Math.max(0, DAILY_CONTACTS - verbraucht),
+      gesamt: DAILY_CONTACTS,
       plan,
       naechsterTag: '04:00',
     });
@@ -105,9 +109,8 @@ export async function handleContact(req: Request, res: Response): Promise<void> 
           tag: d.contactDay ?? '',
           verbraucht: d.contactCount ?? 0,
           plan: d.plan === 'plus' ? 'plus' : 'frei',
-          // DAT-05: Belohnungen aus Werbung wirken jetzt tatsaechlich.
-          extraContacts: d.extraContacts ?? 0,
-          extraTag: d.extraTag ?? '',
+          // 14.08.2026: `extraContacts`/`extraTag` entfallen — die Werbe-
+          // belohnung samt /api/admob-ssv ist gestrichen (MVP-Entscheidung).
         },
         heute,
       );
@@ -126,7 +129,7 @@ export async function handleContact(req: Request, res: Response): Promise<void> 
     if (ergebnis.ok) {
       res.json({
         ok: true,
-        uebrig: Number.isFinite(ergebnis.uebrig) ? ergebnis.uebrig : null,
+        uebrig: ergebnis.uebrig,
         gesamt: DAILY_CONTACTS,
       });
       return;

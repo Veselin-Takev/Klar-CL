@@ -10,7 +10,6 @@ import { BioOptimizerWidget } from "../components/BioOptimizerWidget";
 import { UserCircle } from "lucide-react";
 import { Target, TrendingUp } from "lucide-react";
 import { SentimentAnalyticsWidget } from "../components/SentimentAnalyticsWidget";
-import { CoachInsightsWidget } from "../components/CoachInsightsWidget";
 import { DailyCheckinWidget } from "../components/DailyCheckinWidget";
 import { CheckinTimelineWidget } from "../components/CheckinTimelineWidget";
 
@@ -1019,7 +1018,29 @@ Halte es ermutigend und hilfreich.`;
 
         <div className="max-w-md mx-auto space-y-6 pb-6 pt-4 h-[calc(100vh-140px)]">
           <SentimentAnalyticsWidget />
-          <CoachInsightsWidget />
+          {/* ── ENTFERNT 14.08.2026 — <CoachInsightsWidget /> ───────────────
+              Die Karte war vollstaendig erfunden. Ihr eigener Kopfkommentar
+              sagte es seit dem 10.08.2026:
+
+                „P2-BEFUND, NICHT BEHOBEN: Dieses Widget erzeugt Daten, die
+                 es nicht gibt. Angezeigte Verlaeufe, Werte und Trends sind
+                 erfunden — fuer die bedienende Person aber nicht von echten
+                 zu unterscheiden."
+
+              Konkret: eine Flaechengrafik aus `mockData` (Mo–So, feste
+              Zahlen), dazu „Gespraechstiefe: Hoch, +24% vs letzte Woche"
+              und „Antwortzeit: 2.4h, -45m vs letzte Woche". Alles fest im
+              Quelltext.
+
+              Damals ausdruecklich stehen gelassen, weil es eine Produkt-
+              entscheidung sei. Die ist am 14.08.2026 gefallen: „Fuer das
+              MVP gilt: Streichen. Besser eine schlanke, voll funktions-
+              faehige und ehrliche User Journey als unfertige Features."
+
+              WIEDERVORLAGE: Gespraechstiefe und Antwortzeit sind sinnvolle
+              Kennzahlen. Sie brauchen aber erhobene Daten (Zeitstempel je
+              Nachricht, ausgewertet je Woche) — das ist eine Aufgabe im
+              Datenmodell, keine Anzeigefrage. */}
         <DailyCheckinWidget />
         <CheckinTimelineWidget />
 

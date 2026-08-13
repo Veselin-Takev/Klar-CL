@@ -36,8 +36,7 @@ import { DatingVibeChartWidget } from "../components/DatingVibeChartWidget";
 import { DatingMoodTrackerWidget } from "../components/DatingMoodTrackerWidget";
 import { InsightsChart } from "../components/InsightsChart";
 import { ProfileCheckWidget } from "../components/ProfileCheckWidget";
-import { DatingMilestones } from "../components/DatingMilestones";
-import { UserAchievementsWidget } from "../components/UserAchievementsWidget";
+import { Meilensteine } from "../components/Meilensteine";
 import { PDFResumeGenerator } from "../components/PDFResumeGenerator";
 // ENTFERNT 12.08.2026: `ValuesQuizWidget` und `ProfileCompletionWidget`
 // waren importiert, aber nirgends eingehaengt. Beides hat `@ts-nocheck`
@@ -1715,11 +1714,10 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
             Kompatibilitaet kamen aus `Math.random()`. */}
         <InsightsChart />
         
-        <UserAchievementsWidget />
+        <Meilensteine />
         {/* ENTFERNT: DatingActivityDashboardWidget — eine feste
             4-Wochen-Tabelle im Quelltext, angezeigt als „Dating-Aktivitaet
             (30 Tage)". */}
-        <DatingMilestones />
         
         <PDFResumeGenerator userBio={userBio} userInterests={userInterests} />
         </div>
@@ -1752,81 +1750,34 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
         </div>
 
         
-        {/* Klar+ Premium Vergleichstabelle */}
-        <div className="w-full mt-4 p-5 bg-white dark:bg-stone-900 border border-brand/20 dark:border-brand/30 rounded-2xl shadow-sm relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 opacity-5 pointer-events-none">
-            <Zap size={150} className="text-brand dark:text-brand-light" />
-          </div>
-          
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap size={20} className="text-brand dark:text-brand-light fill-brand/20" />
-              <h3 className="font-bold text-lg text-stone-900 dark:text-stone-100">Klar+ Premium</h3>
-            </div>
-            <p className="text-sm text-stone-600 dark:text-stone-300 mb-6">
-              Vergleiche die kostenlose Ad-Lite Version mit Klar+ Premium. Du entscheidest, wie du zahlst – mit Zeit oder mit Geld.
-            </p>
+        {/* ── KLAR+ 14.08.2026 ─────────────────────────────────────────
+            Vorher standen hier 75 Zeilen Vergleichstabelle (acht Zeilen mal
+            drei Spalten, rund 600 px) zwischen der Fokuszeit und der
+            Erscheinungsbild-Wahl — und darunter ein Knopf „Klar+ entdecken"
+            ohne `onClick`.
 
-            <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="bg-stone-50 dark:bg-stone-800/50 border-b border-stone-200 dark:border-stone-800">
-                    <th className="p-3 font-medium text-stone-600 dark:text-stone-400">Funktion</th>
-                    <th className="p-3 font-semibold text-stone-800 dark:text-stone-200 border-l border-stone-200 dark:border-stone-800 text-center w-28">Free<br/><span className="text-[10px] font-normal text-stone-500">(Ad-Lite)</span></th>
-                    <th className="p-3 font-semibold text-brand dark:text-brand-light border-l border-stone-200 dark:border-stone-800 text-center w-28 bg-brand/5 dark:bg-brand/10">Klar+<br/><span className="text-[10px] font-normal text-brand/70">Premium</span></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800/50">
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Kuratierte Profile / Tag</td>
-                    <td className="p-3 text-center text-stone-700 dark:text-stone-300 border-l border-stone-100 dark:border-stone-800/50 font-medium">8</td>
-                    <td className="p-3 text-center text-stone-900 dark:text-stone-100 border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10 font-bold">Unbegrenzt</td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Text + 1 Voice Note pro Chat</td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50"><Check size={16} className="mx-auto text-green-500" /></td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10"><Check size={16} className="mx-auto text-brand" /></td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Date-Planner</td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50"><Check size={16} className="mx-auto text-green-500" /></td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10"><Check size={16} className="mx-auto text-brand" /></td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Werbefreiheit</td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50"><X size={16} className="mx-auto text-red-400" /></td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10"><Check size={16} className="mx-auto text-brand" /></td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Inbound-Nachricht sehen</td>
-                    <td className="p-3 text-center text-xs text-stone-500 dark:text-stone-400 border-l border-stone-100 dark:border-stone-800/50">1x / Tag (mit Ad)</td>
-                    <td className="p-3 text-center text-stone-900 dark:text-stone-100 border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10 font-bold">Sofort & Alle</td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Erweiterte Filter (Kinderwunsch etc.)</td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50"><X size={16} className="mx-auto text-red-400" /></td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10"><Check size={16} className="mx-auto text-brand" /></td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Incognito-Modus</td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50"><X size={16} className="mx-auto text-red-400" /></td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10"><Check size={16} className="mx-auto text-brand" /></td>
-                  </tr>
-                  <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-800/30 transition-colors">
-                    <td className="p-3 text-stone-700 dark:text-stone-300">Unbegrenzte Chat-Historie</td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50"><X size={16} className="mx-auto text-red-400" /></td>
-                    <td className="p-3 text-center border-l border-stone-100 dark:border-stone-800/50 bg-brand/5 dark:bg-brand/10"><Check size={16} className="mx-auto text-brand" /></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            
-            <button className="w-full mt-5 py-3 bg-brand hover:bg-brand-dark text-white rounded-xl text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2">
-              <Sparkles size={16} />
-              Klar+ entdecken
-            </button>
-          </div>
-        </div>
+            Jetzt: eine Zeile, die dauerhaft auffindbar ist, und die Seite
+            `/klar-plus` fuer alles Weitere. Begruendung in klar/27,
+            Abschnitt 9b: Ein Verkaufsangebot in der Mitte der Einstellungen
+            ist die Bauform der Apps, gegen die Klar antritt.
+
+            Die Zeile nennt den aktuellen Plan zuerst und das Angebot danach.
+            Wer nur wissen will, was er hat, muss nichts anklicken. */}
+        <Link
+          to="/klar-plus"
+          className="w-full mt-4 p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-2xl shadow-sm flex items-center gap-3 min-h-[44px]"
+        >
+          <Zap size={18} className="text-brand dark:text-brand-light shrink-0" aria-hidden="true" />
+          <span className="flex-1">
+            <span className="block text-sm font-medium text-stone-900 dark:text-stone-100">
+              Aktueller Plan: Klar
+            </span>
+            <span className="block text-xs text-stone-500 dark:text-stone-400">
+              Was Klar+ anders macht ansehen
+            </span>
+          </span>
+          <ChevronRight size={18} className="text-stone-400 shrink-0" aria-hidden="true" />
+        </Link>
 
         <div className="w-full mt-4 p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-2xl shadow-sm">
 

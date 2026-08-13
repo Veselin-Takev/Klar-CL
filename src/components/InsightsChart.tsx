@@ -1,19 +1,35 @@
 import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { TrendingUp, Target, CheckCircle2, Circle, PartyPopper } from 'lucide-react';
+import { Target, CheckCircle2, Circle, PartyPopper } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'motion/react';
-import { NotificationService } from '../services/notificationService';
 
-const data = [
-  { name: 'Mo', initiated: 2, replies: 1 },
-  { name: 'Di', initiated: 3, replies: 2 },
-  { name: 'Mi', initiated: 5, replies: 4 },
-  { name: 'Do', initiated: 4, replies: 3 },
-  { name: 'Fr', initiated: 6, replies: 5 },
-  { name: 'Sa', initiated: 8, replies: 7 },
-  { name: 'So', initiated: 7, replies: 6 },
-];
+// ── ENTFERNT 14.08.2026 — die feste Wochenkurve ───────────────────────────
+// Hier stand:
+//
+//   const data = [
+//     { name: 'Mo', initiated: 2, replies: 1 },
+//     { name: 'Di', initiated: 3, replies: 2 },
+//     { name: 'Mi', initiated: 5, replies: 4 },
+//     { name: 'Do', initiated: 4, replies: 3 },
+//     { name: 'Fr', initiated: 6, replies: 5 },
+//     { name: 'Sa', initiated: 8, replies: 7 },
+//     { name: 'So', initiated: 7, replies: 6 },
+//   ];
+//
+// Darunter, als Ueberschrift: „Deine Aktivitaet der letzten 7 Tage". Jeder
+// Mensch sah dieselbe steigende Kurve — am ersten Tag wie im dritten Monat,
+// mit oder ohne ein einziges Gespraech. Eine steigende Kurve ist die
+// glaubwuerdigste Form von Erfindung: Sie sagt „es laeuft", und eine gute
+// Nachricht prueft niemand nach.
+//
+// Ersatzlos gestrichen statt nachgebaut: Die Zahlen „gestartete Gespraeche"
+// und „Antworten" gibt es heute nirgends. Sie zu erheben ist eine eigene
+// Aufgabe (Firestore-Zaehler je Tag), keine Anzeigefrage.
+//
+// WIEDERVORLAGE: Wenn es echte Gespraechszahlen gibt, gehoert hier eine
+// Kurve hin — dann aber aus den Daten und mit dem leeren Zustand als
+// gueltigem Fall („noch nichts auszuwerten"), nicht mit einer Vorgabe.
+
 
 const goalLabels: Record<string, string> = {
   relationship: 'Feste Beziehung finden',
@@ -66,43 +82,19 @@ export function InsightsChart() {
 
   return (
     <div className="p-4 bg-white dark:bg-stone-900 border border-stone-100 dark:border-stone-800 rounded-2xl shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={20} className="text-brand dark:text-brand-light" />
-          <h3 className="font-medium text-stone-900 dark:text-stone-100">Dating Insights</h3>
-        </div>
-        <button 
-          onClick={() => NotificationService.simulateInactivity()}
-          className="text-[10px] uppercase font-semibold text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-          title="Simulate 48h Inactivity"
-        >
-          Test Push
-        </button>
-      </div>
-      <p className="text-sm text-stone-500 dark:text-stone-400 mb-6">
-        Deine Aktivität der letzten 7 Tage
-      </p>
-      
-      {/* Chart Section */}
-      <div className="h-48 w-full -ml-4 mb-8">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-stone-200 dark:text-stone-800" />
-            <XAxis className="text-stone-500 dark:text-stone-400" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'currentColor' }} />
-            <YAxis className="text-stone-500 dark:text-stone-400" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'currentColor' }} />
-            <Tooltip 
-              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-              cursor={{ stroke: '#f3f4f6', strokeWidth: 2 }}
-            />
-            <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
-            <Line type="monotone" name="Gestartet" dataKey="initiated" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-            <Line type="monotone" name="Antworten" dataKey="replies" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+      {/* 14.08.2026: Der Knopf „Test Push" stand hier — er rief
+          `NotificationService.simulateInactivity()` und war eine
+          Entwicklerhilfe in der ausgelieferten Oberflaeche. Wer ihn
+          antippte, bekam eine Benachrichtigung ueber 48 Stunden
+          Untaetigkeit, die nicht stattgefunden hatte.
 
+          Auch die Ueberschrift ist berichtigt: „Dating Insights" und
+          „Deine Aktivitaet der letzten 7 Tage" bezogen sich auf die feste
+          Kurve. Was hier steht, ist die Zielverfolgung — also heisst es
+          jetzt so. */}
+      
       {/* Milestone Tracker Section */}
-      <div className="pt-6 border-t border-stone-100 dark:border-stone-800">
+      <div>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target size={20} className="text-brand dark:text-brand-light" />

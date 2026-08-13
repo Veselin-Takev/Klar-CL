@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Shield, AlertTriangle, ShieldCheck, FileWarning, EyeOff, Scale, ExternalLink } from "lucide-react";
+import { ArrowLeft, Shield, AlertTriangle, ShieldCheck, FileWarning, EyeOff, Scale, ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
 
@@ -82,9 +82,18 @@ export default function SafetyCenter() {
               <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed mb-4">
                 Teile niemals sensible Informationen (z.B. genaue Adresse, Bankdaten) direkt im Chat. Nutze unsere In-App-Funktionen für Verabredungen.
               </p>
-              <button className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-medium hover:underline">
-                Datenschutzrichtlinie lesen <ExternalLink size={12} />
-              </button>
+              {/* 14.08.2026: war ein `<button>` ohne `onClick` — derselbe
+                  Befund wie DSG-02 („Schaltflaechen ohne onClick", klar/17).
+                  Die Seite gibt es seit dem 09.08.2026 unter
+                  /rechtstexte/:art; sie war von hier aus nur nicht
+                  erreichbar. `ExternalLink` war zudem das falsche Symbol:
+                  Der Weg fuehrt nicht nach draussen. */}
+              <Link
+                to="/rechtstexte/datenschutz"
+                className="inline-flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-medium hover:underline min-h-[44px]"
+              >
+                Datenschutzrichtlinie lesen <ArrowRight size={12} aria-hidden="true" />
+              </Link>
             </div>
             
             <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-2xl p-5 shadow-sm">

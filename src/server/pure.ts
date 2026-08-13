@@ -12,7 +12,20 @@
 /** 8 KONTAKTE pro Tag — erste Nachrichten an neue Menschen.
  *  Nicht Swipes, nicht Nachrichten im laufenden Gespräch. */
 export const DAILY_CONTACTS = 8;
-export const DAILY_CONTACTS_PLUS = Number.POSITIVE_INFINITY;
+
+// ── ENTFERNT 14.08.2026: DAILY_CONTACTS_PLUS ───────────────────────────────
+// Hier stand `export const DAILY_CONTACTS_PLUS = Number.POSITIVE_INFINITY;`
+// — Klar+ hatte serverseitig unbegrenzt viele Kontakte am Tag.
+//
+// Das widersprach der Entscheidung vom 14.08.2026 (klar/27, Abschnitt 9c):
+// Acht Kontakte am Tag gelten fuer ALLE, auch fuer Klar+. Das Kontingent ist
+// bei Klar kein Mangel, den man wegkaufen kann, sondern der Grund, warum die
+// App anders funktioniert. Wer es gegen Geld aufhebt, verkauft die
+// Eigenschaft weg, fuer die Menschen gekommen sind.
+//
+// Die Vergleichstabelle war zu diesem Zeitpunkt bereits berichtigt
+// (src/lib/klarPlus.ts). Die Zusage stimmte also, die Durchsetzung nicht —
+// die unangenehmere Reihenfolge von beiden.
 
 /** Der Tag wechselt um 4 Uhr, nicht um Mitternacht — dieselbe Uhrzeit, die
  *  die Oberfläche nennt. Wer um 1 Uhr nachts schreibt, ist noch im Vortag. */
@@ -44,13 +57,10 @@ export function optionalString(value: unknown, field: string, maxLength: number)
 export interface QuotaStand {
   tag: string;
   verbraucht: number;
+  /** Wird fuer die Grenze NICHT mehr ausgewertet — acht gelten fuer alle.
+   *  Das Feld bleibt, weil der Plan an anderer Stelle zaehlt (Widerruf,
+   *  Anzeige) und die Aufrufer ihn ohnehin zur Hand haben. */
   plan: 'frei' | 'plus';
-  /** DAT-05: Zusaetzliche Kontakte aus angesehener Werbung, fuer HEUTE.
-   *  Siehe den Kommentar an `entscheideKontakt`. */
-  extraContacts?: number;
-  /** Tag, fuer den `extraContacts` gilt. Ohne dieses Feld wuerde eine
-   *  Belohnung von gestern heute weitergelten. */
-  extraTag?: string;
 }
 
 export type QuotaEntscheidung =
@@ -63,22 +73,33 @@ export type QuotaEntscheidung =
  * Zähler auf 1, nicht auf 0+1 des Vortags.
  */
 export function entscheideKontakt(stand: QuotaStand, heute: string): QuotaEntscheidung {
-  // ── DAT-05 (Final Audit 08.08.2026) ──────────────────────────────────────
-  // BEFUND: Der AdMob-Endpunkt schrieb `extraContacts`, die Kontingent-
-  // Rechnung las das Feld nie. Sie las ueberhaupt keine Belohnung. Wer
-  // Werbung ansah, bekam einen Zaehler hochgesetzt, den niemand auswertete —
-  // „mit Zeit zahlen" war eine Anzeige ohne Wirkung.
+  // ── EINE GRENZE, FUER ALLE ───────────────────────────────────────────────
+  // Weder der Plan noch eine Belohnung hebt sie an.
   //
-  // Die Belohnung gilt nur fuer den Tag, an dem sie erworben wurde. Sonst
-  // sammelt sich ein Vorrat an, der das Tageslimit dauerhaft aushebelt —
-  // und das Limit ist das Produkt, nicht eine Einschraenkung davon.
-  const extra = stand.extraTag === heute ? Math.max(0, stand.extraContacts ?? 0) : 0;
-  const grenze = stand.plan === 'plus' ? DAILY_CONTACTS_PLUS : DAILY_CONTACTS + extra;
+  // Bis zum 14.08.2026 stand hier:
+  //   const extra = stand.extraTag === heute ? Math.max(0, stand.extraContacts ?? 0) : 0;
+  //   const grenze = stand.plan === 'plus' ? DAILY_CONTACTS_PLUS : DAILY_CONTACTS + extra;
+  //
+  // Zwei Wege, das Limit zu ueberschreiten — Geld und Werbung. Beide sind
+  // weg, und zwar aus demselben Grund: Das Limit IST das Produkt.
+  //
+  //   · Der Plan: Entscheidung vom 14.08.2026 (klar/27, 9c). Acht fuer alle.
+  //   · Die Belohnung (DAT-05): Sie kam aus `/api/admob-ssv`. Diesen
+  //     Endpunkt gibt es seit dem 14.08.2026 nicht mehr — Entscheidung des
+  //     Auftraggebers, „fuer das MVP gilt: Streichen. Besser eine schlanke,
+  //     voll funktionsfaehige und ehrliche User Journey als unfertige
+  //     Monetarisierungs-Features." Damit kann `extraContacts` nicht mehr
+  //     entstehen; ein Feld zu lesen, das niemand mehr schreibt, waere
+  //     genau die Sorte toter Weg, die schwer zu finden ist.
+  //
+  // WAS DAS FUER ALTE DATEN HEISST: Ein `extraContacts` aus der Zeit davor
+  // liegt vielleicht noch in Firestore. Es wird nicht mehr gelesen und hat
+  // damit keine Wirkung. Aufraeumen ist nicht noetig.
+  const grenze = DAILY_CONTACTS;
   const verbraucht = stand.tag === heute ? stand.verbraucht : 0;
   if (verbraucht >= grenze) return { erlaubt: false, grund: 'limit', uebrig: 0 };
   const neu = verbraucht + 1;
-  const uebrig = grenze === Number.POSITIVE_INFINITY ? Number.POSITIVE_INFINITY : grenze - neu;
-  return { erlaubt: true, neuVerbraucht: neu, uebrig };
+  return { erlaubt: true, neuVerbraucht: neu, uebrig: grenze - neu };
 }
 
 // ── Widerrufsfrist (§ 355 Abs. 2 BGB) ──────────────────────────────────────

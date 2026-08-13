@@ -6,6 +6,8 @@ import Dashboard from "./screens/Dashboard";
 import Chats from "./screens/Chats";
 import ChatView from "./screens/ChatView";
 import Profile from "./screens/Profile";
+import KlarPlus from "./screens/KlarPlus";
+import MeilensteineAlle from "./screens/MeilensteineAlle";
 import { DatingRituals } from "./screens/DatingRituals";
 import SafetyCenter from "./screens/SafetyCenter";
 import AICoach from "./screens/AICoach";
@@ -271,6 +273,13 @@ function AnimatedRoutes() {
         <Route path="/ai-coach" element={<PageWrapper><AICoach /></PageWrapper>} />
         <Route path="/tips" element={<PageWrapper><Tips /></PageWrapper>} />
         <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
+        {/* Klar+ hat seit 14.08.2026 eine eigene Seite. Vorher stand die
+            Vergleichstabelle mitten in den Einstellungen — siehe klar/27,
+            Abschnitt 9b. */}
+        <Route path="/klar-plus" element={<PageWrapper><KlarPlus /></PageWrapper>} />
+        {/* Die vollstaendige Meilensteinliste. Die kompakte Anzeige auf
+            Profilseite und Dashboard zeigt drei; alles Weitere hier. */}
+        <Route path="/meilensteine" element={<PageWrapper><MeilensteineAlle /></PageWrapper>} />
         <Route path="/rituals" element={<PageWrapper><DatingRituals /></PageWrapper>} />
         <Route path="/safety" element={<PageWrapper><SafetyCenter /></PageWrapper>} />
         {/* P1: Ohne Verifizierung lehnen die Firestore-Regeln jeden Kontakt ab. */}

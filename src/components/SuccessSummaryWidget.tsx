@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { CheckCircle2, Trophy } from "lucide-react";
 import { motion } from "motion/react";
+import { erreichte } from "../lib/meilensteine";
+import { leseRohdaten } from "./Meilensteine";
 
 export function SuccessSummaryWidget() {
   const [totalTasks, setTotalTasks] = useState(0);
@@ -13,46 +15,35 @@ export function SuccessSummaryWidget() {
         const savedCompleted = JSON.parse(localStorage.getItem('klar_wheel_completed_tasks') || '[]') as number[];
         setTotalTasks(savedCompleted.length);
 
-        // Load total milestones unlocked
-        const progressKeys = [
-          'stats_conversations_started',
-          'stats_dates_planned',
-          'stats_matches_collected',
-          'stats_profile_optimized',
-          'stats_duels_won'
-        ];
-        
-        const goals: Record<string, number> = {
-          'stats_conversations_started': 3,
-          'stats_dates_planned': 2,
-          'stats_matches_collected': 5,
-          'stats_profile_optimized': 1,
-          'stats_duels_won': 3
-        };
-
-        let unlockedCount = 0;
-        progressKeys.forEach(key => {
-          const val = parseInt(localStorage.getItem(key) || '0', 10);
-          if (goals[key] !== undefined && val >= goals[key]) {
-            unlockedCount++;
-          }
-        });
-        
-        setTotalMilestones(unlockedCount);
+        // ── 14.08.2026: ZWEITE ZIELLISTE ENTFERNT ────────────────────
+        // Hier stand eine eigene Kopie der Meilensteine samt Zielwerten —
+        // fuenf Schluessel, fuenf Zahlen, unabhaengig von der Liste in
+        // `DatingMilestones`. Zwei Listen, die dasselbe behaupten sollen,
+        // laufen auseinander: `stats_conversations_started` stand hier mit
+        // Ziel 3, wird aber nirgends in der App geschrieben — die Zahl
+        // konnte also nie steigen.
+        //
+        // Jetzt gilt `src/lib/meilensteine.ts` als einzige Wahrheit.
+        setTotalMilestones(erreichte(leseRohdaten()).length);
       } catch(e) {}
     };
 
     loadSummary();
-    
-    // Add event listeners to refresh when updates happen
+
+    // 14.08.2026: `setInterval(loadSummary, 2000)` entfernt. Alle zwei
+    // Sekunden sechs Speicherschluessel zu lesen, dauerhaft und auf jeder
+    // Seite, auf der dieser Baustein steht, ist keine Aktualisierung,
+    // sondern eine Dauerschleife. `storage` (anderes Fenster) und `focus`
+    // (Rueckkehr zur App) decken die Faelle ab, in denen sich wirklich
+    // etwas geaendert haben kann.
     window.addEventListener('wheelTaskCompleted', loadSummary);
-    
-    // We can also poll to ensure milestones are updated if changed elsewhere
-    const interval = setInterval(loadSummary, 2000);
-    
+    window.addEventListener('storage', loadSummary);
+    window.addEventListener('focus', loadSummary);
+
     return () => {
       window.removeEventListener('wheelTaskCompleted', loadSummary);
-      clearInterval(interval);
+      window.removeEventListener('storage', loadSummary);
+      window.removeEventListener('focus', loadSummary);
     };
   }, []);
 

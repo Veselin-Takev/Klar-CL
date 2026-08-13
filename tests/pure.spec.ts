@@ -45,9 +45,18 @@ describe('Kontingent-Entscheidung', () => {
     const e = entscheideKontakt({ tag: '2026-08-08', verbraucht: 8, plan: 'frei' }, heute);
     assert.deepEqual(e, { erlaubt: true, neuVerbraucht: 1, uebrig: 7 });
   });
-  it('Plus ist unbegrenzt', () => {
-    const e = entscheideKontakt({ tag: heute, verbraucht: 500, plan: 'plus' }, heute);
-    assert.equal(e.erlaubt, true);
+  // 14.08.2026: Diese Pruefung hiess bis heute „Plus ist unbegrenzt" und
+  // erwartete das Gegenteil. Sie ist umgedreht, nicht geloescht — die
+  // Entscheidung soll an der Stelle sichtbar sein, an der sie frueher anders
+  // lautete. Grundlage: klar/27, Abschnitt 9c.
+  it('Plus hat dieselben acht — das Kontingent ist nicht kaeuflich', () => {
+    const e = entscheideKontakt({ tag: heute, verbraucht: DAILY_CONTACTS, plan: 'plus' }, heute);
+    assert.deepEqual(e, { erlaubt: false, grund: 'limit', uebrig: 0 });
+  });
+  it('Plus und frei rechnen gleich', () => {
+    const frei = entscheideKontakt({ tag: heute, verbraucht: 3, plan: 'frei' }, heute);
+    const plus = entscheideKontakt({ tag: heute, verbraucht: 3, plan: 'plus' }, heute);
+    assert.deepEqual(frei, plus);
   });
 });
 
@@ -343,41 +352,54 @@ describe('Einwilligung (DSG-02)', () => {
   });
 });
 
-// ── DAT-05: Belohnung aus Werbung ──────────────────────────────────────────
-// Der Befund war: Der AdMob-Endpunkt schrieb `extraContacts`, gelesen hat
-// das Feld niemand. „Mit Zeit zahlen" war eine Anzeige ohne Wirkung.
+// ── DAT-05 ZURUECKGEBAUT (14.08.2026) ──────────────────────────────────────
+// Hier stand `describe('Zusatzkontakte aus Werbung (DAT-05)')` mit fuenf
+// Pruefungen: drei Belohnungen heben die Grenze von 8 auf 11, die Belohnung
+// von gestern gilt heute nicht, eine negative Belohnung senkt nichts.
+//
+// Alle fuenf sind entfallen, weil es die Belohnung nicht mehr gibt: Der
+// Auftraggeber hat am 14.08.2026 entschieden, die Werbe-Monetarisierung fuer
+// das MVP zu streichen („Besser eine schlanke, voll funktionsfaehige und
+// ehrliche User Journey als unfertige Monetarisierungs-Features"). Damit
+// sind `/api/admob-ssv` und `extraContacts`/`extraTag` weg.
+//
+// An ihre Stelle tritt die Pruefung, die jetzt gilt: Es gibt genau EINE
+// Grenze, und nichts hebt sie an.
 
-describe('Zusatzkontakte aus Werbung (DAT-05)', () => {
+describe('Die Grenze ist nicht verhandelbar (14.08.2026)', () => {
   const heute = '2026-08-09';
 
-  it('drei Belohnungen erhöhen die Grenze von 8 auf 11', () => {
-    const e = entscheideKontakt(
-      { tag: heute, verbraucht: 8, plan: 'frei', extraContacts: 3, extraTag: heute }, heute);
-    assert.deepEqual(e, { erlaubt: true, neuVerbraucht: 9, uebrig: 2 });
+  it('acht sind acht — unabhaengig vom Plan', () => {
+    for (const plan of ['frei', 'plus'] as const) {
+      const e = entscheideKontakt({ tag: heute, verbraucht: DAILY_CONTACTS, plan }, heute);
+      assert.deepEqual(e, { erlaubt: false, grund: 'limit', uebrig: 0 }, plan);
+    }
   });
 
-  it('nach der elften ist trotzdem Schluss', () => {
-    const e = entscheideKontakt(
-      { tag: heute, verbraucht: 11, plan: 'frei', extraContacts: 3, extraTag: heute }, heute);
-    assert.deepEqual(e, { erlaubt: false, grund: 'limit', uebrig: 0 });
+  // Der Rueckstand aus der Zeit der Werbebelohnung: In Firestore koennen
+  // noch `extraContacts` liegen. Sie duerfen keine Wirkung mehr haben.
+  // Geprueft wird das ueber ein Objekt mit Zusatzfeldern — TypeScript sieht
+  // sie nicht mehr, zur Laufzeit koennen sie ankommen.
+  it('ein altes extraContacts aus Firestore hebt nichts mehr an', () => {
+    const mitAltlast = {
+      tag: heute,
+      verbraucht: DAILY_CONTACTS,
+      plan: 'frei',
+      extraContacts: 3,
+      extraTag: heute,
+    } as unknown as Parameters<typeof entscheideKontakt>[0];
+    assert.deepEqual(entscheideKontakt(mitAltlast, heute), {
+      erlaubt: false,
+      grund: 'limit',
+      uebrig: 0,
+    });
   });
 
-  // Ohne diese Regel sammelt sich ein Vorrat an, der das Tageslimit
-  // dauerhaft aushebelt — und das Limit ist das Produkt.
-  it('die Belohnung von gestern gilt heute nicht mehr', () => {
-    const e = entscheideKontakt(
-      { tag: heute, verbraucht: 8, plan: 'frei', extraContacts: 3, extraTag: '2026-08-08' }, heute);
-    assert.equal(e.erlaubt, false);
-  });
-
-  it('ohne Belohnung bleibt es bei acht', () => {
-    const e = entscheideKontakt({ tag: heute, verbraucht: 8, plan: 'frei' }, heute);
-    assert.equal(e.erlaubt, false);
-  });
-
-  it('eine negative Belohnung kann das Limit nicht senken', () => {
-    const e = entscheideKontakt(
-      { tag: heute, verbraucht: 7, plan: 'frei', extraContacts: -99, extraTag: heute }, heute);
-    assert.equal(e.erlaubt, true);
+  it('uebrig ist immer eine Zahl, nie unendlich', () => {
+    for (const plan of ['frei', 'plus'] as const) {
+      const e = entscheideKontakt({ tag: heute, verbraucht: 0, plan }, heute);
+      assert.equal(e.erlaubt, true);
+      if (e.erlaubt) assert.equal(Number.isFinite(e.uebrig), true, plan);
+    }
   });
 });

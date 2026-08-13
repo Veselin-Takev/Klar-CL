@@ -113,7 +113,6 @@ import { DatingReadinessWidget } from "../components/DatingReadinessWidget";
 import { DailyCoachInsightWidget } from "../components/DailyCoachInsightWidget";
 import { DateMoodChartWidget } from "../components/DateMoodChartWidget";
 import { SmartVerbindungBadgeWidget } from "../components/SmartVerbindungBadgeWidget";
-import { DatingMilestonesWidget } from "../components/DatingMilestonesWidget";
 import { SmartDateReminderWidget } from "../components/SmartDateReminderWidget";
 import { DataExportWidget } from "../components/DataExportWidget";
 import { DatePreparationChecklistWidget } from "../components/DatePreparationChecklistWidget";
@@ -140,7 +139,7 @@ import { SuccessSummaryWidget } from "../components/SuccessSummaryWidget";
 import { DailyMoodWidget } from "../components/DailyMoodWidget";
 import { TodayFeelingTrackerWidget } from "../components/TodayFeelingTrackerWidget";
 import { MiniDiaryWidget } from "../components/MiniDiaryWidget";
-import { DatingMilestones } from "../components/DatingMilestones";
+import { Meilensteine } from "../components/Meilensteine";
 import { DatingDuelWidget } from "../components/DatingDuelWidget";
 import { RecentIntrosWidget } from "../components/RecentIntrosWidget";
 import { Confetti } from "../components/Confetti";
@@ -1666,9 +1665,13 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <SmartVerbindungBadgeWidget />
         </div>
-        <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <DatingMilestonesWidget />
-        </div>
+        {/* 14.08.2026 ENTFERNT: <DatingMilestonesWidget /> — die dritte
+            Meilenstein-Anzeige. Sie zeigte sieben Eintraege, von denen
+            fuenf fest auf `false` standen („P2: war fest verdrahtet") und
+            damit dauerhaft grau blieben. Die zwei erreichbaren sind in
+            `src/lib/meilensteine.ts` aufgegangen; die Anzeige dazu steht
+            weiter unten als <Meilensteine />. */
+        }
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <SmartDateReminderWidget />
         </div>
@@ -1777,7 +1780,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
       <BeiSicht><SuccessSummaryWidget /></BeiSicht>
       <BeiSicht><WheelStatsWidget /></BeiSicht>
       <BeiSicht><DatingDuelWidget /></BeiSicht>
-      <DatingMilestones />
+      <Meilensteine />
       <BeiSicht><DailyMoodWidget /></BeiSicht>
       <BeiSicht><RecentIntrosWidget /></BeiSicht>
 
