@@ -3,6 +3,7 @@ import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectRes
 import type { User } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { meldeKontoErforderlich, sollGateZeigen } from './gastGrenze';
 
 interface AuthContextType {
   user: User | null;
@@ -90,7 +91,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Verifizierung monatelang unbemerkt.
         setProfileData((prev: any) => prev ? { ...prev, ...updatePayload } : null);
       } catch (error) {
-        console.error("Profil konnte nicht gespeichert werden", error);
+        // ── GAST-02 (14.08.2026, im Browser beobachtet) ─────────────────
+        // Als Gast lehnt `firestore.rules` das Update ab (`allow update`
+        // verlangt `!istGast()`). Die Regel ist richtig — falsch war, dass
+        // davon nur eine rote Zeile in der Konsole ankam. Der Mensch davor
+        // aenderte etwas, es passierte nichts, und niemand sagte warum.
+        //
+        // Jetzt muendet die Regelablehnung in dasselbe Registrierungs-Gate
+        // wie die API-Antwort 403. Ein zweiter Dialog waere eine zweite
+        // Wahrheit; es gibt nur eine.
+        if (sollGateZeigen(error, user)) {
+          meldeKontoErforderlich({
+            herkunft: 'firestore',
+            vorgang: 'Profil speichern',
+          });
+        } else {
+          console.error("Profil konnte nicht gespeichert werden", error);
+        }
         throw error;   // die aufrufende Ansicht muss es erfahren
       }
     }

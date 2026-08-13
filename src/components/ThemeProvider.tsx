@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { istGastKonto } from '../lib/gastGrenze';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -72,7 +73,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(newTheme);
     localStorage.setItem('klar_theme', newTheme);
     
-    if (userId) {
+    // ── GAST-02 (14.08.2026, im Browser beobachtet) ─────────────────────
+    // Hier stand ein `setDoc(..., { merge: true })` ohne Ruecksicht darauf,
+    // wer angemeldet ist. Als Gast lehnt `firestore.rules` das ab, und in
+    // der Konsole stand zweimal:
+    //
+    //   Could not save theme to Firestore FirebaseError: PERMISSION_DENIED
+    //
+    // Die lokale Wahl (`klar_theme`, eine Zeile hoeher) greift trotzdem —
+    // die Helligkeit stellt sich also um und bleibt es fuer diese Sitzung.
+    // Nur geraeteuebergreifend gespeichert wird sie nicht, und DAS ist die
+    // richtige Aussage: Ein Gast hat kein Konto, an dem etwas haengen
+    // koennte.
+    //
+    // Deshalb gilt hier bewusst NICHT das Registrierungs-Gate: Die Helligkeit
+    // ist keine Handlung, die an einem Konto haengen muss. Ein Dialog dafuer
+    // waere eine Zumutung. Wir versuchen den Schreibvorgang schlicht nicht.
+    if (userId && !istGastKonto(auth.currentUser)) {
       try {
         await setDoc(doc(db, 'users', userId), { theme: newTheme }, { merge: true });
       } catch (e) {

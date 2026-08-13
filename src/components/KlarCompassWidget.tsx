@@ -50,7 +50,11 @@ export function KlarCompassWidget({ userInterests }: KlarCompassWidgetProps) {
     } else {
       fetchCompass();
     }
-  }, [userInterests]);
+  // 14.08.2026: am Inhalt statt an der Kennung — siehe
+  // scripts/effekt-abhaengigkeiten.mjs. `userInterests` ist ein Feld;
+  // ein Elternteil, der es bei jedem Rendern neu bildet, loeste sonst
+  // bei jedem Rendern einen Netzaufruf aus.
+  }, [userInterests.join('|')]);
 
   // Save to cache when loaded
   useEffect(() => {

@@ -77,7 +77,18 @@ export function DailyIcebreakerWidget({ userInterests, matchesInterests }: Daily
     } else {
       fetchIcebreakers();
     }
-  }, [userInterests, matchesInterests]);
+  // 14.08.2026: Vorher `}, [userInterests, matchesInterests]);` — beides
+  // sind FELDER, und `Dashboard.tsx` bildet `matchesInterests` bei jedem
+  // Rendern neu (`Array.from(new Set(…)).slice(0, 10)`). React vergleicht
+  // mit `Object.is`; zwei Felder mit gleichem Inhalt sind verschieden.
+  // Also lief dieser Effekt bei JEDEM Rendern des Dashboards — und mit
+  // ihm ein Aufruf an einen KI-Endpunkt. Im Browser gemessen: 1.883
+  // Anfragen fuer einen Seitenaufruf, bis die Gastgrenze mit 429 kam.
+  //
+  // Die Abhaengigkeit haengt jetzt am INHALT. Damit ist der Baustein
+  // unabhaengig davon, was der Elternteil tut — das ist die richtige
+  // Stelle fuer die Absicherung, denn Aufrufer gibt es viele.
+  }, [userInterests.join('|'), matchesInterests.join('|')]);
 
   useEffect(() => {
     if (icebreakers.length > 0) {

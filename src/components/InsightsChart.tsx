@@ -98,7 +98,26 @@ export function InsightsChart() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target size={20} className="text-brand dark:text-brand-light" />
-            <h3 className="font-medium text-stone-900 dark:text-stone-100">Dein Ziel: {goalTitle}</h3>
+            {/* ── BEFUND 14.08.2026, im Browser beobachtet ─────────────
+                Diese Karte stand direkt ueber der Meilenstein-Karte. Dort
+                hiess es „Profil geprueft — 0 von 1", hier „Profil
+                optimiert" mit gesetztem Haken. Zwei fast gleich klingende
+                Aussagen, zwei verschiedene Zustaende, ein Bildschirm.
+
+                Der Unterschied ist echt und wichtig:
+                  · MEILENSTEINE sind ABGELEITET. Sie ergeben sich aus
+                    Daten (src/lib/meilensteine.ts) und lassen sich nicht
+                    von Hand setzen.
+                  · Diese Liste hier ist SELBST ERKLAERT. Man hakt sie ab.
+                    Das ist eine ehrliche Quelle — solange erkennbar ist,
+                    dass sie es ist.
+
+                Deshalb heisst sie jetzt „Deine naechsten Schritte" statt
+                „Ziel/Meilenstein", und der Satz darunter sagt, wer hier
+                abhakt. */}
+            <h3 className="font-medium text-stone-900 dark:text-stone-100">
+              Deine nächsten Schritte
+            </h3>
           </div>
           {completedMilestones < milestones.length - 1 && (
             <button 
@@ -106,10 +125,18 @@ export function InsightsChart() {
               className="px-3 py-1.5 bg-brand dark:bg-brand-light text-white dark:text-stone-900 shadow-sm rounded-full text-xs font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity"
             >
               <PartyPopper size={14} />
-              Erreichen
+              Abhaken
             </button>
           )}
         </div>
+
+        {/* Wer hakt hier ab — und wer nicht. Ohne diesen Satz sehen die
+            Punkte aus wie die abgeleiteten Meilensteine eine Karte
+            weiter unten. */}
+        <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+          Ziel: {goalTitle}. Diese Schritte hakst du selbst ab — die
+          Meilensteine darunter ergeben sich aus deinen Daten.
+        </p>
         
         <div className="space-y-4 relative before:absolute before:inset-0 before:ml-2.5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before: before:from-transparent before:via-stone-200 dark:before:via-stone-800 before:to-transparent">
           {milestones.map((milestone, index) => {

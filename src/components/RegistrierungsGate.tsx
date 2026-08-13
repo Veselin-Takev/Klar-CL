@@ -27,6 +27,7 @@ import { UserPlus, X } from "lucide-react";
 // Stellen im Projekt importieren aus "react-router" — meine war die einzige
 // Abweichung, und der Typecheck hat sie sofort gefunden.
 import { useNavigate } from "react-router";
+import { EREIGNIS_KONTO_ERFORDERLICH, type GrenzMeldung } from "../lib/gastGrenze";
 
 const VORGABE_TEXT =
   "Erstelle in wenigen Sekunden ein kostenloses Konto, um mit diesem Profil in Kontakt zu treten.";
@@ -38,12 +39,16 @@ export function RegistrierungsGate() {
 
   useEffect(() => {
     const beiEreignis = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { grund?: string } | undefined;
+      // 14.08.2026: Das Ereignis hat jetzt zwei Absender — die API-Antwort
+      // 403 (`herkunft: 'api'`) und eine Ablehnung durch die
+      // Firestore-Regeln (`herkunft: 'firestore'`). Der Dialog ist derselbe;
+      // nur die Herkunft steht zur Diagnose im Ereignis.
+      const detail = (e as CustomEvent).detail as (GrenzMeldung & { grund?: string }) | undefined;
       setGrund(detail?.grund || VORGABE_TEXT);
       setOffen(true);
     };
-    window.addEventListener("klar_konto_erforderlich", beiEreignis);
-    return () => window.removeEventListener("klar_konto_erforderlich", beiEreignis);
+    window.addEventListener(EREIGNIS_KONTO_ERFORDERLICH, beiEreignis);
+    return () => window.removeEventListener(EREIGNIS_KONTO_ERFORDERLICH, beiEreignis);
   }, []);
 
   if (!offen) return null;

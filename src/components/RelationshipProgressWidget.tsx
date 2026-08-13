@@ -58,7 +58,10 @@ export function RelationshipProgressWidget({ chatHistory, userName, targetName, 
       setIsLoading(false);
       setError("Nicht genug Nachrichten für eine aussagekräftige Analyse.");
     }
-  }, [chatHistory, userName, targetName]);
+  // 14.08.2026: `chatHistory` ist ein Feld — am Inhalt haengen, nicht an
+  // der Kennung. Die Laenge genuegt hier: Der Effekt wertet den Verlauf
+  // aus, und ein Verlauf aendert sich, indem er waechst.
+  }, [chatHistory.length, userName, targetName]);
 
   const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
 

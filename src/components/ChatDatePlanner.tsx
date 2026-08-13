@@ -379,7 +379,12 @@ Keine Markdown-Block-Syntax.`;
       
       fetchIdeas();
     }
-  }, [userInterests, matchInterests, activeTab, ideas.length]);
+  // 14.08.2026: `userInterests` und `matchInterests` sind FELDER. Ein
+  // Elternteil, der sie bei jedem Rendern neu bildet, loeste hier bei
+  // jedem Rendern einen KI-Aufruf aus — siehe
+  // scripts/effekt-abhaengigkeiten.mjs und den Befund vom 14.08.2026.
+  // Am Inhalt haengen, nicht an der Kennung.
+  }, [userInterests.join('|'), matchInterests.join('|'), activeTab, ideas.length]);
 
   const handleSelect = (idea: DateIdee) => {
     const formattedProposal = `Lass uns ${idea.title} machen! 📅 ${idea.time}\n\n${idea.description}`;

@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import { meldeKontoErforderlich } from './gastGrenze';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // P0-3 (Client-Seite) — das ID-Token wird an EINER Stelle angehängt
@@ -60,9 +61,15 @@ export function installAuthFetch(): void {
       try {
         const daten = await antwort.clone().json();
         if (daten?.code === 'konto_erforderlich') {
-          window.dispatchEvent(new CustomEvent('klar_konto_erforderlich', {
-            detail: { grund: typeof daten.error === 'string' ? daten.error : undefined },
-          }));
+          // 14.08.2026: Der Ereignisname stand hier als Zeichenkette. Seit
+          // es einen ZWEITEN Absender gibt (Firestore-Ablehnungen, siehe
+          // src/lib/gastGrenze.ts), kommt er aus einer Konstante — ein Name
+          // an zwei Stellen ist ein Tippfehler, der niemandem auffaellt,
+          // weil der Dialog dann einfach stumm bleibt.
+          meldeKontoErforderlich({
+            herkunft: 'api',
+            vorgang: typeof daten.error === 'string' ? daten.error : 'gesperrter Weg',
+          });
         }
       } catch {
         // Kein JSON: dann auch kein Code. Nichts zu tun.

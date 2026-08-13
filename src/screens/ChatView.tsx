@@ -297,6 +297,19 @@ export default function ChatView() {
   // vergessene Verdrahtung haelt.
   const [isTranslating] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  // ── BEFUND 14.08.2026, im Browser beobachtet ────────────────────────
+  // Bis heute landete eine FEHLERMELDUNG in `aiSuggestions`:
+  //
+  //   setAiSuggestions([e.message || "Fehler beim Generieren…"]);
+  //
+  // Vorschlaege sind antippbar und setzen den Text ins Eingabefeld. Im
+  // Gespraech standen deshalb zwei abgeschickte Nachrichten mit dem
+  // Inhalt „Fehler beim Laden der Vorschlaege" — sichtbar fuer den
+  // Menschen auf der anderen Seite.
+  //
+  // Ein Fehler ist kein Vorschlag. Er bekommt einen eigenen Zustand und
+  // eine eigene Darstellung, die man nicht abschicken kann.
+  const [vorschlagFehler, setVorschlagFehler] = useState<string | null>(null);
   const [icebreakerHistory, setIcebreakerHistory] = useState<string[]>([]);
   const [replySuggestions, setReplySuggestions] = useState<string[]>([]);
   // `chatDynamic` ist mit dem Aufruf an /api/conversation-dynamics entfallen.
@@ -685,6 +698,7 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
   const getIcebreakers = async () => {
     if (!profile) return;
     setIsLoadingAI(true);
+    setVorschlagFehler(null);
     try {
       const userInterests = listeAusSpeicher("userInterests");
       const userName = localStorage.getItem("userName") || "Ich";
@@ -722,7 +736,10 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
       window.dispatchEvent(new Event('storage'));
     } catch (e) {
       melde("ChatView", e);
-      setAiSuggestions([(e instanceof Error ? e.message : String(e)) || "Fehler beim Generieren. Bitte versuche es später nochmal."]);
+      setVorschlagFehler(
+        (e instanceof Error ? e.message : String(e)) ||
+          "Die Vorschläge konnten nicht geladen werden. Bitte versuche es später noch einmal.",
+      );
     } finally {
       setIsLoadingAI(false);
     }
@@ -1218,7 +1235,22 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
                   ))}
                 </div>
               ) : (
-                aiSuggestions.length > 0 ? (
+                vorschlagFehler ? (
+                  /* Ein Hinweis, kein Knopf: Diese Zeile laesst sich nicht
+                     antippen und damit nicht versehentlich abschicken. */
+                  <div
+                    role="note"
+                    className="py-6 px-4 text-center text-sm text-stone-600 dark:text-stone-300"
+                  >
+                    <p className="mb-3">{vorschlagFehler}</p>
+                    <button
+                      onClick={() => { setVorschlagFehler(null); getIcebreakers(); }}
+                      className="px-4 py-2 rounded-full border border-stone-300 dark:border-stone-600 text-sm min-h-[44px]"
+                    >
+                      Erneut versuchen
+                    </button>
+                  </div>
+                ) : aiSuggestions.length > 0 ? (
                   <div className="flex flex-col gap-2">
                     {aiSuggestions.map((suggestion, idx) => (
                       <button 
