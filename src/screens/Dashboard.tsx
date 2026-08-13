@@ -74,7 +74,9 @@ import { WeeklyMoodSummaryWidget } from "../components/WeeklyMoodSummaryWidget";
 import { WeeklyTimelineWidget } from "../components/WeeklyTimelineWidget";
 import { ProfileCheckWidget } from "../components/ProfileCheckWidget";
 import { QuickPreparationCountdownWidget } from "../components/QuickPreparationCountdownWidget";
-import { ConversationStatsWidget } from "../components/ConversationStatsWidget";
+// ENTFERNT 13.08.2026: ConversationStatsWidget — Gespraeche je Tag und
+// Antwortrate kamen aus `Math.random()`. Bei jedem Neuladen ein anderer
+// Verlauf, ueber der Ueberschrift "Letzte 30 Tage".
 import { DatePlannerWidget } from "../components/DatePlannerWidget";
 import { CityTrendRadarWidget } from "../components/CityTrendRadarWidget";
 import { DateReflectionJournalWidget } from "../components/DateReflectionJournalWidget";
@@ -1745,9 +1747,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <SuccessDashboardWidget />
         </div>
-        <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <ConversationStatsWidget />
-        </div>
+        {/* ENTFERNT: ConversationStatsWidget, siehe Kommentar am Import. */}
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <UpcomingDateWidget />
         </div>
