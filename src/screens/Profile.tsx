@@ -44,8 +44,9 @@ import { PDFResumeGenerator } from "../components/PDFResumeGenerator";
 // verdeckt — `noUnusedLocals` haette es sofort gemeldet.
 import { ProfileCardThemeSelector } from "../components/ProfileCardThemeSelector";
 import { FocusTimeSettingsWidget } from "../components/FocusTimeSettingsWidget";
-import { SmartPauseWidget } from "../components/SmartPauseWidget";
-import { SmartPausePlanner } from "../components/SmartPausePlanner";
+// SmartPauseWidget und SmartPausePlanner sind am 14.08.2026 zu einer
+// Komponente geworden — Begruendung im Kopf von SmartPause.tsx.
+import { SmartPause } from "../components/SmartPause";
 import { HapticSettings } from "../components/HapticSettings";
 // ENTFERNT 12.08.2026: fuenf Widgets mit erfundenen Daten. Siehe die
 // Stellen im Text weiter unten. Die Dateien unter src/components/ sind
@@ -1627,7 +1628,7 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
         <div className="mb-6">
           
 
-          <SmartPausePlanner />
+          <SmartPause />
           {/* ENTFERNT 11.08.2026 — <ThemeSettingsWidget />.
               Dritte Hell/Dunkel/System-Wahl auf derselben Seite, und die
               dritte, die nach `localStorage['theme']` schrieb statt nach
@@ -1639,8 +1640,9 @@ Antworte nur mit einer unformatierten Liste (jede Frage in einer neuen Zeile, oh
               Die Datei src/components/ThemeSettingsWidget.tsx wird damit
               von niemandem mehr benutzt und ist zu loeschen. */}
           {/* <HapticSettings /> ist am 14.08.2026 nach unten in den
-              Abschnitt "Einstellungen" gewandert — siehe Begruendung dort. */}
-          <SmartPauseWidget />
+              Abschnitt "Einstellungen" gewandert — siehe Begruendung dort.
+              <SmartPauseWidget /> stand hier ein zweites Mal; beide Karten
+              sind jetzt eine einzige <SmartPause />, die weiter oben steht. */}
           <FocusTimeSettingsWidget />
         </div>
 
