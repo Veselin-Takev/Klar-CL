@@ -138,6 +138,13 @@ export default function Login() {
           {/* Weg 1: E-Mail. Steht oben, weil es der einzige Weg mit Eingabe ist. */}
           <form onSubmit={handleEmailSubmit} className="space-y-4 w-full">
               <input
+                  // `id` und `name`, damit der Browser das Feld automatisch
+                  // ausfuellen kann und eine `<label for="…">` sich darauf
+                  // beziehen koennte. `autoComplete` allein genuegt dafuer
+                  // nicht — Chrome meldet sonst „A form field element should
+                  // have an id or name attribute".
+                  id="anmeldung-email"
+                  name="email"
                   type="email"
                   placeholder="E-Mail Adresse"
                   // `aria-label`, weil ein Platzhalter allein keine Beschriftung
@@ -151,6 +158,8 @@ export default function Login() {
                   disabled={isLoading}
               />
               <input
+                  id="anmeldung-passwort"
+                  name="password"
                   type="password"
                   placeholder="Passwort"
                   aria-label="Passwort"

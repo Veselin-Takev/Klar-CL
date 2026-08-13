@@ -85,8 +85,10 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                     ausgeschlossen, ohne dass eine Hoehe geraten werden muss. */}
                 <div className="shrink-0 flex flex-col gap-4 pt-4">
                     <label className="flex items-center gap-3 p-3 bg-stone-100 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800 cursor-pointer">
-                        <input 
-                            type="checkbox" 
+                        <input
+                            id="onboarding-volljaehrig"
+                            name="volljaehrig"
+                            type="checkbox"
                             checked={isAdult} 
                             onChange={(e) => setIsAdult(e.target.checked)} 
                             className="w-5 h-5 rounded border-stone-300 text-brand focus:ring-brand"

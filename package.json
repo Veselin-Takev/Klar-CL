@@ -24,7 +24,7 @@
     "check:client-ersatz": "node scripts/client-ersatz.mjs src 13",
     "check:json-form": "node scripts/json-form.mjs 0",
     "check:doppelte-einstellungen": "node scripts/doppelte-einstellungen.mjs src 27",
-    "check:formularfelder": "node scripts/formularfelder.mjs src 107",
+    "check:formularfelder": "node scripts/formularfelder.mjs src 104",
     "test:rules": "firebase emulators:exec --project demo-klar --only firestore --config firebase.pruefung.json \"tsx --test tests/rules.spec.ts\"",
     "dev:lokal": "firebase emulators:exec --project demo-klar --only auth,firestore \"VITE_EMULATOR=true tsx server.ts\"",
     "dev:moderator": "node scripts/dev-moderator.mjs"
