@@ -15,6 +15,7 @@ import Onboarding from "./screens/Onboarding";
 import Rechtstexte from "./screens/Rechtstexte";
 import { EinwilligungUndAlter } from "./components/EinwilligungUndAlter";
 import { Sichtschutz, SichtschutzKnopf } from "./components/Sichtschutz";
+import { RegistrierungsGate } from "./components/RegistrierungsGate";
 import { QuickThemeToggle } from "./components/QuickThemeToggle";
 // Die geltende Fassung der Rechtstexte. Aus pure.ts, damit Client und Server
 // dieselbe Zahl benutzen — zwei Konstanten wären zwei Wahrheiten.
@@ -586,6 +587,9 @@ function AppContent() {
               Deshalb steht sie jetzt hier, eine Ebene über den Routen, und
               verdeckt alles. */}
           <Sichtschutz />
+          {/* GAST-01: Haengt an einem Ereignis aus `authFetch`, nicht an
+              einem Bildschirm — deshalb steht es hier, einmal fuer alles. */}
+          <RegistrierungsGate />
 
           <AnimatedRoutes />
 

@@ -44,6 +44,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // ── GAST-01 (14.08.2026) ────────────────────────────────────────────
+    // BEFUND: Diese Datei hatte 39 allow-Regeln und keine einzige davon
+    // unterschied ein Gastkonto von einem dauerhaften. „Als Gast
+    // fortfahren" gab damit volle Rechte.
+    //
+    // Firebase legt den Anmeldeweg im Token unter
+    // firebase.sign_in_provider ab; bei signInAnonymously() steht dort
+    // "anonymous". Dieselbe Pruefung wie in src/server/gastrechte.ts.
+    function istGast() {
+      return signedIn()
+             && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
     function userDoc(uid) {
       return get(/databases/$(database)/documents/users/$(uid)).data;
     }
@@ -161,7 +174,12 @@ service cloud.firestore {
       // P0-4: keepsServerFields() ist der eigentliche Schutz. Ohne ihn
       // konnte sich jedes Konto isVerified: true selbst setzen — und damit
       // jede Regel aushebeln, die auf Verifizierung prueft.
+      // GAST-01: Anlegen ja, Aendern nein. Ein Gast braucht das Dokument,
+      // um die Altersabfrage zu durchlaufen — aber kein eigenes Profil.
+      // Das setzt „Foto-Upload / eigenes Profil: gesperrt" auf Regelebene
+      // durch, unabhaengig davon, was die Oberflaeche anbietet.
       allow update: if signedIn() && request.auth.uid == userId
+                    && !istGast()
                     && isValidUserUpdate(request.resource.data, resource.data)
                     && keepsServerFields();
       // Loeschung laeuft ueber /api/account/delete (Kaskade, Art. 17 DSGVO).
@@ -241,7 +259,13 @@ service cloud.firestore {
 
       match /messages/{messageId} {
         allow read: if signedIn() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow create: if signedIn() 
+        // GAST-01: zweite Sperre. Die erste ist `isVerified` beim Anlegen
+        // des Chats — ein Gast kaeme also ohnehin nie Teilnehmer. Zwei
+        // Sperren, weil die erste an einer Produktentscheidung haengt
+        // („nur Verifizierte handeln") und die zweite an der Kontoart.
+        // Faellt eine weg, haelt die andere.
+        allow create: if signedIn()
+                      && !istGast()
                       && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants 
                       && isValidMessage(request.resource.data, get(/databases/$(database)/documents/chats/$(chatId)).data);
         allow update: if false; // Messages should be immutable

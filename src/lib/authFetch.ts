@@ -44,6 +44,31 @@ export function installAuthFetch(): void {
       // Stunde abgemeldet.
       if (user) headers.set('Authorization', `Bearer ${await user.getIdToken()}`);
     }
-    return original(input, { ...init, headers });
+    const antwort = await original(input, { ...init, headers });
+
+    // ── GAST-01 (14.08.2026) ──────────────────────────────────────────────
+    // Der Server antwortet auf gesperrte Handlungen mit 403 und dem Code
+    // `konto_erforderlich` (src/server/gastrechte.ts). Hier, an der einen
+    // Stelle, durch die JEDER eigene /api-Aufruf laeuft, wird daraus ein
+    // Ereignis. Die Oberflaeche muss das nicht an 116 Stellen behandeln —
+    // dieselbe Begruendung wie beim Token oben.
+    //
+    // Der Koerper wird auf einer KOPIE gelesen: `antwort` geht an den
+    // Aufrufer weiter, und ein einmal gelesener Koerper laesst sich nicht
+    // erneut lesen.
+    if (antwort.status === 403) {
+      try {
+        const daten = await antwort.clone().json();
+        if (daten?.code === 'konto_erforderlich') {
+          window.dispatchEvent(new CustomEvent('klar_konto_erforderlich', {
+            detail: { grund: typeof daten.error === 'string' ? daten.error : undefined },
+          }));
+        }
+      } catch {
+        // Kein JSON: dann auch kein Code. Nichts zu tun.
+      }
+    }
+
+    return antwort;
   };
 }

@@ -48,6 +48,10 @@ import {
   NOGO_VORSCHLAEGE, BIO_WERTE_HINWEISE,
 } from "./src/server/kuratiert";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
+import {
+  istGast, gastDarf, GAST_KI_GRENZE,
+  CODE_KONTO_ERFORDERLICH, TEXT_KONTO_ERFORDERLICH,
+} from "./src/server/gastrechte";
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import crypto from 'crypto';
@@ -460,6 +464,33 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
     legacyHeaders: false,
   });
 
+  // ── GAST-01 (14.08.2026) ────────────────────────────────────────────────
+  // Dieselbe Bremse, engere Grenze. Begruendung steht in
+  // `src/server/gastrechte.ts`: Ein Gastkonto entsteht in Sekunden, ohne
+  // E-Mail und ohne Nachweis. Eine Grenze je Konto ist damit keine Grenze,
+  // solange sie so hoch liegt wie bei einem dauerhaften Konto.
+  //
+  // WAS DAS NICHT LEISTET, und das gehoert dazugesagt: Wer beliebig viele
+  // Gastkonten anlegt, bekommt beliebig viele Kontingente. Dagegen hilft nur
+  // eine Grenze, die nicht am Konto haengt — und die gehoert in dieselbe
+  // Firestore-Transaktion wie das Kontaktkontingent. Bis dahin ist dies eine
+  // Bremse, keine Sperre.
+  const gastKiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: GAST_KI_GRENZE,
+    keyGenerator: (req) => {
+      const konto = (req as any).user?.uid;
+      if (konto) return `gast-${konto}`;
+      return ipKeyGenerator(req.ip ?? "");
+    },
+    message: {
+      error: "Als Gast kannst du die KI-Werkzeuge ausprobieren. Fuer mehr brauchst du ein kostenloses Konto.",
+      code: CODE_KONTO_ERFORDERLICH,
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   app.use("/api", async (req, res, next) => {
     const pfad = req.path.startsWith("/api") ? req.path : "/api" + req.path;
     if (OEFFENTLICH.has(pfad) || OEFFENTLICH.has(req.path)) return next();
@@ -486,8 +517,28 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
       }
 
       (req as any).nutzer = daten;
+
+      // ── GAST-01 ─────────────────────────────────────────────────────────
+      // Die Linie steht in `src/server/gastrechte.ts`, nicht hier: Der
+      // Gastmodus ist eine Vorschau. Sobald eine Handlung eine INTERAKTION
+      // MIT ANDEREN MENSCHEN ausloest, ist ein Konto noetig.
+      //
+      // Die Pruefung steht NACH der Altersabfrage, damit ein Gast die
+      // Altersabfrage ueberhaupt durchlaufen kann — sonst kaeme er nirgends
+      // hin und die Sperre waere eine Totalsperre.
+      const gast = istGast((req as any).user);
+      (req as any).istGast = gast;
+      if (gast && !gastDarf(pfad)) {
+        return res.status(403).json({
+          error: TEXT_KONTO_ERFORDERLICH,
+          code: CODE_KONTO_ERFORDERLICH,
+        });
+      }
+
       // SEC-05: Erst nach der Anmeldung, damit der Schluessel die uid ist.
-      if (KI_ENDPUNKTE.has(pfad)) return kiLimiter(req, res, next);
+      if (KI_ENDPUNKTE.has(pfad)) {
+        return gast ? gastKiLimiter(req, res, next) : kiLimiter(req, res, next);
+      }
       return next();
     } catch (e) {
       // Kein Durchlassen im Fehlerfall. Ein Ladefehler darf nicht dazu
