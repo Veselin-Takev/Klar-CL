@@ -5,8 +5,26 @@
 // setzen kann.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { getStorage, ref, uploadBytes } from 'firebase/storage';
 import { auth } from './firebase';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// `firebase/storage` wird NICHT hier oben importiert.
+//
+// ── DER BEFUND VOM 14.08.2026 ─────────────────────────────────────────────
+// `npm run groesse` hat ausgerechnet, woraus das Startstueck besteht.
+// `@firebase/storage` stand darin mit 31,7 kB (2,4 %) — obwohl es an genau
+// EINER Stelle gebraucht wird: beim Hochladen des Verifizierungsfotos in
+// `reicheVerifizierungEin()` weiter unten.
+//
+// Ein Import am Dateikopf laedt das Paket, sobald irgendeine Funktion aus
+// dieser Datei gebraucht wird. `klar.ts` haengt am Startgraph, also lud
+// jeder Anmeldebildschirm die Datei-Ablage mit — fuer ein Foto, das die
+// wenigsten je hochladen.
+//
+// Der Import steht deshalb IN der Funktion. Sie ist ohnehin `async`; der
+// zusaetzliche `await` kostet nichts, was neben einem Datei-Upload ins
+// Gewicht faellt.
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function json<T>(res: Response): Promise<T> {
   const d = await res.json().catch(() => ({}));
@@ -61,6 +79,7 @@ export async function holeGeste(): Promise<ChallengeAntwort> {
  *  und die Sichtprüfung hätte nichts zu prüfen, ohne dass es auffällt. */
 export async function reicheVerifizierungEin(datei: Blob, pfad: string): Promise<{ vorgang: string }> {
   if (!auth.currentUser) throw new Error('Nicht angemeldet.');
+  const { getStorage, ref, uploadBytes } = await import('firebase/storage');
   await uploadBytes(ref(getStorage(), pfad), datei, { contentType: datei.type || 'image/jpeg' });
   return json<{ vorgang: string }>(
     await fetch('/api/verification/submit', {
