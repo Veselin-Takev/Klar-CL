@@ -1,9 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, CloudRain, Snowflake, Cloud, MapPin, Sparkles, Heart, RefreshCw } from 'lucide-react';
+import { MapPin, Sparkles, Heart, RefreshCw } from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ── WAS HIER AM 14.08.2026 ENTFERNT WURDE ─────────────────────────────────
+// Im Kopf des Bildschirms stand neben einem Wettersymbol eine Temperatur.
+// Sie kam aus `Math.random()`:
+//
+//     // Simulate weather API call
+//     const isRaining = Math.random() > 0.6;
+//     const temp = Math.floor(Math.random() * 25) + 5;
+//
+// Ohne Koordinaten stand dort fest eingebaut „20 °C, sonnig" — eine Zahl,
+// die nicht einmal wechselte. Beides ging ausserdem als `weather` an
+// `/api/gemini/date-inspiration` und stand dort im Prompt: Die KI richtete
+// ihre Date-Ideen nach einem Wetter, das niemand gemessen hatte.
+//
+// Entscheidung vom 14.08.2026: gestrichen. Der Wetterteil ist auch aus dem
+// Prompt auf dem Server entfernt.
+//
+// WIEDERVORLAGE: Wenn eine echte Wetterquelle drankommt, gehoert sie an
+//   diese Stelle und an `/api/gemini/date-inspiration` zurueck. Sie braucht
+//   einen eigenen Endpunkt, damit die Koordinaten nicht vom Geraet aus zu
+//   einem Dritten gehen, dazu einen Zwischenspeicher (das Wetter aendert
+//   sich nicht im Minutentakt) und einen ehrlichen Fehlerfall: Steht keine
+//   Auskunft zur Verfuegung, wird KEIN Wetter angezeigt statt eines
+//   angenommenen. Nicht betroffen sind `SmartDatePlannerWidget` und
+//   `CityInsiderWidget` — dort WAEHLT die Person das Wetter selbst aus
+//   einer Liste, das ist eine Angabe und keine Behauptung der App.
+// ═══════════════════════════════════════════════════════════════════════════
 import { auth } from '../lib/firebase';
 
 export const DateInspirationTab: React.FC<{ userInterests?: string[], userCoords?: {lat: number, lng: number} | null }> = ({ userInterests = [], userCoords }) => {
-  const [weatherData, setWeatherData] = useState<any>(null);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [city, setCity] = useState<string>("Deinem Standort");
@@ -11,17 +38,11 @@ export const DateInspirationTab: React.FC<{ userInterests?: string[], userCoords
   const fetchInspiration = async () => {
     setIsLoading(true);
     try {
-      let weatherStr = "Unbekanntes Wetter";
-      if (userCoords) {
-        // Simulate weather API call
-        const isRaining = Math.random() > 0.6;
-        const temp = Math.floor(Math.random() * 25) + 5;
-        weatherStr = isRaining ? `Regnerisch, ${temp}°C` : `Sonnig/Wolkig, ${temp}°C`;
-        setCity("Aktueller Standort");
-        setWeatherData({ temp, isRaining, condition: isRaining ? 'rain' : 'sun' });
-      } else {
-        setWeatherData({ temp: 20, isRaining: false, condition: 'sun' });
-      }
+      // ENTFERNT 14.08.2026: Hier standen `Math.random()`-Wetter und ein fest
+      // eingebautes „20 °C, sonnig" fuer den Fall ohne Koordinaten. Beides
+      // ging als `weather` in den KI-Prompt und stand als Zahl im Kopf des
+      // Bildschirms. Siehe den Kommentar am Anfang der Datei.
+      if (userCoords) setCity("Aktueller Standort");
 
       let interestsToUse = userInterests;
       if (!interestsToUse || interestsToUse.length === 0) {
@@ -38,7 +59,7 @@ export const DateInspirationTab: React.FC<{ userInterests?: string[], userCoords
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ weather: weatherStr, interests: (Array.isArray(interestsToUse) ? interestsToUse.join(", ") : "Allgemein") })
+        body: JSON.stringify({ interests: (Array.isArray(interestsToUse) ? interestsToUse.join(", ") : "Allgemein") })
       });
       if (!res.ok) throw new Error("API failed");
       const data = await res.text().then(text => text ? JSON.parse(text) : {});
@@ -62,13 +83,6 @@ export const DateInspirationTab: React.FC<{ userInterests?: string[], userCoords
     fetchInspiration();
   }, [userCoords, userInterests]);
 
-  const getWeatherIcon = () => {
-    if (!weatherData) return <Cloud className="text-stone-400" />;
-    if (weatherData.condition === 'rain') return <CloudRain className="text-blue-500" />;
-    if (weatherData.temp < 10) return <Snowflake className="text-cyan-500" />;
-    return <Sun className="text-yellow-500" />;
-  };
-
   return (
     <div className="flex flex-col h-full bg-white dark:bg-stone-900 rounded-3xl p-4 shadow-sm border border-stone-100 dark:border-stone-800 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-32  from-brand/10 to-transparent dark:from-brand-light/10 z-0"></div>
@@ -87,20 +101,6 @@ export const DateInspirationTab: React.FC<{ userInterests?: string[], userCoords
             <div>
               <p className="text-xs text-stone-500 dark:text-stone-400 font-medium">Dein Standort</p>
               <p className="font-semibold text-stone-900 dark:text-stone-100">{city}</p>
-            </div>
-          </div>
-          
-          <div className="h-8 w-px bg-stone-200 dark:bg-stone-700"></div>
-
-          <div className="flex items-center gap-3 pr-2">
-            <div>
-              <p className="text-xs text-stone-500 dark:text-stone-400 font-medium text-right">Wetter</p>
-              <p className="font-semibold text-stone-900 dark:text-stone-100 text-right">
-                {weatherData ? `${weatherData.temp}°C` : '--'}
-              </p>
-            </div>
-            <div className="w-10 h-10 bg-white dark:bg-stone-800 rounded-full flex items-center justify-center shadow-sm">
-              {getWeatherIcon()}
             </div>
           </div>
         </div>

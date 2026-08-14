@@ -1560,14 +1560,19 @@ Bitte analysiere mein Profil und erstelle einen "Klar-Kompass". Welche Persönli
   // `beantworte`. Das Beiwerk (kuratierter Ersatz) ist unveraendert
   // uebernommen.
   app.post("/api/gemini/date-inspiration", async (req, res) => {
-    const { weather, interests } = req.body;
+    // 14.08.2026: `weather` faellt weg. Der Client hat den Wert mit
+    // `Math.random()` erzeugt und als Tatsache in den Prompt gegeben — die
+    // Vorschlaege richteten sich damit nach einem Wetter, das niemand
+    // gemessen hatte. Eine echte Quelle waere ein eigener Endpunkt; bis
+    // dahin lieber kein Wetter im Prompt als ein erfundenes.
+    const { interests } = req.body;
     const antwort = await beantworte(
       "/api/gemini/date-inspiration",
       // Das AbortSignal wird bewusst NICHT an das SDK durchgereicht — siehe
       // die ausfuehrliche Begruendung bei /api/gemini/daily-coach-insight.
       (_signal) => ai.models.generateContent({
         model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
-        contents: `Erstelle 3 sehr konkrete, einzigartige und entspannte Date-Ideen ohne typischen Dating-Stress (non-stressful). Fokus auf authentisches Kennenlernen in der Umgebung. Wetter: ${weather}. Interessen: ${interests}`,
+        contents: `Erstelle 3 sehr konkrete, einzigartige und entspannte Date-Ideen ohne typischen Dating-Stress (non-stressful). Fokus auf authentisches Kennenlernen in der Umgebung. Interessen: ${interests}`,
         config: {
           systemInstruction: "Du bist der KI-Assistent der Klar Dating App. Schlage authentische, unkomplizierte Date-Ideen vor. Gib die Antwort im JSON-Format zurück.",
           responseMimeType: "application/json",
