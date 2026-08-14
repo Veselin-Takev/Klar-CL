@@ -241,7 +241,24 @@ export async function baueApp() {
             // Laufzeit. Fuer Skripte gilt es NICHT — dort liegt das Risiko.
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-            scriptSrc: ["'self'"],
+            // BEFUND 14.08.2026, nur im gebauten Stand sichtbar:
+            //
+            //   Loading the script 'https://apis.google.com/js/api.js?onload=…'
+            //   violates the following CSP directive: "script-src 'self'".
+            //   Error signing in with Google: FirebaseError (auth/internal-error)
+            //
+            // Firebase Auth laedt fuer den Anmeldedialog ein Skript von
+            // `apis.google.com`. Die CSP gilt NUR in der Produktion — der
+            // Fehler waere also live aufgetreten, und im Entwicklungsbetrieb
+            // konnte ihn niemand sehen. Die Google-Anmeldung war damit im
+            // gebauten Stand nicht benutzbar.
+            //
+            // KEIN `'unsafe-inline'`. Zu dieser Stelle gibt es einen offenen
+            // Punkt im SDK (firebase-js-sdk #5193), der genau das verlangt.
+            // Falls es sich als noetig erweist, ist das eine Entscheidung
+            // mit Begruendung — kein stiller Nebeneffekt einer Fehlersuche.
+            // Erst wird gemessen, ob der Eintrag hier genuegt.
+            scriptSrc: ["'self'", "https://apis.google.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://firebasestorage.googleapis.com",
                      "https://storage.googleapis.com", "https://lh3.googleusercontent.com",
                      "https://images.unsplash.com"],
@@ -264,7 +281,9 @@ export async function baueApp() {
                          "wss://*.firebaseio.com", "https://*.sentry.io",
                          "https://www.google.com/images/cleardot.gif",
                          ...emulatorQuellen],
-            frameSrc: ["'self'", "https://*.firebaseapp.com"],
+            // `accounts.google.com` fuer den Anmeldedialog selbst; ohne
+            // ihn bliebe das Fenster leer, auch wenn das Skript laedt.
+            frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
