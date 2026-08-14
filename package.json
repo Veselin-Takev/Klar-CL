@@ -9,8 +9,11 @@
   "scripts": {
     "dev": "tsx server.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.server.json && tsc -p tsconfig.tests.json",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "NODE_ENV=production node dist/server.cjs",
+    "build:server": "esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && npm run build:server && node scripts/baustand.mjs entferne",
+    "build:lokal": "VITE_EMULATOR=true vite build && npm run build:server && node scripts/baustand.mjs markiere",
+    "start": "node scripts/baustand.mjs pruefe && NODE_ENV=production node dist/server.cjs",
+    "start:lokal": "node scripts/baustand.mjs verlange && firebase emulators:exec --project demo-klar --only auth,firestore \"NODE_ENV=production node dist/server.cjs\"",
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:pure": "tsx --test tests/pure.spec.ts tests/kiPolitik.spec.ts tests/kiAufruf.spec.ts tests/zwischenspeicher.spec.ts tests/wiederholung.spec.ts tests/sprache.spec.ts tests/gastrechte.spec.ts tests/pausenplan.spec.ts tests/klarPlus.spec.ts tests/meilensteine.spec.ts tests/stimmung.spec.ts tests/gastGrenze.spec.ts tests/textform.spec.ts tests/tagesstimmung.spec.ts tests/kontingente.spec.ts tests/quellkarte.spec.ts",
