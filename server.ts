@@ -215,8 +215,24 @@ export async function baueApp() {
             imgSrc: ["'self'", "data:", "blob:", "https://firebasestorage.googleapis.com",
                      "https://storage.googleapis.com", "https://lh3.googleusercontent.com",
                      "https://images.unsplash.com"],
+            // BEFUND 14.08.2026, im gebauten Stand: Zwei CSP-Fehler je
+            // Seitenaufruf, zugeordnet zu `sw.js:68` — dort steht aber nur
+            // der Durchreich-`fetch` des Service Workers. Der Verursacher
+            // ist `@firebase/firestore`: Der WebChannel-Transport ruft
+            // `www.google.com/images/cleardot.gif?zx=…` als Verbindungstest.
+            // Bekannter offener Punkt im SDK (firebase-js-sdk #6777,
+            // „Firestore should not access www.google.com").
+            //
+            // Erlaubt ist deshalb GENAU DIESER PFAD, nicht der ganze Host.
+            // Die Abfrage traegt keine Nutzdaten (ein 1x1-Bild mit
+            // Zufallszahl), und der Anfragepfad wird von CSP mitgeprueft —
+            // die Zeichenkette nach `?` nicht.
+            //
+            // Zwei rote Meldungen je Seitenaufruf sind kein Schoenheits-
+            // fehler: Sie verdecken echte Fehler in der Konsole.
             connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com",
-                         "wss://*.firebaseio.com", "https://*.sentry.io"],
+                         "wss://*.firebaseio.com", "https://*.sentry.io",
+                         "https://www.google.com/images/cleardot.gif"],
             frameSrc: ["'self'", "https://*.firebaseapp.com"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
@@ -231,7 +247,8 @@ export async function baueApp() {
   const healthStats = {
     apiLatencies: [] as { route: string, duration: number, timestamp: number }[],
     firebaseLatencies: [] as { operation: string, duration: number, timestamp: number }[],
-    startupTime: 1240, // Simulated or recorded at boot
+    // ENTFERNT 14.08.2026: `startupTime: 1240` — als „Simulated" markiert
+    // und trotzdem als Kennzahl ausgeliefert.
   };
 
   // Logging Middleware for API latency
@@ -253,10 +270,11 @@ export async function baueApp() {
   });
 
   
-  const historicalApiData = Array.from({length: 7}).map((_, i) => ({
-    date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE', {weekday: 'short'}),
-    avgLatency: 120 + Math.random() * 80 + (i === 4 ? 150 : 0) // some spike on day 4
-  }));
+  // ENTFERNT 14.08.2026: `historicalApiData` — eine 7-Tage-Latenzreihe aus
+  // `120 + Math.random() * 80`, mit absichtlich eingebautem Ausschlag an
+  // Tag 4 („some spike on day 4"). Dieselbe Machart wie die geloeschten
+  // Dashboard-Diagramme (ffad351): nicht nur erfundene Zahlen, sondern eine
+  // erfundene GESCHICHTE.
 
 // SEC-12 (Final Audit 08.08.2026): Diese Route stand ohne Schutz hier —
 // und zwar OBERHALB von `app.use("/api", …)` in Zeile ~176. Express arbeitet
@@ -268,9 +286,15 @@ export async function baueApp() {
 // Interne Betriebskennzahlen gehen niemanden ausserhalb des Betriebs etwas
 // an — auch keine angemeldete Person.
 //
-// Unveraendert offen bleibt FUN-03: Die Zahlen unten stammen aus einem
-// In-Memory-Objekt und teilweise aus Math.random(). Sie sind erfunden.
-// Der Zugriffsschutz macht sie nicht echt.
+// FUN-03 ERLEDIGT am 14.08.2026. Hier stand: „Unveraendert offen bleibt
+// FUN-03: Die Zahlen unten stammen aus einem In-Memory-Objekt und teilweise
+// aus Math.random(). Sie sind erfunden. Der Zugriffsschutz macht sie nicht
+// echt." — Das stimmte, und es stand hier, ohne dass sich etwas aenderte.
+//
+// Die sechs erfundenen Kennzahlen sind entfernt; was bleibt, ist gemessen,
+// und was fehlt, wird benannt. Aufgefallen ist es beim ersten Lauf des
+// gebauten Standes — nicht durch eine Pruefung, denn `check:erfundene-zahlen`
+// sah `server.ts` bis heute gar nicht an.
 const nurModeration: express.RequestHandler = (req, res, next) => {
   const anspruch = (req as any).user?.moderator === true
     || (req as any).user?.customClaims?.moderator === true;
@@ -279,38 +303,48 @@ const nurModeration: express.RequestHandler = (req, res, next) => {
 };
 
 app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
+    // ── BEFUND 14.08.2026 ────────────────────────────────────────────
+    // Dieser Endpunkt lieferte SIEBEN Kennzahlen, von denen sechs erfunden
+    // waren: crashFreeRate 99.8, startupTimeMs 1240 („Simulated"),
+    // susScore 82, cacheHitRate 74 („mock value"), dazu zwei fest
+    // eingebaute Reihen (susHistory, latencyHeatmap) und eine
+    // ausgewuerfelte (latencyHistory).
+    //
+    // Selbst die eine echte Zahl hatte einen erfundenen Rueckfallwert:
+    // `: 145; // Default if no data`. Ohne Messungen behauptete der
+    // Endpunkt also 145 ms — derselbe Fehler wie `|| '2'` im geloeschten
+    // Gespraechs-Diagramm (ffad351).
+    //
+    // Er ist nur fuer Moderatoren erreichbar und hat KEINEN Aufrufer im
+    // Client. Trotzdem nicht geloescht: Die Latenzmessung darunter ist
+    // echt, und ein Gesundheitsendpunkt ist an sich richtig. Entfernt sind
+    // die Erfindungen; was fehlt, wird benannt statt gefuellt.
+    //
+    // WIEDERVORLAGE: Echte Werte fuer Absturzrate, Startzeit und
+    //   Zwischenspeicher brauchen eine Erhebung — Sentry liefert die erste,
+    //   die zweite gehoert an den Serverstart, die dritte an den
+    //   Zwischenspeicher selbst. Erst erheben, dann anzeigen.
     const recentApi = healthStats.apiLatencies.slice(-100);
-    const avgApi = recentApi.length > 0 
-      ? recentApi.reduce((acc, curr) => acc + curr.duration, 0) / recentApi.length 
-      : 145; // Default if no data
-
-    // Mock SUS History (last 6 months)
-    const susHistory = [
-      { month: 'Jan', score: 68 },
-      { month: 'Feb', score: 72 },
-      { month: 'Mär', score: 75 },
-      { month: 'Apr', score: 79 },
-      { month: 'Mai', score: 81 },
-      { month: 'Jun', score: 82 }
-    ];
-
-    // Mock Heatmap Data (24h split into 4 blocks of 6 hours for simplicity)
-    const latencyHeatmap = [
-      { block: '00-06h', avg: 110, count: 450 },
-      { block: '06-12h', avg: 160, count: 1200 },
-      { block: '12-18h', avg: 195, count: 2100 },
-      { block: '18-24h', avg: 240, count: 3500 },
-    ];
+    const avgApi = recentApi.length > 0
+      ? Math.round(recentApi.reduce((acc, curr) => acc + curr.duration, 0) / recentApi.length)
+      : null;
 
     res.json({
-      crashFreeRate: 99.8,
-      apiAvgResponseTimeMs: Math.round(avgApi),
-      startupTimeMs: healthStats.startupTime,
-      susScore: 82,
-      latencyHistory: historicalApiData,
-      susHistory,
-      latencyHeatmap,
-      cacheHitRate: 74 // mock value
+      // `null` heisst „noch nichts gemessen" und ist etwas anderes als 0.
+      apiAvgResponseTimeMs: avgApi,
+      // Sagt immer, worauf die Zahl beruht. Ein Mittel aus drei Aufrufen
+      // ist etwas anderes als eines aus hundert.
+      apiMessungen: recentApi.length,
+      // GRENZE, die dazugehoert: Die Messwerte liegen im Arbeitsspeicher
+      // DIESER Instanz und umfassen die letzten 100 Aufrufe. Ein Neustart
+      // setzt sie zurueck.
+      nichtVerfuegbar: [
+        'crashFreeRate — es gibt keine Absturzerfassung',
+        'startupTimeMs — die Startzeit wird nicht gemessen',
+        'susScore, susHistory — es liegen keine erhobenen SUS-Antworten vor',
+        'latencyHistory, latencyHeatmap — es gibt keine Messwerte ueber die letzten 100 Aufrufe hinaus',
+        'cacheHitRate — es gibt keine Zwischenspeicher-Statistik',
+      ],
     });
   });
 

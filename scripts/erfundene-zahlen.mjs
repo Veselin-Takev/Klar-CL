@@ -34,11 +34,26 @@
 //
 // Aufruf:  node scripts/erfundene-zahlen.mjs [Wurzel] [Obergrenze]
 // ═══════════════════════════════════════════════════════════════════════════
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const wurzel = process.argv[2] || 'src';
 const obergrenze = Number(process.argv[3] ?? 0);
+
+/**
+ * Zusaetzlich geprueft, ausserhalb der Wurzel.
+ *
+ * BEFUND 14.08.2026: `server.ts` liegt neben `src` und wurde deshalb NIE
+ * geprueft. Darin stand eine 7-Tage-Latenzreihe aus
+ * `120 + Math.random() * 80 + (i === 4 ? 150 : 0)` — erfundene Zahlen mit
+ * absichtlich eingebautem Ausschlag, ausgeliefert ueber `/api/system-health`.
+ *
+ * Aufgefallen ist sie beim Lesen, nicht durch diese Pruefung. Eine Pruefung,
+ * die einen Ort nicht ansieht, meldet dort auch nichts — und sieht dabei aus
+ * wie „alles gruen". Derselbe Mechanismus wie bei `verify`, das den Bau nie
+ * ausgefuehrt hat.
+ */
+const ZUSAETZLICH = ['server.ts'];
 
 /** Datei -> { anzahl, grund }. `anzahl` ist die Zahl der erlaubten Stellen. */
 const ERLAUBT = {
@@ -71,10 +86,57 @@ const ERLAUBT = {
     { anzahl: 1, grund: 'Kennung fuer einen neuen Eintrag — die ZWEITE Stelle in dieser Datei ist eine erfundene Grundlinie und wird gezaehlt' },
 };
 
+// ── KOMMENTARE ENTFERNEN, ZEICHENWEISE ───────────────────────────────────
+// Hier stand frueher ein regulaerer Ausdruck fuer Blockkommentare. Er hat
+// funktioniert, solange nur Dateien unter `src` geprueft wurden. Mit
+// `server.ts` kam er an seine Grenze: Dort steht
+//
+//     "https://*.googleapis.com"
+//
+// und darin stecken die Zeichen Schraegstrich, Schraegstrich, Stern — also
+// der Anfang eines Blockkommentars. Der Ausdruck hat ihn dafuer gehalten und
+// alles bis zum naechsten Kommentarende verschluckt. Nach der Entfernung war
+// die halbe Datei leer, und die Pruefung meldete 0 Treffer, ohne rot zu
+// werden.
+//
+// Dieselbe Falle ist in `formularfelder.mjs` („eine naive Suche uebersah 57
+// von 90 Faellen") und in `routen-inventar.mjs` schon einmal beschrieben.
+// Sie wiederholt sich, weil ein regulaerer Ausdruck den Unterschied zwischen
+// Code und Zeichenkette nicht kennt.
+//
+// Diese Fassung laeuft Zeichen fuer Zeichen und weiss, ob sie gerade in
+// einer Zeichenkette steht. Kommentare werden durch Leerzeichen ersetzt,
+// damit die Zeilennummern erhalten bleiben.
 function ohneKommentare(s) {
-  return s
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
-    .replace(/(^|[^:])\/\/.*$/gm, (_m, vor) => vor);
+  let aus = '';
+  let i = 0;
+  let anfuehrung = null;
+  while (i < s.length) {
+    const z = s[i];
+    const naechst = s[i + 1];
+
+    if (anfuehrung) {
+      if (z === '\\') { aus += s.slice(i, i + 2); i += 2; continue; }
+      if (z === anfuehrung) anfuehrung = null;
+      aus += z; i++; continue;
+    }
+
+    if (z === '"' || z === "'" || z === '`') { anfuehrung = z; aus += z; i++; continue; }
+
+    if (z === '/' && naechst === '/') {
+      while (i < s.length && s[i] !== '\n') { aus += ' '; i++; }
+      continue;
+    }
+    if (z === '/' && naechst === '*') {
+      const ende = s.indexOf('*' + '/', i + 2);
+      const bis = ende === -1 ? s.length : ende + 2;
+      for (let k = i; k < bis; k++) aus += s[k] === '\n' ? '\n' : ' ';
+      i = bis; continue;
+    }
+
+    aus += z; i++;
+  }
+  return aus;
 }
 
 function dateien(w, aus = []) {
@@ -89,7 +151,7 @@ function dateien(w, aus = []) {
 const treffer = [];
 let gesamt = 0;
 
-for (const datei of dateien(wurzel)) {
+for (const datei of [...dateien(wurzel), ...ZUSAETZLICH.filter((d) => existsSync(d))]) {
   const text = ohneKommentare(readFileSync(datei, 'utf8'));
   const zeilen = text.split('\n');
   const stellen = [];
