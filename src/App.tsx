@@ -1,20 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router";
 // ShieldCheck entfaellt mit CookieConsent — noUnusedLocals bricht sonst den Build.
 import { MessageCircle, User, Compass, Sparkles, BookOpen, Bell, X, Scale, Flower2 } from "lucide-react";
-import Dashboard from "./screens/Dashboard";
-import Chats from "./screens/Chats";
-import ChatView from "./screens/ChatView";
-import Profile from "./screens/Profile";
-import KlarPlus from "./screens/KlarPlus";
-import MeilensteineAlle from "./screens/MeilensteineAlle";
-import { DatingRituals } from "./screens/DatingRituals";
-import SafetyCenter from "./screens/SafetyCenter";
-import AICoach from "./screens/AICoach";
-import Tips from "./screens/Tips";
-import Onboarding from "./screens/Onboarding";
 // DSG-02: Altersangabe, Einwilligung, erreichbare Rechtstexte.
-import Rechtstexte from "./screens/Rechtstexte";
 import { EinwilligungUndAlter } from "./components/EinwilligungUndAlter";
 import { Sichtschutz, SichtschutzKnopf } from "./components/Sichtschutz";
 import { RegistrierungsGate } from "./components/RegistrierungsGate";
@@ -22,7 +10,6 @@ import { QuickThemeToggle } from "./components/QuickThemeToggle";
 // Die geltende Fassung der Rechtstexte. Aus pure.ts, damit Client und Server
 // dieselbe Zahl benutzen — zwei Konstanten wären zwei Wahrheiten.
 import { EINWILLIGUNG_VERSION } from "./server/pure";
-import AdminDashboard from "./screens/AdminDashboard";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { GlobalApiOverlay } from "./components/GlobalApiOverlay";
 import { GlobalErrorOverlay } from "./components/GlobalErrorOverlay";
@@ -262,9 +249,57 @@ import { db } from "./lib/firebase";
 import { SUSFeedbackModal } from "./components/SUSFeedbackModal";
 import Login from "./screens/Login";
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BILDSCHIRME WERDEN ERST GELADEN, WENN JEMAND SIE SIEHT (14.08.2026)
+//
+// Vorher stand hier fuer jeden Bildschirm ein FESTER Import. Ein fester
+// Import wird geladen, bevor die erste Zeile dieser Komponente laeuft — die
+// Weiche `if (!user) return <Login />` weiter unten kommt dafuer zu spaet.
+//
+// Gemessen im Netzwerk-Reiter, auf dem ANMELDEBILDSCHIRM, vor jeder
+// Anmeldung: recharts (1.246 kB), jspdf (697 kB), d3 (381 kB),
+// html2canvas-pro (364 kB) und rund hundert eigene Bausteine, darunter
+// `PDFResumeGenerator` und `Confetti`.
+//
+// `Login` bleibt bewusst FEST importiert: Er ist das Erste, was gebraucht
+// wird. Ihn nachzuladen hiesse, den Anmeldebildschirm hinter einem
+// Ladezustand zu verstecken.
+//
+// `DatingRituals` ist ein benannter Export, deshalb die Umformung auf
+// `default` — `React.lazy` erwartet ein Modul mit `default`.
+// ═══════════════════════════════════════════════════════════════════════════
+const Dashboard = lazy(() => import("./screens/Dashboard"));
+const Chats = lazy(() => import("./screens/Chats"));
+const ChatView = lazy(() => import("./screens/ChatView"));
+const Profile = lazy(() => import("./screens/Profile"));
+const KlarPlus = lazy(() => import("./screens/KlarPlus"));
+const MeilensteineAlle = lazy(() => import("./screens/MeilensteineAlle"));
+const DatingRituals = lazy(() =>
+  import("./screens/DatingRituals").then((m) => ({ default: m.DatingRituals })),
+);
+const SafetyCenter = lazy(() => import("./screens/SafetyCenter"));
+const AICoach = lazy(() => import("./screens/AICoach"));
+const Tips = lazy(() => import("./screens/Tips"));
+const Onboarding = lazy(() => import("./screens/Onboarding"));
+const Rechtstexte = lazy(() => import("./screens/Rechtstexte"));
+const AdminDashboard = lazy(() => import("./screens/AdminDashboard"));
+
+/** Derselbe Ladezustand, den `App` beim Anmelden zeigt — damit ein Wechsel
+ *  nicht anders aussieht als ein Start. */
+function Ladepunkt() {
+  return (
+    <div className="h-[100dvh] flex items-center justify-center bg-light-bg dark:bg-dark-bg">
+      <div className="w-6 h-6 rounded-full bg-stone-200 dark:bg-stone-700 animate-pulse"></div>
+    </div>
+  );
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
   return (
+    // `Suspense` ist die Kehrseite von `lazy`: Waehrend ein Bildschirm
+    // nachgeladen wird, muss etwas dastehen. Ohne diese Klammer wirft React.
+    <Suspense fallback={<Ladepunkt />}>
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<PageWrapper><Dashboard /></PageWrapper>} />
@@ -291,6 +326,7 @@ function AnimatedRoutes() {
         <Route path="/rechtstexte/:art" element={<PageWrapper><Rechtstexte /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
+    </Suspense>
   );
 }
 
@@ -544,7 +580,7 @@ function AppContent() {
     || profileData.einwilligung?.version !== EINWILLIGUNG_VERSION;
 
   if (!hasCompletedOnboarding) {
-    return <Onboarding onComplete={() => {
+    return <Suspense fallback={<Ladepunkt />}><Onboarding onComplete={() => {
       setHasCompletedOnboarding(true);
       NotificationService.requestPermission();
       localStorage.setItem('klar_last_milestone_engagement', Date.now().toString());
@@ -558,7 +594,8 @@ function AppContent() {
           goal: savedGoal || "undecided"
         }).catch(console.error);
       }
-    }} />;
+    }} />
+    </Suspense>;
   }
 
   return (
@@ -574,6 +611,7 @@ function AppContent() {
       <SUSFeedbackModal />
       <BrowserRouter>
         {brauchtGate ? (
+          <Suspense fallback={<Ladepunkt />}>
           <Routes>
             {/* Aus dem Dialog erreichbar — sonst wäre die Einwilligung
                 nicht informiert im Sinne des Art. 13 DSGVO. */}
@@ -586,6 +624,7 @@ function AppContent() {
               />}
             />
           </Routes>
+          </Suspense>
         ) : (
         <Layout>
           {/* WIEDERHERGESTELLT 11.08.2026 — Sichtschutz.
