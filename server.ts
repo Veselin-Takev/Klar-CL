@@ -3651,8 +3651,60 @@ Bitte erstelle eine kurze, einfühlsame KI-gestützte Analyse der Date-Dynamik u
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+
+    // ── BEFUND 14.08.2026, aus einem HAR des gebauten Standes ─────────────
+    // `express.static` setzt fuer ALLES `Cache-Control: public, max-age=0`.
+    // Im aufgezeichneten Verlauf war die Folge:
+    //
+    //   10:59:36  disk   alte CSP
+    //   11:01:10  netz   NEUE CSP
+    //   11:01:35  disk   ALTE CSP      <- nach dem neuen Stand wieder alt
+    //   11:04:43  netz   NEUE CSP
+    //   11:05:07  disk   ALTE CSP
+    //
+    // Der Browser fiel wiederholt auf das zwischengespeicherte `index.html`
+    // zurueck — und ein zwischengespeichertes Dokument bringt SEINE
+    // Kopfzeilen mit. Damit galt die alte Content-Security-Policy weiter,
+    // und die Seite lud den alten Bau (`index-K6ZTjBUq.js`).
+    //
+    // WAS DAS HEISST: Eine Verschaerfung der Sicherheitsregeln oder ein
+    // Anmelde-Fix erreicht solche Besucher nicht. Zwei Fassungen der App
+    // laufen nebeneinander, und welche man bekommt, entscheidet der
+    // Zwischenspeicher.
+    //
+    // Die beiden Faelle brauchen GEGENSAETZLICHE Regeln, und vorher hatten
+    // sie dieselbe:
+    //
+    //   index.html          traegt die Verweise auf den aktuellen Bau und
+    //                       die Sicherheitsregeln -> NIE zwischenspeichern
+    //   /assets/index-*.js  traegt eine Pruefsumme im Namen und aendert
+    //                       sich unter diesem Namen NIE -> ein Jahr lang
+    //
+    // Bisher galt fuer beide `max-age=0`: das Schlechteste aus beidem. Das
+    // Dokument konnte veralten, und die 1,3 MB Bundle wurden bei jedem
+    // Besuch neu geladen, obwohl sie unveraenderlich sind.
+    app.use(express.static(distPath, {
+      setHeaders: (res, pfad) => {
+        if (pfad.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-store');
+          return;
+        }
+        // Nur Dateien MIT Pruefsumme im Namen duerfen lange gelten. Alles
+        // andere in `dist/` (z. B. `sw.js`, `manifest.json`) traegt keine
+        // und muss bei jedem Aufruf geprueft werden — sonst entsteht
+        // dasselbe Problem eine Ebene tiefer.
+        if (/-[A-Za-z0-9_-]{8,}\.(js|css|woff2?)$/.test(pfad)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          return;
+        }
+        res.setHeader('Cache-Control', 'no-cache');
+      },
+    }));
+
     app.get('*', (_req, res) => {
+      // Dieselbe Regel wie oben: Das Dokument entscheidet, welcher Bau
+      // laeuft und welche Sicherheitsregeln gelten.
+      res.setHeader('Cache-Control', 'no-store');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
