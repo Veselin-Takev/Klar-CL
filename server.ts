@@ -202,6 +202,36 @@ export async function baueApp() {
   // In der Entwicklung bleibt sie aus: Vite braucht inline-Skripte und
   // eval fuer Hot-Reload. In Produktion gilt sie.
   const istProduktion = process.env.NODE_ENV === "production";
+
+  // ── BEFUND 14.08.2026, beim ersten Lauf von `npm run start:lokal` ───────
+  // Der gebaute Stand lief gegen die Emulatoren — und die CSP hat JEDE
+  // Verbindung dorthin abgelehnt:
+  //
+  //   Fetch API cannot load http://127.0.0.1:8080/google.firestore.v1…
+  //   Refused to connect because it violates the Content Security Policy.
+  //
+  // Daraus folgte alles Weitere: kein Auth-Token, 403 auf
+  // /api/account/alter, „Forbidden: Invalid token" an der Altersabfrage.
+  //
+  // Die CSP war nicht falsch — sie kannte die Emulatoren nur nicht.
+  // `start:lokal` setzt `NODE_ENV=production`, weil genau der
+  // Produktionszustand geprueft werden soll; damit greift sie.
+  //
+  // Erweitert wird deshalb NUR, wenn die Emulator-Variablen gesetzt sind.
+  // `firebase emulators:exec` setzt sie; in der Produktion gibt es sie
+  // nicht, und dann bleibt die Liste unveraendert eng.
+  const emulatorQuellen: string[] = [];
+  for (const wirt of [process.env.FIRESTORE_EMULATOR_HOST, process.env.FIREBASE_AUTH_EMULATOR_HOST]) {
+    if (!wirt) continue;
+    emulatorQuellen.push(`http://${wirt}`, `ws://${wirt}`);
+  }
+  if (emulatorQuellen.length > 0) {
+    console.warn(
+      `\n  HINWEIS: Die CSP ist um die Emulatoren erweitert:\n` +
+      `  ${emulatorQuellen.join("  ")}\n` +
+      `  Das geschieht nur, weil FIRESTORE_EMULATOR_HOST gesetzt ist.\n`,
+    );
+  }
   app.use(helmet({
     contentSecurityPolicy: istProduktion
       ? {
@@ -232,7 +262,8 @@ export async function baueApp() {
             // fehler: Sie verdecken echte Fehler in der Konsole.
             connectSrc: ["'self'", "https://*.googleapis.com", "https://*.firebaseio.com",
                          "wss://*.firebaseio.com", "https://*.sentry.io",
-                         "https://www.google.com/images/cleardot.gif"],
+                         "https://www.google.com/images/cleardot.gif",
+                         ...emulatorQuellen],
             frameSrc: ["'self'", "https://*.firebaseapp.com"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],

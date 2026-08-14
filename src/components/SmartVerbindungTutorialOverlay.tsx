@@ -1,3 +1,16 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTFERNT 14.08.2026: vier Bilder von `https://i.pravatar.cc`
+//
+// Die Anleitung zeigte zwei Beispielprofile mit Bildern eines fremden
+// Dienstes. Im gebauten Stand hat die CSP sie abgelehnt (`img-src`), acht
+// Meldungen je Aufruf.
+//
+// Nicht die CSP war das Problem. Eine App, die verspricht, dass man nicht
+// mit seinen Daten zahlt, sollte fuer eine ANLEITUNG kein fremdes Bild
+// nachladen — jeder Aufruf verraet dem Dienst, wer wann welche Anleitung
+// oeffnet. An die Stelle treten die Anfangsbuchstaben der beiden
+// Beispielnamen, gezeichnet aus dem, was ohnehin da ist.
+// ═══════════════════════════════════════════════════════════════════════════
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Sparkles, ArrowRight, X, Heart, Star, BrainCircuit } from "lucide-react";
@@ -90,7 +103,7 @@ export function SmartVerbindungTutorialOverlay() {
                     <div className="flex items-center justify-between w-full max-w-[240px] p-3 bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 mb-3">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                          <img src="https://i.pravatar.cc/150?u=a" alt="User" className="w-full h-full object-cover" />
+                          <span aria-hidden="true" className="w-full h-full flex items-center justify-center text-xs font-medium text-stone-500 dark:text-stone-400">A</span>
                         </div>
                         <div className="text-sm font-medium">Alex, 28</div>
                       </div>
@@ -101,7 +114,7 @@ export function SmartVerbindungTutorialOverlay() {
                     <div className="flex items-center justify-between w-full max-w-[240px] p-3 bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                          <img src="https://i.pravatar.cc/150?u=b" alt="User" className="w-full h-full object-cover" />
+                          <span aria-hidden="true" className="w-full h-full flex items-center justify-center text-xs font-medium text-stone-500 dark:text-stone-400">S</span>
                         </div>
                         <div className="text-sm font-medium">Sam, 31</div>
                       </div>
@@ -137,7 +150,7 @@ export function SmartVerbindungTutorialOverlay() {
                       />
                       <div className="flex items-center gap-3 relative z-10">
                         <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden border-2 border-brand dark:border-brand-light">
-                          <img src="https://i.pravatar.cc/150?u=b" alt="User" className="w-full h-full object-cover" />
+                          <span aria-hidden="true" className="w-full h-full flex items-center justify-center text-xs font-medium text-stone-500 dark:text-stone-400">S</span>
                         </div>
                         <div className="text-sm font-medium">Sam, 31</div>
                       </div>
@@ -148,7 +161,7 @@ export function SmartVerbindungTutorialOverlay() {
                     <div className="flex items-center justify-between w-full max-w-[240px] p-3 bg-white dark:bg-stone-900 rounded-xl shadow-sm border border-stone-200 dark:border-stone-700 opacity-60">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-stone-200 dark:bg-stone-700 overflow-hidden">
-                          <img src="https://i.pravatar.cc/150?u=a" alt="User" className="w-full h-full object-cover" />
+                          <span aria-hidden="true" className="w-full h-full flex items-center justify-center text-xs font-medium text-stone-500 dark:text-stone-400">A</span>
                         </div>
                         <div className="text-sm font-medium">Alex, 28</div>
                       </div>
