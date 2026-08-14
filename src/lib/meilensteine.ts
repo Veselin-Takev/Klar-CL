@@ -97,8 +97,13 @@ export interface Meilenstein {
 }
 
 /** Eine Zahl aus dem Speicher. Fehlt sie oder ist sie unlesbar: 0.
- *  NICHT: ein Vorgabewert wie `|| '2'`, wie er in
- *  `QualityConversationsChartWidget.tsx:14` steht. */
+ *  NICHT: ein Vorgabewert wie `|| '2'`.
+ *
+ *  Woher das Beispiel stammt: `QualityConversationsChartWidget` las
+ *  `stats_conversations_started` mit Vorgabe `'2'` — einen Schluessel, den
+ *  laut ENTFALLEN (unten) niemand schreibt. Angezeigt wurden also immer
+ *  zwei Gespraeche. Der Baustein ist am 14.08.2026 entfernt; die Regel
+ *  bleibt, weil der Fehler jederzeit wiederkommen kann. */
 export function zahl(r: Rohdaten, schluessel: string): number {
   const roh = r[schluessel];
   if (typeof roh !== 'string') return 0;

@@ -128,7 +128,9 @@ import { DailyMoodCheckInWidget } from "../components/DailyMoodCheckInWidget";
 import { SmartMatchFilter, LIFE_GOALS, COMMUNICATION_STYLES } from "../components/SmartMatchFilter";
 import { ValuesQuizWidget } from "../components/ValuesQuizWidget";
 import { WeeklySuccessSummaryWidget } from "../components/WeeklySuccessSummaryWidget";
-import { DatingWheelStatsWidget } from "../components/DatingWheelStatsWidget";
+// ENTFERNT 14.08.2026: DatingWheelStatsWidget — geloeste Aufgaben und
+// gesammelte Punkte kamen ueber 31 Tage aus `Math.random()`, samt der zwei
+// grossen Summen darueber.
 import { fetchProfileSummary, askAICoach } from "../lib/api";
 import { VerbindungScoreBadge } from "../components/VerbindungScoreBadge";
 import { isSmartMatchEnabled, checkNewProfilesForSmartMatches } from "../services/smartMatchService";
@@ -151,7 +153,10 @@ import { DailyIcebreakerWidget } from "../components/DailyIcebreakerWidget";
 import { DailyCoachAffirmation } from "../components/DailyCoachAffirmation";
 import { AppTour } from "../components/AppTour";
 import { EmailSummaryWidget } from "../components/EmailSummaryWidget";
-import { QualityConversationsChartWidget } from "../components/QualityConversationsChartWidget";
+// ENTFERNT 14.08.2026: QualityConversationsChartWidget — die Kurve
+// „Tiefgruendige Gespraeche (letzte 30 Tage)" kam aus `Math.random()`;
+// der eine „echte" Wert fuer heute las einen Schluessel, den niemand
+// schreibt, mit Vorgabe 2.
 import { DatingJournalWidget } from "../components/DatingJournalWidget";
 import { KlarCompassWidget } from "../components/KlarCompassWidget";
 import { WeeklyVibesWidget } from "../components/WeeklyVibesWidget";
@@ -1765,9 +1770,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <WeeklyConsistencyTracker />
         </div>
-        <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
-          <DatingWheelStatsWidget />
-        </div>
+        {/* ENTFERNT: DatingWheelStatsWidget, siehe Kommentar am Import. */}
         <div className="min-w-[85%] max-w-md snap-center shrink-0 empty:hidden">
           <TrendingInterestsWidget location={filterLocation} />
         </div>
@@ -2144,7 +2147,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <BeiSicht><WeeklyVibesWidget /></BeiSicht>
           <BeiSicht><EmailSummaryWidget /></BeiSicht>
           <DatingJournalWidget userInterests={userInterests} />
-          <BeiSicht><QualityConversationsChartWidget /></BeiSicht>
+          {/* ENTFERNT: QualityConversationsChartWidget, siehe Kommentar am Import. */}
           {/* BEFUND 12.08.2026: Hier stand `verbindungenInterests={…}`.
               `DailyIcebreakerWidget` kennt diese Eigenschaft nicht — sie
               heisst `matchesInterests`. Der Wert wurde also verworfen, und

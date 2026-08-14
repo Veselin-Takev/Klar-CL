@@ -29,7 +29,7 @@
     "check:knopf-ohne-wirkung": "node scripts/knopf-ohne-wirkung.mjs src 5",
     "check:meilensteine": "node scripts/meilensteine-erreichbar.mjs src",
     "check:erfundene-diagramme": "node scripts/erfundene-diagrammdaten.mjs src 0",
-    "check:erfundene-zahlen": "node scripts/erfundene-zahlen.mjs src 11",
+    "check:erfundene-zahlen": "node scripts/erfundene-zahlen.mjs src 7",
     "check:routen": "node scripts/routen-inventar.mjs 38",
     "check:effekte": "node scripts/effekt-abhaengigkeiten.mjs src 0",
     "routen": "node scripts/routen-inventar.mjs 999 --liste",
