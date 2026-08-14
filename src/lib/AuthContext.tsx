@@ -4,6 +4,7 @@ import type { User } from 'firebase/auth';
 import { auth, db } from './firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { meldeKontoErforderlich, sollGateZeigen } from './gastGrenze';
+import { anmeldeschritt } from './anmeldefehler';
 
 interface AuthContextType {
   user: User | null;
@@ -235,15 +236,37 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Anmelden braucht. Siehe den Block am Anfang dieser Datei.
     const provider = new GoogleAuthProvider();
     try {
-      // First try popup
       await signInWithPopup(auth, provider);
+      return;
     } catch (error: any) {
-      console.error("Error signing in with Google", error);
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
-        // Fallback to redirect
-        await signInWithRedirect(auth, provider);
-      } else {
-        throw error;
+      // BEFUND 14.08.2026: Hier stand
+      //
+      //     if (code === 'auth/popup-closed-by-user' || code === 'auth/popup-blocked')
+      //       await signInWithRedirect(auth, provider);
+      //
+      // Beide Faelle gleich zu behandeln, hat die Anmeldung dauerhaft
+      // unbrauchbar gemacht. Wer das Fenster schliesst, schickt damit den
+      // GANZEN Tab zum Anmeldedienst — und ab da hat jedes weitere Popup
+      // einen Oeffner, der nicht mehr die App ist:
+      //
+      //     Auth Emulator Internal Error: No matching frame
+      //       at sendAuthEventViaIframeRelay
+      //
+      // Der Zustand haelt sich selbst am Leben. Begruendung und Faelle in
+      // src/lib/anmeldefehler.ts, geprueft in tests/anmeldefehler.spec.ts.
+      switch (anmeldeschritt(error?.code)) {
+        case 'weiterleiten':
+          // Der Browser hat das Fenster verhindert — die Person wollte sich
+          // anmelden und kam nicht dazu. Hier ist der zweite Weg richtig.
+          await signInWithRedirect(auth, provider);
+          return;
+        case 'abbrechen':
+          // Abbruch ist eine Antwort, kein Fehler. Nichts melden, nichts
+          // nachfassen.
+          return;
+        default:
+          console.error("Error signing in with Google", error);
+          throw error;
       }
     }
   };
