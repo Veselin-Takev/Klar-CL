@@ -52,6 +52,7 @@ import {
   istGast, gastDarf, GAST_KI_GRENZE,
   CODE_KONTO_ERFORDERLICH, TEXT_KONTO_ERFORDERLICH,
 } from "./src/server/gastrechte";
+import { topfFuer, UEBERSETZUNG_GRENZE, UEBERSETZUNG_GRENZE_GAST } from "./src/server/kontingente";
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import crypto from 'crypto';
@@ -504,6 +505,45 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
     legacyHeaders: false,
   });
 
+  // ── UEB-01 (14.08.2026) ─────────────────────────────────────────────────
+  // Eigener Topf fuer die Uebersetzung. Begruendung und Zahlen stehen in
+  // `src/server/kontingente.ts`, geprueft in `tests/kontingente.spec.ts`.
+  //
+  // Kurz: `ChatView` rendert JEDE Nachricht, und jede `MessageBubble` loest
+  // bei eingeschalteter Live-Uebersetzung genau einen Aufruf aus. Ein
+  // Gespraech mit 40 Nachrichten hat damit zwei Drittel des KI-Topfes
+  // verbraucht, bevor der Coach ein Wort gesagt hat. Bei einem Gast war nach
+  // 15 Nachrichten Schluss — beim LESEN.
+  const uebersetzungLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: UEBERSETZUNG_GRENZE,
+    keyGenerator: (req) => {
+      const konto = (req as any).user?.uid;
+      if (konto) return `ueb-${konto}`;
+      return ipKeyGenerator(req.ip ?? "");
+    },
+    message: { error: "Zu viele Uebersetzungen in kurzer Zeit. Bitte spaeter erneut." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  const gastUebersetzungLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: UEBERSETZUNG_GRENZE_GAST,
+    keyGenerator: (req) => {
+      const konto = (req as any).user?.uid;
+      if (konto) return `ueb-gast-${konto}`;
+      return ipKeyGenerator(req.ip ?? "");
+    },
+    // KEIN `code: CODE_KONTO_ERFORDERLICH`. Der Code oeffnet das
+    // Registrierungs-Gate (src/lib/gastGrenze.ts). Das ist beim Ausprobieren
+    // eines KI-Werkzeugs richtig und beim Lesen eines Gespraechs falsch:
+    // Der Gast darf das Gespraech fuehren, ihm fehlt nur die Uebersetzung.
+    message: { error: "Zu viele Uebersetzungen in kurzer Zeit. Bitte spaeter erneut." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   app.use("/api", async (req, res, next) => {
     const pfad = req.path.startsWith("/api") ? req.path : "/api" + req.path;
     if (OEFFENTLICH.has(pfad) || OEFFENTLICH.has(req.path)) return next();
@@ -549,7 +589,17 @@ app.get('/api/system-health', requireAuth, nurModeration, (_req, res) => {
       }
 
       // SEC-05: Erst nach der Anmeldung, damit der Schluessel die uid ist.
-      if (KI_ENDPUNKTE.has(pfad)) {
+      //
+      // REIHENFOLGE BEACHTEN: `/api/translate` steht auch in KI_ENDPUNKTE —
+      // zu Recht, denn die Einwilligungspruefung oben braucht es dort. Nur
+      // beim KONTINGENT gilt etwas anderes. `topfFuer` entscheidet das an
+      // einer Stelle, und `tests/kontingente.spec.ts` haelt die Reihenfolge
+      // fest.
+      const topf = topfFuer(pfad, KI_ENDPUNKTE.has(pfad));
+      if (topf === "uebersetzung") {
+        return gast ? gastUebersetzungLimiter(req, res, next) : uebersetzungLimiter(req, res, next);
+      }
+      if (topf === "ki") {
         return gast ? gastKiLimiter(req, res, next) : kiLimiter(req, res, next);
       }
       return next();
