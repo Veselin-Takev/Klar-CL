@@ -180,8 +180,10 @@ service cloud.firestore {
       // durch, unabhaengig davon, was die Oberflaeche anbietet.
       allow update: if signedIn() && request.auth.uid == userId
                     && !istGast()
-                    && isValidUserUpdate(request.resource.data, resource.data)
-                    && keepsServerFields();
+                    && (resource != null
+                          ? isValidUserUpdate(request.resource.data, resource.data)
+                            && keepsServerFields()
+                          : false);
       // Loeschung laeuft ueber /api/account/delete (Kaskade, Art. 17 DSGVO).
       allow delete: if false;
     }
@@ -211,7 +213,10 @@ service cloud.firestore {
       allow create: if signedIn()
                     && request.resource.data.blockerUid == request.auth.uid
                     && blockId == request.auth.uid + '_' + request.resource.data.blockedUid;
-      allow delete: if signedIn() && request.auth.uid == resource.data.blockerUid;
+      allow delete: if signedIn()
+                    && (resource != null
+                          ? request.auth.uid == resource.data.blockerUid
+                          : false);
       allow update: if false;
     }
 
@@ -241,7 +246,11 @@ service cloud.firestore {
       allow create: if isVerified(request.auth.uid)
                     && request.auth.uid in request.resource.data.participants
                     && isValidChat(request.resource.data);
-      allow update: if signedIn() && request.auth.uid in resource.data.participants && isValidChatUpdate(request.resource.data, resource.data);
+      allow update: if signedIn()
+                    && (resource != null
+                          ? request.auth.uid in resource.data.participants
+                            && isValidChatUpdate(request.resource.data, resource.data)
+                          : false);
       // Ein Chat gehoert beiden. Einseitiges Loeschen wuerde der anderen
       // Person den Verlauf nehmen — und jede Meldung nach DSA Art. 16
       // wertlos machen.
