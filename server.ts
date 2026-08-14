@@ -53,6 +53,7 @@ import {
   CODE_KONTO_ERFORDERLICH, TEXT_KONTO_ERFORDERLICH,
 } from "./src/server/gastrechte";
 import { topfFuer, UEBERSETZUNG_GRENZE, UEBERSETZUNG_GRENZE_GAST } from "./src/server/kontingente";
+import { emulatorCsp } from "./src/server/emulatorCsp";
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import crypto from 'crypto';
@@ -220,16 +221,25 @@ export async function baueApp() {
   // Erweitert wird deshalb NUR, wenn die Emulator-Variablen gesetzt sind.
   // `firebase emulators:exec` setzt sie; in der Produktion gibt es sie
   // nicht, und dann bleibt die Liste unveraendert eng.
-  const emulatorQuellen: string[] = [];
-  for (const wirt of [process.env.FIRESTORE_EMULATOR_HOST, process.env.FIREBASE_AUTH_EMULATOR_HOST]) {
-    if (!wirt) continue;
-    emulatorQuellen.push(`http://${wirt}`, `ws://${wirt}`);
-  }
+  //
+  // NACHTRAG 14.08.2026: Die Liste ging bisher NUR an `connect-src`. Damit
+  // blieb der Anmelde-Rahmen von Firebase Auth gesperrt:
+  //
+  //   Framing 'http://127.0.0.1:9099/' violates the following Content
+  //   Security Policy directive: "frame-src 'self' ...". Blocked.
+  //
+  // Die Entscheidung liegt jetzt in src/server/emulatorCsp.ts und ist dort
+  // geprueft (tests/emulatorCsp.spec.ts).
+  const { verbindung: emulatorQuellen, rahmen: emulatorRahmen } = emulatorCsp(
+    process.env.FIRESTORE_EMULATOR_HOST,
+    process.env.FIREBASE_AUTH_EMULATOR_HOST,
+  );
   if (emulatorQuellen.length > 0) {
     console.warn(
       `\n  HINWEIS: Die CSP ist um die Emulatoren erweitert:\n` +
-      `  ${emulatorQuellen.join("  ")}\n` +
-      `  Das geschieht nur, weil FIRESTORE_EMULATOR_HOST gesetzt ist.\n`,
+      `  connect-src  ${emulatorQuellen.join("  ")}\n` +
+      `  frame-src    ${emulatorRahmen.join("  ") || "(keiner)"}\n` +
+      `  Das geschieht nur, weil die Emulator-Variablen gesetzt sind.\n`,
     );
   }
   app.use(helmet({
@@ -283,7 +293,19 @@ export async function baueApp() {
                          ...emulatorQuellen],
             // `accounts.google.com` fuer den Anmeldedialog selbst; ohne
             // ihn bliebe das Fenster leer, auch wenn das Skript laedt.
-            frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com"],
+            // BEFUND 14.08.2026, nach dem Service-Worker-Fix sichtbar:
+            //
+            //   Framing 'http://127.0.0.1:9099/' violates the following
+            //   Content Security Policy directive: "frame-src 'self'
+            //   https://*.firebaseapp.com https://accounts.google.com".
+            //   The request has been blocked.
+            //
+            // Firebase Auth legt einen versteckten Rahmen an. In der
+            // Produktion liegt er unter `*.firebaseapp.com`; gegen den
+            // Emulator unter dem Auth-Wirt. Deshalb `emulatorRahmen` — es
+            // ist leer, sobald FIREBASE_AUTH_EMULATOR_HOST fehlt.
+            frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com",
+                       ...emulatorRahmen],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
