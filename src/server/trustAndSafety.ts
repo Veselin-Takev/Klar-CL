@@ -136,13 +136,24 @@ export async function handleDeleteAccount(req: Request, res: Response): Promise<
   const meineUid = uid(req);
   try {
     const db = getFirestore();
-    const bericht = { chats: 0, nachrichten: 0, verbindungen: 0, eigeneMeldungen: 0, pseudonymisiert: 0 };
+    const bericht = {
+      chats: 0, nachrichten: 0, gateAntworten: 0, verbindungen: 0, kontakte: 0,
+      eigeneMeldungen: 0, pseudonymisiert: 0,
+    };
 
     // 1. Chats samt Nachrichten. Ein Chat gehört beiden; ein halber Chat ist
     //    für niemanden nützlich.
+    //
+    //    GEGENPRÜFUNG 14.08.2026: `gate_answers` fehlte. Firestore löscht mit
+    //    einem Dokument KEINE Unterkollektionen — `chats/{id}/gate_answers`
+    //    wäre nach dem Löschen des Chats verwaist liegengeblieben. Darin
+    //    steht bis zu 1000 Zeichen selbst verfasster Freitext je Antwort,
+    //    und die Auskunft nach Art. 15 gibt ihn aus. Was auskunftspflichtig
+    //    ist, muss auch löschbar sein.
     const chats = await db.collection('chats').where('participants', 'array-contains', meineUid).get();
     for (const chat of chats.docs) {
       bericht.nachrichten += await loescheAbfrage(chat.ref.collection('messages'));
+      bericht.gateAntworten += await loescheAbfrage(chat.ref.collection('gate_answers'));
       await chat.ref.delete();
       bericht.chats += 1;
     }
@@ -151,6 +162,16 @@ export async function handleDeleteAccount(req: Request, res: Response): Promise<
     for (const feld of ['fromUid', 'toUid', 'userId', 'otherUserId']) {
       bericht.verbindungen += await loescheAbfrage(
         db.collection('connections').where(feld, '==', meineUid),
+      );
+    }
+
+    // 2a. Kontaktanfragen in beide Richtungen.
+    //     GEGENPRÜFUNG 14.08.2026: `contacts` fehlte ebenfalls. Die
+    //     Dokumentkennung ist `${von}_${nach}`, die Felder heissen `fromUid`
+    //     und `toUid` — die Auskunft liest genau diese beiden.
+    for (const feld of ['fromUid', 'toUid']) {
+      bericht.kontakte += await loescheAbfrage(
+        db.collection('contacts').where(feld, '==', meineUid),
       );
     }
 

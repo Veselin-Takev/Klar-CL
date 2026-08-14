@@ -2590,49 +2590,34 @@ Gib die Antwort als JSON zurück.`,
   });
 
 
-  app.delete("/api/account", async (req, res) => {
-    try {
-      const user = (req as any).user;
-      if (!user || !user.uid) return res.status(401).json({ error: "Unauthorized" });
-      
-      const uid = user.uid;
-      
-      // Cascading delete
-      const db = getFirestore();
-      
-      // 1. Delete user doc and subcollections (quota_ledger)
-      const userRef = db.collection('users').doc(uid);
-      const quotaDocs = await userRef.collection('quota_ledger').get();
-      const batch = db.batch();
-      quotaDocs.forEach(doc => batch.delete(doc.ref));
-      batch.delete(userRef);
-      
-      // 2. Delete all chats where user is participant
-      const chatsQuery = await db.collection('chats').where('participants', 'array-contains', uid).get();
-      for (const chatDoc of chatsQuery.docs) {
-        // delete messages in chat
-        const messages = await chatDoc.ref.collection('messages').get();
-        messages.forEach(msg => batch.delete(msg.ref));
-        batch.delete(chatDoc.ref);
-      }
-      
-      // 3. Delete connections
-      const connQuery1 = await db.collection('connections').where('senderId', '==', uid).get();
-      connQuery1.forEach(doc => batch.delete(doc.ref));
-      const connQuery2 = await db.collection('connections').where('receiverId', '==', uid).get();
-      connQuery2.forEach(doc => batch.delete(doc.ref));
-
-      await batch.commit();
-      
-      // Delete from Firebase Auth
-      await getAuth().deleteUser(uid);
-      
-      res.json({ success: true });
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: "Failed to delete account" });
-    }
-  });
+  // ═══════════════════════════════════════════════════════════════════════
+  // ENTFERNT 14.08.2026: app.delete("/api/account")
+  //
+  // Es gab ZWEI Wege, ein Konto zu loeschen. Der andere ist
+  // `POST /api/account/delete` -> `handleDeleteAccount` in
+  // `src/server/trustAndSafety.ts`. Nur dieser hat einen Aufrufer
+  // (`Profile.tsx`). Der hier hatte keinen — in keinem Client, in keinem
+  // Test.
+  //
+  // Er war nicht nur ueberfluessig, sondern falsch:
+  //
+  //   · `connections` wurde ueber `senderId`/`receiverId` gesucht. Die
+  //     Felder heissen `fromUid`, `toUid`, `userId`, `otherUserId` — die
+  //     Abfrage traf also NICHTS.
+  //   · Es fehlten: gate_answers, contacts, einwilligungen,
+  //     ki_zwischenspeicher, age_attempts, blocks, reports (eigene wie
+  //     fremde) und das Loeschprotokoll nach Art. 5 Abs. 2 DSGVO.
+  //   · Alles lief in EINEM `batch`. Firestore laesst 500 Schreibvorgaenge
+  //     je Batch zu; wer viele Nachrichten hat, waere ueber die Grenze
+  //     gelaufen und der ganze Vorgang haette geworfen.
+  //   · Danach antwortete er `{ success: true }`.
+  //
+  // Eine unvollstaendige Loeschung, die Erfolg meldet, ist schlimmer als
+  // gar keine: Sie nimmt der Person den Anlass, noch einmal nachzusehen.
+  //
+  // Das Auth-Konto haette er geloescht — die Daten waeren geblieben, ohne
+  // Konto, mit dem man sie noch haette anfordern koennen.
+  // ═══════════════════════════════════════════════════════════════════════
 
   // BEFUND 10.08.2026 -- 23 tote Endpunkte
   // Hier stand die Vite-/Auslieferungs-Middleware. Express arbeitet die
