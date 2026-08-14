@@ -39,9 +39,10 @@
 // also der aeusserste — die Korrektur wirkt.
 // ═══════════════════════════════════════════════════════════════════════════
 import { useAuth } from "../lib/AuthContext";
-import { Sparkles, ShieldCheck, User } from "lucide-react";
+import { Sparkles, ShieldCheck, ShieldAlert, User } from "lucide-react";
 import { useState } from "react";
 
+import { verbindungshinweis } from '../lib/verbindungszustand';
 export default function Login() {
   const { signInWithGoogle, signInAsGuest, signInWithEmail, signUpWithEmail } = useAuth();
   const [error, setError] = useState<string | null>(null);
@@ -225,10 +226,40 @@ export default function Login() {
           </button>
         </div>
 
-        <div className="mt-8 flex items-center gap-2 text-stone-500 dark:text-stone-400 text-xs">
-          <ShieldCheck size={14} className="text-green-600 dark:text-green-500" aria-hidden="true" />
-          <span>Verschlüsselte Verbindung.</span>
-        </div>
+        {/* ── BEFUND 14.08.2026 ────────────────────────────────────────────
+            Hier stand „Verschlüsselte Verbindung." mit gruenem Schild —
+            unbedingt, an nichts geknuepft. Ueber `http://` war der Satz
+            schlicht falsch, und es ist genau die Aussage, auf die sich
+            Menschen stuetzen, bevor sie ein Passwort eingeben.
+
+            Jetzt haengt er an `window.isSecureContext`. Bei einem unsicheren
+            Zusammenhang wird nicht geschwiegen, sondern gewarnt — Schweigen
+            waere ehrlicher als vorher, aber immer noch stumm.
+
+            Begruendung und Faelle: src/lib/verbindungszustand.ts,
+            geprueft in tests/verbindungszustand.spec.ts. */}
+        {(() => {
+          const hinweis = verbindungshinweis(
+            typeof window !== 'undefined' && window.isSecureContext,
+          );
+          return (
+            <div
+              className={`mt-8 flex items-center gap-2 text-xs ${
+                hinweis.sicher
+                  ? 'text-stone-500 dark:text-stone-400'
+                  : 'text-amber-700 dark:text-amber-500'
+              }`}
+              role={hinweis.sicher ? undefined : 'status'}
+            >
+              {hinweis.sicher ? (
+                <ShieldCheck size={14} className="text-green-600 dark:text-green-500" aria-hidden="true" />
+              ) : (
+                <ShieldAlert size={14} className="text-amber-600 dark:text-amber-500" aria-hidden="true" />
+              )}
+              <span>{hinweis.text}</span>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

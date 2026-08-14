@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Archive, Sparkles, BookOpen, Send, CalendarHeart, MapPin, MessageCircle, ChevronDown, Calendar as CalendarIcon, ClipboardCheck, Theater, Mic, MicOff, Bookmark, Copy, Check, Trash2 } from 'lucide-react';
+import { Search, Archive, Sparkles, BookOpen, Send, CalendarHeart, MapPin, MessageCircle, ChevronDown, Calendar as CalendarIcon, ClipboardCheck, Theater, Mic, Bookmark, Copy, Check, Trash2 } from 'lucide-react';
 import { askAICoach } from "../lib/api";
 import { allProfiles } from "../data";
 
@@ -583,7 +583,12 @@ Halte es ermutigend und hilfreich.`;
                 onClick={toggleVoiceRecording}
                 className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors shrink-0 ${isRecordingVoice ? 'bg-rose-100 text-rose-500 animate-pulse' : 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'}`}
               >
-                {isRecordingVoice ? <Mic size={20} /> : <MicOff size={20} />}
+                {/* BEFUND 14.08.2026: Im RUHEZUSTAND stand hier ein
+                    durchgestrichenes Mikrofon. Das liest sich wie
+                    „abgeschaltet" — dabei ist es die Aufforderung, zu
+                    sprechen. Der laufende Zustand ist schon am Puls und an
+                    der Farbe erkennbar (siehe className oben). */}
+                <Mic size={20} />
               </button>
               <input 
                 id="coach-nachricht"

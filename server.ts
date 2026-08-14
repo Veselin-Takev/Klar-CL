@@ -306,6 +306,30 @@ export async function baueApp() {
             // ist leer, sobald FIREBASE_AUTH_EMULATOR_HOST fehlt.
             frameSrc: ["'self'", "https://*.firebaseapp.com", "https://accounts.google.com",
                        ...emulatorRahmen],
+            // ── BEFUND 14.08.2026, im gebauten Stand gemessen ────────────────
+            //
+            //   Creating a worker from 'blob:http://localhost:3000/8ddb37c5-…'
+            //   violates the following Content Security Policy directive:
+            //   "script-src 'self' https://apis.google.com". Note that
+            //   'worker-src' was NOT EXPLICITLY SET, so 'script-src' is used
+            //   as a fallback. The action has been blocked.
+            //
+            // Fehlt `worker-src`, greift `script-src` als Rueckfall — und
+            // dort ist `blob:` nicht erlaubt. Der Worker startet nie, und die
+            // Funktion dahinter laeuft schlicht nicht. Aufgefallen ist es nur,
+            // weil die Konsole im gebauten Stand offen war; die CSP gilt nur
+            // in der Produktion.
+            //
+            // `blob:` steht deshalb HIER und nicht in `script-src`. Ein Worker
+            // aus einem Blob stammt aus dem eigenen, bereits geladenen Code.
+            // Ein SKRIPT aus einem Blob zuzulassen waere etwas ganz anderes —
+            // das ist der uebliche Weg, eine CSP auszuhebeln.
+            //
+            // NICHT GEKLAERT: In `src/` gibt es kein `new Worker`. Der Worker
+            // stammt aus einer eingebundenen Bibliothek. Welche Faehigkeit
+            // dadurch ausfiel, ist noch zu messen — diese Aenderung hebt die
+            // Sperre auf, sie erklaert sie nicht.
+            workerSrc: ["'self'", "blob:"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],

@@ -31,6 +31,7 @@ import { DateProposalMessage } from "../components/DateProposalMessage";
 import { DatePrepChecklistModal } from "../components/DatePrepChecklistModal";
 import { ChatDateExtractorWidget } from "../components/ChatDateExtractorWidget";
 import { QuickRepliesDrawer } from "../components/QuickRepliesDrawer";
+import { spracherkennungHinweis, NICHT_VERFUEGBAR } from "../lib/spracherkennung";
 
 
 
@@ -239,6 +240,11 @@ export default function ChatView() {
   // automatisch abgeschickt.
   const [isRecording, setIsRecording] = useState(false);
   const [voiceRecognition, setVoiceRecognition] = useState<Spracherkennung | null>(null);
+  // BEFUND 14.08.2026: Fehlschlaege gingen ausschliesslich per `console.warn`
+  // hinaus. Der Knopf blinkte und tat nichts. Die Ursache war am Ende banal —
+  // die Berechtigungsabfrage des Browsers stand offen — aber das konnte
+  // niemand wissen, weil die App es nicht gesagt hat.
+  const [sprachHinweis, setSprachHinweis] = useState('');
 
   useEffect(() => {
     // `SpeechRecognition` steht nicht in den TypeScript-Standardtypen.
@@ -263,6 +269,7 @@ export default function ChatView() {
     };
     recognition.onerror = (event) => {
       console.warn('Spracherkennung fehlgeschlagen:', event.error);
+      setSprachHinweis(spracherkennungHinweis(event.error));
       setIsRecording(false);
     };
     recognition.onend = () => setIsRecording(false);
@@ -275,9 +282,10 @@ export default function ChatView() {
 
   const toggleRecording = () => {
     if (!voiceRecognition) {
-      console.warn('Dieser Browser kennt keine Spracherkennung.');
+      setSprachHinweis(NICHT_VERFUEGBAR);
       return;
     }
+    setSprachHinweis('');
     if (isRecording) {
       voiceRecognition.stop();
       setIsRecording(false);
@@ -1385,6 +1393,22 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
           ...". Mit relative an der Eingabeleiste sitzt er dort, wo er
           hingehoert: unmittelbar darueber. */}
       <div className="relative p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800">
+        {/* Rueckmeldung zur Spracheingabe. `role="status"` statt `alert`:
+            Es ist eine Auskunft, keine Warnung — sie soll vorgelesen werden,
+            ohne die Person aus dem zu reissen, was sie gerade tut. */}
+        {sprachHinweis && (
+          <div role="status" className="mb-2 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-500">
+            <span className="flex-1">{sprachHinweis}</span>
+            <button
+              type="button"
+              onClick={() => setSprachHinweis('')}
+              aria-label="Hinweis zur Spracheingabe schließen"
+              className="shrink-0 px-1 text-amber-700/70 hover:text-amber-800 dark:text-amber-500/70 dark:hover:text-amber-400"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {messages.length > 0 && (
             <button
