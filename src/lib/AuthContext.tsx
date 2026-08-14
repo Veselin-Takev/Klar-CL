@@ -18,11 +18,31 @@ interface AuthContextType {
   updateProfileData: (data: any) => Promise<void>;
 }
 
-let cachedAccessToken: string | null = null;
-
-export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken;
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// ENTFERNT 14.08.2026: `cachedAccessToken` und `getAccessToken()`
+//
+// Sie hielten das Google-Zugriffstoken fuer den Bereich
+// `https://www.googleapis.com/auth/gmail.send` — die Erlaubnis, E-Mails IM
+// NAMEN der Person zu versenden. Angefordert wurde sie bei JEDER
+// Google-Anmeldung, in `signInWithGoogle` weiter unten.
+//
+// Gebraucht hat sie genau ein Baustein: `EmailSummaryWidget`. Der schickte
+// der Person eine Zusammenfassung mit zwei Zahlen —
+// `stats_conversations_started` und `stats_profile_checks`. Beide Schluessel
+// werden nirgends geschrieben (gemessen: 0 Schreibstellen, 3 Lesestellen);
+// die Mail enthielt also zweimal „0".
+//
+// Bei Google ist `gmail.send` ein „restricted scope": Der Zustimmungsdialog
+// sagt der Person woertlich, die App duerfe in ihrem Namen E-Mails senden,
+// und fuer den Produktivbetrieb verlangt Google eine Sicherheitspruefung.
+//
+// Das ist der teuerste Vertrauensvorschuss, den diese App je verlangt hat —
+// fuer eine Mail mit zwei Nullen.
+//
+// WENN die Zusammenfassung je kommen soll, gehoert sie auf den Server: Dort
+// gibt es bereits `mail_queue`, und dann verschickt Klar sie unter EIGENEM
+// Absender, statt das Postfach der Person zu benutzen.
+// ═══════════════════════════════════════════════════════════════════════════
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -116,13 +136,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const handleRedirect = async () => {
       try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const credential = GoogleAuthProvider.credentialFromResult(result);
-          if (credential?.accessToken) {
-            cachedAccessToken = credential.accessToken;
-          }
-        }
+        // Das Ergebnis wird nur noch abgeholt, damit Firebase den
+        // Weiterleitungs-Zustand aufraeumt. Ein Zugriffstoken wird nicht
+        // mehr entgegengenommen — siehe den Block am Anfang dieser Datei.
+        await getRedirectResult(auth);
       } catch (error) {
         console.error("Redirect login error:", error);
       }
@@ -214,15 +231,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signInWithGoogle = async () => {
+    // KEIN `provider.addScope(...)`. Die Anmeldung fragt nur, was sie zum
+    // Anmelden braucht. Siehe den Block am Anfang dieser Datei.
     const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/gmail.send');
     try {
       // First try popup
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        cachedAccessToken = credential.accessToken;
-      }
+      await signInWithPopup(auth, provider);
     } catch (error: any) {
       console.error("Error signing in with Google", error);
       if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/popup-blocked') {
@@ -324,7 +338,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logOut = async () => {
     try {
       await signOut(auth);
-      cachedAccessToken = null;
     } catch (error) {
       console.error("Error signing out", error);
     } finally {

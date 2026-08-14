@@ -152,7 +152,9 @@ import { PopularDateIdeasWidget } from "../components/PopularDateIdeasWidget";
 import { DailyIcebreakerWidget } from "../components/DailyIcebreakerWidget";
 import { DailyCoachAffirmation } from "../components/DailyCoachAffirmation";
 import { AppTour } from "../components/AppTour";
-import { EmailSummaryWidget } from "../components/EmailSummaryWidget";
+// ENTFERNT 14.08.2026: EmailSummaryWidget — es verschickte eine Mail mit
+// zwei Zaehlern, die niemand schreibt, und war der einzige Grund fuer die
+// Google-Berechtigung `gmail.send`. Siehe src/lib/AuthContext.tsx.
 // ENTFERNT 14.08.2026: QualityConversationsChartWidget — die Kurve
 // „Tiefgruendige Gespraeche (letzte 30 Tage)" kam aus `Math.random()`;
 // der eine „echte" Wert fuer heute las einen Schluessel, den niemand
@@ -2145,7 +2147,7 @@ Finde eine Gemeinsamkeit oder stelle eine interessante Frage, um das Gespräch z
           <BeiSicht><ReflectionLogWidget /></BeiSicht>
           <KlarCompassWidget userInterests={userInterests} />
           <BeiSicht><WeeklyVibesWidget /></BeiSicht>
-          <BeiSicht><EmailSummaryWidget /></BeiSicht>
+          {/* ENTFERNT: EmailSummaryWidget, siehe Kommentar am Import. */}
           <DatingJournalWidget userInterests={userInterests} />
           {/* ENTFERNT: QualityConversationsChartWidget, siehe Kommentar am Import. */}
           {/* BEFUND 12.08.2026: Hier stand `verbindungenInterests={…}`.
