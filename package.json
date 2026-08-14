@@ -32,7 +32,7 @@
     "check:erfundene-zahlen": "node scripts/erfundene-zahlen.mjs src 7",
     "check:loeschkaskade": "node scripts/loeschkaskade.mjs 7",
     "check:oauth": "node scripts/oauth-berechtigungen.mjs src 0",
-    "check:startlast": "node scripts/startlast.mjs 29",
+    "check:startlast": "node scripts/startlast.mjs 30",
     "check:skripte": "node scripts/skripte-vollstaendig.mjs 0",
     "check:routen": "node scripts/routen-inventar.mjs 38",
     "check:effekte": "node scripts/effekt-abhaengigkeiten.mjs src 0",
