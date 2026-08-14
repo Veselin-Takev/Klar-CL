@@ -26,6 +26,16 @@
 //   · eigene Dateien, die beim ersten Laden mitkommen
 //   · fremde Pakete, die dabei mitkommen (die grossen sind das Gewicht)
 //
+// ── WARUM NICHT AUFLOESBARE IMPORTE GEMELDET WERDEN ───────────────────────
+// Ein relativer Import, den das Skript nicht findet, wurde anfangs still
+// uebersprungen. Genau daran ist die erste Obergrenze gescheitert: In der
+// Arbeitskopie, in der sie gesetzt wurde, fehlte `firebase-applet-config.json`
+// — das Skript meldete 29 statt 30, und `verify` wurde beim ersten Lauf im
+// echten Repository rot.
+//
+// Eine Messung, die bei fehlenden Dateien eine ZU NIEDRIGE Zahl liefert,
+// ist schlimmer als eine, die abbricht: Sie sieht richtig aus.
+//
 // ── WAS ES NICHT LEISTET ──────────────────────────────────────────────────
 // Es misst ANZAHL, nicht Bytes. Wie gross ein Paket ist, weiss nur der
 // Bundler; ohne `node_modules` laesst sich das hier nicht ermitteln. Die
@@ -81,6 +91,8 @@ function aufloesen(vonDatei, ziel) {
 
 const eigene = new Set();
 const fremde = new Set();
+/** Relative Importe, die sich nicht aufloesen lassen. Siehe unten. */
+const unauffindbar = [];
 const warteschlange = [resolve(EINSTIEG)];
 
 while (warteschlange.length > 0) {
@@ -97,6 +109,7 @@ while (warteschlange.length > 0) {
     if (ziel.startsWith('.')) {
       const pfad = aufloesen(datei, ziel);
       if (pfad) warteschlange.push(pfad);
+      else unauffindbar.push(`${relative(process.cwd(), datei)} -> ${ziel}`);
     } else {
       // `motion/react` -> `motion`, `@scope/paket/x` -> `@scope/paket`
       const teile = ziel.split('/');
@@ -114,6 +127,8 @@ console.log(`  fremde Pakete: ${fremde.size}, davon als schwer bekannt: ${schwer
             (schwereDabei.length ? `  (${schwereDabei.join(', ')})` : ''));
 console.log(`  schwere ohne hinterlegten Grund: ${schwereOhneGrund.length}` +
             (schwereOhneGrund.length ? `  (${schwereOhneGrund.join(', ')})` : ''));
+console.log(`  nicht aufloesbare Importe: ${unauffindbar.length}`);
+for (const u of unauffindbar) console.log(`      ${u}`);
 console.log('');
 
 if (zeigeListe) {
@@ -121,7 +136,7 @@ if (zeigeListe) {
   console.log('');
 }
 
-if (eigeneListe.length > obergrenze || schwereOhneGrund.length > 0) {
+if (eigeneListe.length > obergrenze || schwereOhneGrund.length > 0 || unauffindbar.length > 0) {
   console.log([
     'Ein fester Import wird geladen, bevor die erste Zeile der Komponente',
     'laeuft. Eine Weiche wie `if (!user) return <Login />` kommt dafuer zu',
