@@ -211,6 +211,11 @@ export default function ChatView() {
   const [showSentimentCheck, setShowSentimentCheck] = useState(false);
   const { id } = useParams();
   const profile = allProfiles.find(p => p.id === id);
+  // Heute stammt JEDES Gespraech aus `allProfiles` — also aus erfundenen
+  // Daten. Der Wert steht trotzdem hier und nicht als `true` im JSX: Sobald
+  // echte Profile aus Firestore kommen, wird er von selbst falsch, und der
+  // Hinweis verschwindet, ohne dass jemand daran denken muss.
+  const istBeispielGespraech = allProfiles.some(p => p.id === id);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showProgressWidget, setShowProgressWidget] = useState(false);
   const [showIcebreakers, setShowIcebreakers] = useState(false);
@@ -422,7 +427,10 @@ export default function ChatView() {
   // ENTFERNT 12.08.2026: sechs Zustaende, die ausschliesslich zu den oben
   // gestrichenen Funktionen gehoerten. Keiner von ihnen wurde je gelesen.
 
-  const [intensity, setIntensity] = useState(50);
+  // ENTFERNT 14.08.2026: `const [intensity, setIntensity] = useState(50);`
+  // Der Wert wurde ausschliesslich von der erfundenen Antwort erhoeht. Ohne
+  // sie waere er eine feste 50 gewesen — eine Zahl, die eine Beobachtung
+  // vortaeuscht. Siehe die Stelle in der Kopfzeile weiter unten.
   // BEHOBEN 14.08.2026. Vorher stand hier `const [targetLanguage] =
   // useState<string | undefined>(undefined)` ohne Setzer — die Zielsprache
   // war dauerhaft `undefined`, und `MessageBubble` uebersetzt nur, wenn sie
@@ -564,18 +572,45 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
 
     setInput("");
     localStorage.removeItem(`klar_chat_draft_${id}`);
-    
-    // Simulate a delayed response
-    setTimeout(() => {
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
-      }
-      setIntensity(prev => Math.min(100, prev + 10));
-      setMessages(prev => {
-        const markedRead = prev.map(m => m.role === 'user' ? { ...m, isRead: true } : m);
-        return [...markedRead, { role: 'verbindung', text: "Hey! Schön von dir zu hören 😊" }];
-      });
-    }, 1500);
+
+    // ── BEFUND 14.08.2026, beim ersten Rundgang im angemeldeten Zustand ──
+    //
+    // Hier stand:
+    //
+    //     // Simulate a delayed response
+    //     setTimeout(() => {
+    //       if ('vibrate' in navigator) navigator.vibrate(50);
+    //       setIntensity(prev => Math.min(100, prev + 10));
+    //       setMessages(prev => {
+    //         const markedRead = prev.map(m => m.role === 'user'
+    //                                          ? { ...m, isRead: true } : m);
+    //         return [...markedRead,
+    //                 { role: 'verbindung', text: "Hey! Schön von dir zu hören 😊" }];
+    //       });
+    //     }, 1500);
+    //
+    // 1,5 Sekunden nach JEDER gesendeten Nachricht erschien diese Antwort.
+    // Der Text stand fest im Quelltext. Bestaetigt im Betrieb bei „Clara"
+    // UND bei „Jonas" — beide erfunden (FUN-01, src/data.ts).
+    //
+    // Vier Signale behaupteten gleichzeitig, dort sei ein Mensch:
+    //
+    //   role: 'verbindung'   die andere Person hat geantwortet
+    //   isRead: true         sie hat gelesen
+    //   navigator.vibrate    eine eingehende Nachricht
+    //   setIntensity(+10)    das Gespraech entwickelt sich
+    //
+    // Eine erfundene ZAHL ist eine falsche Anzeige. Eine erfundene
+    // AEUSSERUNG einer Person ist etwas anderes — und sie widerspricht der
+    // Zusage der App unmittelbar: „Echtes Dating ohne Spielchen … niemals
+    // mit deiner Wuerde."
+    //
+    // Ersatzlos entfernt. Die Nachricht steht jetzt unbeantwortet da — das
+    // ist der WAHRE Zustand. Warum niemand antwortet, sagt der Hinweis unter
+    // dem Verlauf (`istBeispielGespraech`), nicht eine Nachricht in fremdem
+    // Namen.
+    //
+    // Bewacht von scripts/erfundene-aeusserungen.mjs, Nulltoleranz.
   };
 
 
@@ -847,19 +882,29 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
                 </div>
               )}
             </div>
-            {/* Der Klick loeste `simulateSilence` aus (siehe oben) und ist
-                mit der Funktion entfallen. Die Anzeige bleibt: Sie zeigt die
-                Intensitaet, sie ist kein Knopf. */}
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="flex gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${intensity > i * 20 ? (intensity > 60 ? 'bg-rose-500' : intensity > 30 ? 'bg-amber-500' : 'bg-brand dark:bg-brand-light') : 'bg-stone-200 dark:bg-stone-700'}`} />
-                ))}
-              </div>
-              <span className="text-[10px] font-medium text-stone-500 dark:text-stone-400">
-                {intensity > 60 ? 'On Fire' : intensity > 30 ? 'Warm' : 'Kühl'}
-              </span>
-            </div>
+            {/* ── ENTFERNT 14.08.2026: die „Gespraechs-Intensitaet" ──────────
+                Fuenf Punkte und ein Wort — „On Fire" / „Warm" / „Kuehl" —
+                gespeist aus `intensity`. Der Wert startete bei 50 und wurde
+                an GENAU EINER Stelle veraendert:
+
+                    setIntensity(prev => Math.min(100, prev + 10));
+
+                naemlich in der erfundenen Antwort, die mit diesem Commit
+                entfaellt. Die Anzeige hat also nie ein Gespraech gemessen.
+                Sie hat gemessen, wie oft die App sich selbst geantwortet hat.
+
+                Mit der Erfindung faellt auch die Anzeige. Sie wieder
+                aufzubauen — aus Nachrichtenzahl, Antwortzeiten, Laenge —
+                waere moeglich, aber `src/screens/Chats.tsx:77` haelt fuer
+                genau diesen Fall schon fest:
+
+                  „Sobald es echte Gespraeche gibt, muessen diese Angaben aus
+                   den Daten kommen oder verschwinden. Nicht vorher umbauen —
+                   ohne echte Gespraeche gaebe es nichts anzuzeigen, und eine
+                   leere Liste waere der ehrlichere, aber noch nicht baubare
+                   Zustand."
+
+                Also: verschwinden. */}
           </div>
         </div>
         {replySuggestions.length > 0 && (
@@ -1393,6 +1438,20 @@ Der Einstieg sollte kreativ, freundlich und auf eine Gemeinsamkeit oder etwas au
           ...". Mit relative an der Eingabeleiste sitzt er dort, wo er
           hingehoert: unmittelbar darueber. */}
       <div className="relative p-4 bg-white dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800">
+        {/* ── BEFUND 14.08.2026 ────────────────────────────────────────
+            Die vier Profile stammen aus src/data.ts und sind erfunden
+            (FUN-01). Frueher verdeckte eine fest verdrahtete Antwort das —
+            es sah aus, als schriebe jemand zurueck.
+
+            Statt der Erfindung steht hier jetzt, was zutrifft. Der Hinweis
+            verschwindet von selbst, sobald ein Gespraech nicht mehr auf ein
+            Beispielprofil zeigt. */}
+        {istBeispielGespraech && (
+          <p className="mb-2 text-xs text-stone-500 dark:text-stone-400">
+            Dieses Profil ist ein Beispiel — hier antwortet niemand. Echte
+            Verbindungen gibt es, sobald andere Menschen dabei sind.
+          </p>
+        )}
         {/* Rueckmeldung zur Spracheingabe. `role="status"` statt `alert`:
             Es ist eine Auskunft, keine Warnung — sie soll vorgelesen werden,
             ohne die Person aus dem zu reissen, was sie gerade tut. */}
